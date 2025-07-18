@@ -20,6 +20,7 @@ object PlacementType:
     override def lift[V, P <: Peer](value: V, isLocal: Boolean)(using Network): V on P = ???
     override def unlift[V, P <: Peer](value: V on P)(using Network): V = ???
 
-  given Flowable[flowOn] with
+  given oxFlow: Flowable[flowOn] with
+    override type Container[V] = Flow[V]
     override def lift[V, P <: Peer](value: Flow[V], isLocal: Boolean)(using Network): V flowOn P = ???
     override def unlift[V, P <: Peer](value: Flow[V] flowOn P)(using Network): Flow[V] = ???
