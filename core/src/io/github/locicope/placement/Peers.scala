@@ -1,7 +1,16 @@
-import Peer.Quantifier.{Multiple, Single}
+package io.github.locicope.placement
+
+import io.github.locicope.placement.Peers.Quantifier.{Multiple, Single}
+
 import scala.quoted.*
 
-object Peer:
+/**
+ * Object containing definitions for peers in a network.
+ *
+ * Peers are the basic building blocks of a network, representing entities that can communicate with each other.
+ */
+object Peers:
+
   opaque type PeerRepr = PeerReprImpl
 
   extension (peerRepr: PeerRepr)

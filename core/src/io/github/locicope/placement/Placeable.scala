@@ -1,7 +1,7 @@
-package io.github.locicope.multiparty
+package io.github.locicope.placement
 
-import io.github.locicope.Peers.Peer
-import io.github.locicope.multiparty.network.Network
+import Peers.Peer
+import io.github.locicope.network.Network
 
 trait Placeable[Placed[_, _ <: Peer]]:
   def lift[V, P <: Peer](value: V, isLocal: Boolean)(using Network): Placed[V, P]

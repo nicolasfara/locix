@@ -1,10 +1,11 @@
-package io.github.locicope.multiparty
+package io.github.locicope.multiparty.multitier
 
-import io.github.locicope.Peers.Quantifier.{Multiple, Single}
-import io.github.locicope.Peers.{Peer, PeerRepr, TiedToMultiple, TiedToSingle}
-import io.github.locicope.multiparty.network.Network
-import io.github.locicope.multiparty.serialization.{Codec, Decoder, Encoder}
-import io.circe.{Encoder as CirceEncoder, Decoder as CirceDecoder}
+import io.circe.{Decoder as CirceDecoder, Encoder as CirceEncoder}
+import io.github.locicope.placement.Peers.Quantifier.{Multiple, Single}
+import io.github.locicope.placement.Peers.{Peer, PeerRepr, TiedToMultiple, TiedToSingle}
+import io.github.locicope.network.Network
+import io.github.locicope.serialization.{Codec, Decoder, Encoder}
+import io.github.locicope.placement.{Flowable, Placeable}
 import ox.flow.Flow
 
 import scala.util.NotGiven
@@ -12,7 +13,7 @@ import scala.util.NotGiven
 trait Multitier:
   trait MultitierLabel[+P <: Peer]
 
-  trait PlacedFunction[Local <: Peer, In <: Product, Out, P[_, _ <: Peer]: Placeable]:
+  trait PlacedFunction[Local <: Peer, In <: Product: Codec, Out: Encoder, P[_, _ <: Peer]: Placeable]:
     protected val localPeerRepr: PeerRepr
     def apply(inputs: In): P[Out, Local]
 
@@ -27,7 +28,7 @@ trait Multitier:
       Network
   ): F[V, P]
 
-  def asLocal[V: Decoder, Remote <: Peer, Local <: TiedToSingle[Remote], F[_, _ <: Peer]: Placeable](
+  protected def `asLocal@`[V: Decoder, Remote <: Peer, Local <: TiedToSingle[Remote], F[_, _ <: Peer]: Placeable](
       effect: F[V, Remote]
   )(using Network, MultitierLabel[Local]): V
 
@@ -44,7 +45,7 @@ trait Multitier:
   )(using net: Network, ml: MultitierLabel[Local]): Flow[(net.ID, V)]
 
   extension [V: Decoder, Remote <: Peer, F[_, _ <: Peer]: Placeable](value: F[V, Remote])
-    def <@[Local <: TiedToSingle[Remote]](using Network, MultitierLabel[Local]): V = asLocal(value)
+    def asLocal[Local <: TiedToSingle[Remote]](using Network, MultitierLabel[Local]): V = `asLocal@`(value)
     def <<@[Local <: TiedToMultiple[Remote]](using net: Network, ml: MultitierLabel[Local]): Map[net.ID, V] =
       asLocalAll(value)
 
@@ -110,8 +111,13 @@ object Multitier:
 //    inputs._1 + inputs._2.length
 //
 //  def foo(using Multitier, Network): Int on Client = placed():
-//    val a = placedFunction((12, "Hello")).<@
+//    val a = asLocal(placedFunction((12, "Hello")))
 //    12
+//
+//  def chor(using Network, Multitier, Collective)(value: Int on Server): Int on Client = collective:
+//    val x = foo
+//    x.<@
+//      
 //
 //  def bar(using Network, Collective): Int flowOn Client = collective:
 //    nbr(10).default

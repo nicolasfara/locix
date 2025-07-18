@@ -1,8 +1,9 @@
-package io.github.locicope.multiparty
+package io.github.locicope.collective
 
-import io.github.locicope.Peers.{Peer, TiedToMultiple}
-import io.github.locicope.multiparty.network.Network
-import io.github.locicope.multiparty.serialization.Encoder
+import io.github.locicope.placement.Peers.{Peer, TiedToMultiple}
+import io.github.locicope.network.Network
+import io.github.locicope.placement.Flowable
+import io.github.locicope.serialization.Encoder
 
 trait Collective:
   trait NValue[+V]:

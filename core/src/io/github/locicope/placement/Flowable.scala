@@ -1,7 +1,7 @@
-package io.github.locicope.multiparty
+package io.github.locicope.placement
 
-import io.github.locicope.Peers.Peer
-import io.github.locicope.multiparty.network.Network
+import Peers.Peer
+import io.github.locicope.network.Network
 import ox.flow.Flow
 
 trait Flowable[Flowing[_, _ <: Peer]]:
