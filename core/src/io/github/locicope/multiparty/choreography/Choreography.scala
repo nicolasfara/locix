@@ -11,8 +11,8 @@ trait Choreography:
   trait ChoreographyLabel[+P <: Peer]
 
   def at[P <: Peer, V: Encoder, F[_, _ <: Peer]: PlaceableValue](body: ChoreographyLabel[P] ?=> V)(using
-                                                                                                   NotGiven[ChoreographyLabel[P]],
-                                                                                                   Network
+      NotGiven[ChoreographyLabel[P]],
+      Network
   ): F[V, P]
 
   def unwrap[V: Decoder, P <: Peer, F[_, _ <: Peer]](
@@ -28,9 +28,9 @@ trait Choreography:
 
 object Choreography:
   def at[P <: Peer, V: Encoder, F[_, _ <: Peer]: PlaceableValue](using
-                                                                 choreo: Choreography,
-                                                                 net: Network,
-                                                                 ng: NotGiven[choreo.ChoreographyLabel[P]]
+      choreo: Choreography,
+      net: Network,
+      ng: NotGiven[choreo.ChoreographyLabel[P]]
   )(
       body: choreo.ChoreographyLabel[P] ?=> V
   ): F[V, P] = choreo.at[P, V, F](body)
