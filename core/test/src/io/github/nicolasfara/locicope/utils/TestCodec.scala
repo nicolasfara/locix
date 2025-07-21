@@ -1,0 +1,12 @@
+package io.github.nicolasfara.locicope.utils
+
+import io.circe.syntax.*
+import io.circe.parser.decode as circeDecode
+import io.circe.{ Decoder as CirceDecoder, Encoder as CirceEncoder }
+import io.circe.{ Decoder, Encoder }
+import io.github.nicolasfara.locicope.serialization.Codec
+
+object TestCodec:
+  given foo[T: {CirceEncoder, CirceDecoder}]: Codec[T] with
+    override def decode(data: Array[Byte]): Either[String, T] = circeDecode(data.mkString).left.map(_.getMessage)
+    override def encode(value: T): Array[Byte] = value.asJson.noSpaces.getBytes
