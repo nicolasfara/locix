@@ -8,7 +8,7 @@ import scalalib._
 import com.goyeau.mill.scalafix.ScalafixModule
 
 trait CommonScala extends ScalaModule with ScalafixModule {
-  def scalaVersion = "3.7.2-RC1-bin-20250612-99543c5-NIGHTLY"
+  def scalaVersion = "3.7.1"
 //  def scoverageVersion = "2.1.0"
   def scalacOptions = Seq(
     "-Werror",
@@ -24,7 +24,7 @@ trait CommonScala extends ScalaModule with ScalafixModule {
     "-experimental",
     "-feature",
     "-language:implicitConversions",
-    "-language:experimental.captureChecking",
+//    "-language:experimental.captureChecking",
     "-language:experimental.pureFunctions",
   )
 
