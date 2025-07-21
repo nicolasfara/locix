@@ -3,8 +3,8 @@ package io.github.nicolasfara.locicope.serialization
 /**
  * An encoder that can serialize objects of type T into byte arrays.
  *
- * This trait provides the fundamental operation for converting strongly-typed objects into their serialized byte
- * representation. Implementations should handle the conversion logic specific to the type T.
+ * This trait provides the fundamental operation for converting strongly-typed objects into their serialized byte representation. Implementations
+ * should handle the conversion logic specific to the type T.
  *
  * @tparam T
  *   the type of object that this encoder can serialize
