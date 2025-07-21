@@ -2,7 +2,7 @@ package io.github.locicope.multiparty.choreography
 
 import io.github.locicope.placement.Peers.{Peer, Quantifier}
 import io.github.locicope.network.Network
-import io.github.locicope.placement.Placeable
+import io.github.locicope.placement.PlaceableValue
 import io.github.locicope.serialization.{Codec, Decoder, Encoder}
 
 import scala.util.NotGiven
@@ -10,9 +10,9 @@ import scala.util.NotGiven
 trait Choreography:
   trait ChoreographyLabel[+P <: Peer]
 
-  def at[P <: Peer, V: Encoder, F[_, _ <: Peer]: Placeable](body: ChoreographyLabel[P] ?=> V)(using
-      NotGiven[ChoreographyLabel[P]],
-      Network
+  def at[P <: Peer, V: Encoder, F[_, _ <: Peer]: PlaceableValue](body: ChoreographyLabel[P] ?=> V)(using
+                                                                                                   NotGiven[ChoreographyLabel[P]],
+                                                                                                   Network
   ): F[V, P]
 
   def unwrap[V: Decoder, P <: Peer, F[_, _ <: Peer]](
@@ -27,10 +27,10 @@ trait Choreography:
     def ?(using net: Network, cl: ChoreographyLabel[P]): Map[net.ID, V] = unwrap(value)
 
 object Choreography:
-  def at[P <: Peer, V: Encoder, F[_, _ <: Peer]: Placeable](using
-      choreo: Choreography,
-      net: Network,
-      ng: NotGiven[choreo.ChoreographyLabel[P]]
+  def at[P <: Peer, V: Encoder, F[_, _ <: Peer]: PlaceableValue](using
+                                                                 choreo: Choreography,
+                                                                 net: Network,
+                                                                 ng: NotGiven[choreo.ChoreographyLabel[P]]
   )(
       body: choreo.ChoreographyLabel[P] ?=> V
   ): F[V, P] = choreo.at[P, V, F](body)

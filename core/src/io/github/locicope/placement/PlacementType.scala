@@ -16,11 +16,11 @@ object PlacementType:
     case Local(value: Flow[V], remoteReference: String)
     case Remote(remoteReference: String)
 
-  given Placeable[on] with
+  given PlaceableValue[on] with
     override def lift[V, P <: Peer](value: V, isLocal: Boolean)(using Network): V on P = ???
     override def unlift[V, P <: Peer](value: V on P)(using Network): V = ???
 
-  given oxFlow: Flowable[flowOn] with
+  given oxFlow: PlaceableFlow[flowOn] with
     override type Container[V] = Flow[V]
     override def lift[V, P <: Peer](value: Flow[V], isLocal: Boolean)(using Network): V flowOn P = ???
     override def unlift[V, P <: Peer](value: Flow[V] flowOn P)(using Network): Flow[V] = ???
