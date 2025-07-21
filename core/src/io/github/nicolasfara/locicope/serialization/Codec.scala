@@ -1,4 +1,4 @@
-package io.github.locicope.serialization
+package io.github.nicolasfara.locicope.serialization
 
 /**
  * A codec that combines encoding and decoding functionality for type T.

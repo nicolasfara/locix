@@ -1,7 +1,7 @@
-package io.github.locicope.placement
+package io.github.nicolasfara.locicope.placement
 
 import Peers.Peer
-import io.github.locicope.network.Network
+import io.github.nicolasfara.locicope.network.Network
 import ox.flow.Flow
 
 object PlacementType:

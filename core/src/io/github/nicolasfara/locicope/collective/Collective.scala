@@ -1,9 +1,9 @@
-package io.github.locicope.collective
+package io.github.nicolasfara.locicope.collective
 
-import io.github.locicope.placement.Peers.{Peer, TiedToMultiple}
-import io.github.locicope.network.Network
-import io.github.locicope.placement.PlaceableFlow
-import io.github.locicope.serialization.Encoder
+import io.github.nicolasfara.locicope.network.Network
+import io.github.nicolasfara.locicope.placement.Peers.{Peer, TiedToMultiple}
+import io.github.nicolasfara.locicope.placement.PlaceableFlow
+import io.github.nicolasfara.locicope.serialization.Encoder
 
 trait Collective:
   trait NValue[+V]:

@@ -1,4 +1,4 @@
-package io.github.locicope.macros
+package io.github.nicolasfara.locicope.macros
 
 import scala.quoted.*
 import java.nio.charset.StandardCharsets

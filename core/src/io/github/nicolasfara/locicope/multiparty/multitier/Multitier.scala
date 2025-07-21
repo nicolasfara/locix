@@ -1,11 +1,11 @@
-package io.github.locicope.multiparty.multitier
+package io.github.nicolasfara.locicope.multiparty.multitier
 
 import io.circe.{Decoder as CirceDecoder, Encoder as CirceEncoder}
-import io.github.locicope.placement.Peers.Quantifier.{Multiple, Single}
-import io.github.locicope.placement.Peers.{Peer, PeerRepr, TiedToMultiple, TiedToSingle}
-import io.github.locicope.network.Network
-import io.github.locicope.serialization.{Codec, Decoder, Encoder}
-import io.github.locicope.placement.{PlaceableFlow, PlaceableValue}
+import io.github.nicolasfara.locicope.placement.Peers.Quantifier.{Multiple, Single}
+import io.github.nicolasfara.locicope.placement.Peers.{Peer, PeerRepr, TiedToMultiple, TiedToSingle}
+import io.github.nicolasfara.locicope.network.Network
+import io.github.nicolasfara.locicope.placement.{PlaceableFlow, PlaceableValue}
+import io.github.nicolasfara.locicope.serialization.{Codec, Decoder, Encoder}
 import ox.flow.Flow
 
 import scala.util.NotGiven

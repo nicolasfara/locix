@@ -1,4 +1,4 @@
-package io.github.locicope.serialization
+package io.github.nicolasfara.locicope.serialization
 
 /**
  * An encoder that can serialize objects of type T into byte arrays.

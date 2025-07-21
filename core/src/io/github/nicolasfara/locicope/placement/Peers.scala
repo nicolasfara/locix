@@ -1,6 +1,6 @@
-package io.github.locicope.placement
+package io.github.nicolasfara.locicope.placement
 
-import io.github.locicope.placement.Peers.Quantifier.{Multiple, Single}
+import Peers.Quantifier.{Multiple, Single}
 
 import scala.quoted.*
 

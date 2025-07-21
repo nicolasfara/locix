@@ -1,9 +1,9 @@
-package io.github.locicope.multiparty.choreography
+package io.github.nicolasfara.locicope.multiparty.choreography
 
-import io.github.locicope.placement.Peers.{Peer, Quantifier}
-import io.github.locicope.network.Network
-import io.github.locicope.placement.PlaceableValue
-import io.github.locicope.serialization.{Codec, Decoder, Encoder}
+import io.github.nicolasfara.locicope.placement.Peers.{Peer, Quantifier}
+import io.github.nicolasfara.locicope.network.Network
+import io.github.nicolasfara.locicope.placement.PlaceableValue
+import io.github.nicolasfara.locicope.serialization.{Codec, Decoder, Encoder}
 
 import scala.util.NotGiven
 
