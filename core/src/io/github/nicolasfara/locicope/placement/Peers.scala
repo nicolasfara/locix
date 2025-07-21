@@ -1,6 +1,6 @@
 package io.github.nicolasfara.locicope.placement
 
-import Peers.Quantifier.{Multiple, Single}
+import Peers.Quantifier.{ Multiple, Single }
 
 import scala.quoted.*
 
@@ -18,7 +18,7 @@ object Peers:
     infix def <:<(base: PeerRepr): Boolean =
       peerRepr.baseTypeRepr == base.baseTypeRepr || peerRepr.supertypes.contains(base.baseTypeRepr)
 
-  final private case class PeerReprImpl(baseTypeRepr: String, supertypes: List[String]):
+  private final case class PeerReprImpl(baseTypeRepr: String, supertypes: List[String]):
     override def toString: String = s"'$baseTypeRepr'${supertypes.mkString(" <: '", ", ", "'")}"
 
   inline def peer[T <: Peer]: PeerRepr = ${ peerReprImpl[T] }
@@ -46,6 +46,7 @@ object Peers:
 
     val types = collectBasesOfSymbol(TypeRepr.of[T].typeSymbol).map(_.fullName)
     '{ PeerReprImpl(${ Expr(types.head) }, ${ Expr(types.tail) }) }
+  end peerReprImpl
 
   /**
    * Prototype of a peer in the network.
@@ -85,3 +86,4 @@ object Peers:
   enum Quantifier[+P <: Peer]:
     case Single()
     case Multiple()
+end Peers

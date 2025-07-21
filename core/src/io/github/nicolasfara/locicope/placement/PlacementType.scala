@@ -24,3 +24,4 @@ object PlacementType:
     override type Container[V] = Flow[V]
     override def lift[V, P <: Peer](value: Flow[V], isLocal: Boolean)(using Network): V flowOn P = ???
     override def unlift[V, P <: Peer](value: Flow[V] flowOn P)(using Network): Flow[V] = ???
+end PlacementType

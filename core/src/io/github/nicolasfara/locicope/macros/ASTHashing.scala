@@ -10,7 +10,7 @@ object ASTHashing:
     import quotes.reflect.*
     val pos = Position.ofMacroExpansion
     val hashed = fletcher16Checksum(
-      s"${pos.sourceFile.name}:${pos.start}:${pos.end}:${body.show}"
+      s"${pos.sourceFile.name}:${pos.start}:${pos.end}:${body.show}",
     ).toHexString
     Expr(hashed)
 
@@ -19,8 +19,9 @@ object ASTHashing:
     var sum1 = 0
     var sum2 = 0
 
-    for (byte <- bytes)
+    for byte <- bytes do
       sum1 = (sum1 + (byte & 0xff)) % 255
       sum2 = (sum2 + sum1) % 255
 
     (sum2 << 8) | sum1
+end ASTHashing

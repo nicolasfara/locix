@@ -1,11 +1,11 @@
 package io.github.nicolasfara.locicope.multiparty.multitier
 
-import io.circe.{Decoder as CirceDecoder, Encoder as CirceEncoder}
-import io.github.nicolasfara.locicope.placement.Peers.Quantifier.{Multiple, Single}
-import io.github.nicolasfara.locicope.placement.Peers.{Peer, PeerRepr, TiedToMultiple, TiedToSingle}
+import io.circe.{ Decoder as CirceDecoder, Encoder as CirceEncoder }
+import io.github.nicolasfara.locicope.placement.Peers.Quantifier.{ Multiple, Single }
+import io.github.nicolasfara.locicope.placement.Peers.{ Peer, PeerRepr, TiedToMultiple, TiedToSingle }
 import io.github.nicolasfara.locicope.network.Network
-import io.github.nicolasfara.locicope.placement.{PlaceableFlow, PlaceableValue}
-import io.github.nicolasfara.locicope.serialization.{Codec, Decoder, Encoder}
+import io.github.nicolasfara.locicope.placement.{ PlaceableFlow, PlaceableValue }
+import io.github.nicolasfara.locicope.serialization.{ Codec, Decoder, Encoder }
 import ox.flow.Flow
 
 import scala.util.NotGiven
@@ -18,30 +18,30 @@ trait Multitier:
     def apply(inputs: In): P[Out, Local]
 
   def function[In <: Product: Codec, Out: Encoder, P[_, _ <: Peer]: PlaceableValue, Local <: Peer](
-      body: MultitierLabel[Local] ?=> In => Out
+      body: MultitierLabel[Local] ?=> In => Out,
   )(using NotGiven[MultitierLabel[Local]]): PlacedFunction[Local, In, Out, P]
 
   def placed[V: Encoder, P <: Peer, F[_, _ <: Peer]: PlaceableValue](
-      deps: PlacedFunction[?, ?, ?, F]*
+      deps: PlacedFunction[?, ?, ?, F]*,
   )(body: MultitierLabel[P] ?=> V)(using
       NotGiven[MultitierLabel[P]],
-      Network
+      Network,
   ): F[V, P]
 
   protected def `asLocal@`[V: Decoder, Remote <: Peer, Local <: TiedToSingle[Remote], F[_, _ <: Peer]: PlaceableValue](
-      effect: F[V, Remote]
+      effect: F[V, Remote],
   )(using Network, MultitierLabel[Local]): V
 
   def asLocalAll[V: Decoder, Remote <: Peer, Local <: TiedToMultiple[Remote], F[_, _ <: Peer]: PlaceableValue](
-      effect: F[V, Remote]
+      effect: F[V, Remote],
   )(using net: Network, ml: MultitierLabel[Local]): Map[net.ID, V]
 
   def asLocalFlow[V: Decoder, Remote <: Peer, Local <: TiedToSingle[Remote], F[_, _ <: Peer]: PlaceableFlow](
-      flow: F[Flow[V], Remote]
+      flow: F[Flow[V], Remote],
   )(using Network, MultitierLabel[Local]): Flow[V]
 
   def asLocalFlowAll[V: Decoder, Remote <: Peer, Local <: TiedToMultiple[Remote], F[_, _ <: Peer]: PlaceableFlow](
-      flow: F[Flow[V], Remote]
+      flow: F[Flow[V], Remote],
   )(using net: Network, ml: MultitierLabel[Local]): Flow[(net.ID, V)]
 
   extension [V: Decoder, Remote <: Peer, F[_, _ <: Peer]: PlaceableValue](value: F[V, Remote])
@@ -53,44 +53,46 @@ trait Multitier:
     def <~[Local <: TiedToSingle[Remote]](using Network, MultitierLabel[Local]): Flow[V] = asLocalFlow(flow)
     def <<~[Local <: TiedToMultiple[Remote]](using net: Network, ml: MultitierLabel[Local]): Flow[(net.ID, V)] =
       asLocalFlowAll(flow)
+end Multitier
 
 object Multitier:
   def function[In <: Product: Codec, Out: Encoder, P[_, _ <: Peer]: PlaceableValue, Local <: Peer](using
-                                                                                                   mt: Multitier,
-                                                                                                   ng: NotGiven[mt.MultitierLabel[Local]]
+      mt: Multitier,
+      ng: NotGiven[mt.MultitierLabel[Local]],
   )(
-      body: mt.MultitierLabel[Local] ?=> In => Out
+      body: mt.MultitierLabel[Local] ?=> In => Out,
   ): mt.PlacedFunction[Local, In, Out, P] = mt.function(body)
 
   def placed[V: Encoder, P <: Peer, F[_, _ <: Peer]: PlaceableValue](using
-                                                                     net: Network,
-                                                                     mt: Multitier,
-                                                                     ng: NotGiven[mt.MultitierLabel[P]]
+      net: Network,
+      mt: Multitier,
+      ng: NotGiven[mt.MultitierLabel[P]],
   )(
-      deps: mt.PlacedFunction[?, ?, ?, F]*
+      deps: mt.PlacedFunction[?, ?, ?, F]*,
   )(
-      body: mt.MultitierLabel[P] ?=> V
+      body: mt.MultitierLabel[P] ?=> V,
   ): F[V, P] = mt.placed(deps*)(body)
 
   def asLocal[V: Decoder, Remote <: Peer, Local <: TiedToSingle[Remote], P[_, _ <: Peer]: PlaceableValue](
-      effect: P[V, Remote]
+      effect: P[V, Remote],
   )(using
       net: Network,
       mt: Multitier,
-      ml: mt.MultitierLabel[Local]
+      ml: mt.MultitierLabel[Local],
   ): V = mt.asLocal(effect)
 
   def asLocalAll[V: Decoder, Remote <: Peer, Local <: TiedToMultiple[Remote], F[_, _ <: Peer]: PlaceableValue](
-      effect: F[V, Remote]
+      effect: F[V, Remote],
   )(using net: Network, mt: Multitier, ml: mt.MultitierLabel[Local]): Map[net.ID, V] = mt.asLocalAll(effect)
 
   def asLocalFlow[V: Decoder, Remote <: Peer, Local <: TiedToSingle[Remote], F[_, _ <: Peer]: PlaceableFlow](
-      flow: F[Flow[V], Remote]
+      flow: F[Flow[V], Remote],
   )(using net: Network, mt: Multitier, ml: mt.MultitierLabel[Local]): Flow[V] = mt.asLocalFlow(flow)
 
   def asLocalFlowAll[V: Decoder, Remote <: Peer, Local <: TiedToMultiple[Remote], F[_, _ <: Peer]: PlaceableFlow](
-      flow: F[Flow[V], Remote]
+      flow: F[Flow[V], Remote],
   )(using net: Network, mt: Multitier, ml: mt.MultitierLabel[Local]): Flow[(net.ID, V)] = mt.asLocalFlowAll(flow)
+end Multitier
 
 //object Test:
 //  type Client <: Peer { type Tie <: Single[Server] & Multiple[Client] }
@@ -117,7 +119,7 @@ object Multitier:
 //  def chor(using Network, Multitier, Collective)(value: Int on Server): Int on Client = collective:
 //    val x = foo
 //    x.<@
-//      
+//
 //
 //  def bar(using Network, Collective): Int flowOn Client = collective:
 //    nbr(10).default
