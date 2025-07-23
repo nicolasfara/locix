@@ -10,10 +10,6 @@ import scala.util.NotGiven
 
 protected class MultitierImpl(override protected val localPeerRepr: PeerRepr) extends Multitier:
 
-  override inline def function[In <: Product: Codec, Out: Encoder, P[_, _ <: Peer]: PlaceableValue, Local <: Peer](
-      body: MultitierLabel[Local] ?=> In => Out,
-  )(using NotGiven[MultitierLabel[Local]]): PlacedFunction[Local, In, Out, P] = ???
-
   override protected def _asLocal[V: Decoder, Remote <: Peer, Local <: TiedToSingle[Remote], F[_, _ <: Peer]: PlaceableValue](
       effect: F[V, Remote],
   )(using Network, MultitierLabel[Local]): V = summon[PlaceableValue[F]].unlift(effect)

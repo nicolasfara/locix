@@ -1,11 +1,13 @@
 package io.github.nicolasfara.locicope.multiparty.multitier
 
-import io.github.nicolasfara.locicope.placement.PlacementType.{ on, given }
-import io.github.nicolasfara.locicope.utils.{ InMemoryNetwork, Placement }
+import io.github.nicolasfara.locicope.placement.PlacementType.{on, given}
+import io.github.nicolasfara.locicope.utils.{InMemoryNetwork, Placement}
 import org.scalatest.Inside
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
 import io.github.nicolasfara.locicope.multiparty.multitier.Multitier.*
+import io.github.nicolasfara.locicope.network.Network
+import io.github.nicolasfara.locicope.serialization.Encoder
 import io.github.nicolasfara.locicope.utils.TestCodec.given
 
 class MultitierTest extends AnyFlatSpecLike, Matchers, Inside:
@@ -14,9 +16,19 @@ class MultitierTest extends AnyFlatSpecLike, Matchers, Inside:
 
     given InMemoryNetwork()
 
+    def foo(using Network, Multitier) = function[(Int, Int), Int, on, Client]: (_, _) =>
+      12
+
+    def bar(using Network, Multitier) = function[(Int, Int), Int, on, Client]: (_, _) =>
+      12
+
     val valueOnServer = Placement.remotePlacement[Int, Server](10)
     multitier[Client]:
+      placed[Server]:
+        foo
+        41
       placed[Client]:
         val localValue = valueOnServer.asLocal
         localValue shouldBe 10
         localValue
+end MultitierTest

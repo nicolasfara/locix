@@ -20,3 +20,5 @@ class InMemoryNetwork extends Network:
   @SuppressWarnings(Array("org.wartremover.warts.asInstanceOf"))
   override def getValue[V: Decoder](produced: NetworkResource.ResourceReference): Either[NetworkError, V] =
     registeredResources.get(produced).toRight(NetworkError.ValueNotRegistered).map(_.asInstanceOf[V])
+
+  override def callFunction[In, Out](inputs: In, resourceReference: NetworkResource.ResourceReference): Out = ???

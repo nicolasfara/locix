@@ -15,3 +15,5 @@ trait Network:
   def registerFunction[In <: Product: Encoder, Out: Encoder, F[_, _ <: Peer]](function: Multitier#PlacedFunction[?, In, Out, F]): Unit
   
   def getValue[V: Decoder](produced: ResourceReference): Either[NetworkError, V]
+  
+  def callFunction[In, Out](inputs: In, resourceReference: ResourceReference): Out

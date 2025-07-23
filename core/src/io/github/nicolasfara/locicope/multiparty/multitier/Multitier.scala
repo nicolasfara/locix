@@ -1,13 +1,14 @@
 package io.github.nicolasfara.locicope.multiparty.multitier
 
-import io.circe.{ Decoder as CirceDecoder, Encoder as CirceEncoder }
+import io.circe.{Decoder as CirceDecoder, Encoder as CirceEncoder}
 import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
-import io.github.nicolasfara.locicope.placement.Peers.Quantifier.{ Multiple, Single }
-import io.github.nicolasfara.locicope.placement.Peers.{ peer, Peer, PeerRepr, TiedToMultiple, TiedToSingle }
-import io.github.nicolasfara.locicope.network.{ Network, NetworkResource }
+import io.github.nicolasfara.locicope.macros.PlacedFunctionFinder.findPlacedFunctions
+import io.github.nicolasfara.locicope.placement.Peers.Quantifier.{Multiple, Single}
+import io.github.nicolasfara.locicope.placement.Peers.{Peer, PeerRepr, TiedToMultiple, TiedToSingle, peer}
+import io.github.nicolasfara.locicope.network.{Network, NetworkResource}
 import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
-import io.github.nicolasfara.locicope.placement.{ PlaceableFlow, PlaceableValue }
-import io.github.nicolasfara.locicope.serialization.{ Codec, Decoder, Encoder }
+import io.github.nicolasfara.locicope.placement.{PlaceableFlow, PlaceableValue}
+import io.github.nicolasfara.locicope.serialization.{Codec, Decoder, Encoder}
 import ox.flow.Flow
 
 import scala.util.NotGiven
@@ -17,13 +18,29 @@ trait Multitier:
 
   protected val localPeerRepr: PeerRepr
 
-  trait PlacedFunction[Local <: Peer, In <: Product: Codec, Out: Encoder, P[_, _ <: Peer]: PlaceableValue]:
+  trait PlacedFunction[Local <: Peer, -In <: Product: Codec, Out: Encoder, P[_, _ <: Peer]: PlaceableValue]:
     val localPeerRepr: PeerRepr
+    override def toString: String = s"λ@${localPeerRepr.baseTypeRepr}"
     def apply(inputs: In): P[Out, Local]
+
+  private class PlacedFunctionImpl[Local <: Peer, In <: Product: Codec, Out: Encoder, P[_, _ <: Peer]: PlaceableValue](
+      override val localPeerRepr: PeerRepr,
+  )(
+      body: In => P[Out, Local],
+  ) extends PlacedFunction[Local, In, Out, P]:
+    def apply(inputs: In): P[Out, Local] = body(inputs)
 
   def function[In <: Product: Codec, Out: Encoder, P[_, _ <: Peer]: PlaceableValue, Local <: Peer](
       body: MultitierLabel[Local] ?=> In => Out,
-  )(using NotGiven[MultitierLabel[Local]]): PlacedFunction[Local, In, Out, P]
+  )(using NotGiven[MultitierLabel[Local]], Network): PlacedFunction[Local, In, Out, P] =
+    given MultitierLabel[Local]()
+    val resourceReference = ResourceReference(hashBody(body), localPeerRepr, NetworkResource.ValueType.Value)
+    PlacedFunctionImpl[Local, In, Out, P](peer[Local]) { inputs =>
+      val result =
+        if localPeerRepr <:< peer[Local] then body(inputs)
+        else summon[Network].callFunction[In, Out](inputs, resourceReference)
+      summon[PlaceableValue[P]].lift(Some(result), resourceReference)
+    }
 
   inline def placed[V: Encoder, P <: Peer, F[_, _ <: Peer]: PlaceableValue](body: MultitierLabel[P] ?=> V)(using
       NotGiven[MultitierLabel[P]],
@@ -37,12 +54,9 @@ trait Multitier:
       val bodyValue = body
       summon[PlaceableValue[F]].lift(Some(bodyValue), resourceReference)
     else
-      // TODO: uncomment
-//      deps
-//        .filter(localPeerRepr <:< _.localPeerRepr)
-//        .tapEach(f => scribe.info(s"Registering dependency: $f"))
-//        .foreach(summon[Network].registerFunction(_))
+      findPlacedFunctions(body, summon[Network])
       summon[PlaceableValue[F]].lift(None, resourceReference)
+  end placed
 
   protected def _asLocal[V: Decoder, Remote <: Peer, Local <: TiedToSingle[Remote], F[_, _ <: Peer]: PlaceableValue](
       effect: F[V, Remote],
@@ -72,9 +86,10 @@ trait Multitier:
 end Multitier
 
 object Multitier:
-  def function[In <: Product: Codec, Out: Encoder, P[_, _ <: Peer]: PlaceableValue, Local <: Peer](using
+  inline def function[In <: Product: Codec, Out: Encoder, P[_, _ <: Peer]: PlaceableValue, Local <: Peer](using
       mt: Multitier,
       ng: NotGiven[mt.MultitierLabel[Local]],
+      net: Network,
   )(
       body: mt.MultitierLabel[Local] ?=> In => Out,
   ): mt.PlacedFunction[Local, In, Out, P] = mt.function(body)
