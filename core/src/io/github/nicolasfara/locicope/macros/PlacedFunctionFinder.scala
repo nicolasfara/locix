@@ -5,9 +5,8 @@ import io.github.nicolasfara.locicope.network.Network
 import io.github.nicolasfara.locicope.placement.Peers.Peer
 import io.github.nicolasfara.locicope.serialization.Encoder
 
-import java.util.UUID
 import scala.annotation.tailrec
-import scala.quoted.{Expr, Quotes}
+import scala.quoted.{ Expr, Quotes }
 
 object PlacedFunctionFinder:
   inline def findPlacedFunctions(inline body: Any, network: Network): Unit =
@@ -22,18 +21,18 @@ object PlacedFunctionFinder:
         case AppliedType(tycon, _) => isPlacedFunction(tycon)
         case t => t.typeSymbol.name == "PlacedFunction"
 
-    def extractOutType(tpe: TypeRepr): Option[(TypeRepr, TypeRepr)] =
+    def extractOutType(tpe: TypeRepr): Option[(TypeRepr, TypeRepr, TypeRepr, TypeRepr)] =
       tpe match
-        case AppliedType(_, List(_, inType, outType, _)) => Some((inType, outType))
+        case AppliedType(_, List(peer, inType, outType, placement)) => Some((peer, inType, outType, placement))
         case _ => None
 
-    def collect(tree: Tree): List[(Term, TypeRepr, TypeRepr)] = tree match
+    def collect(tree: Tree): List[(Term, TypeRepr, TypeRepr, TypeRepr, TypeRepr)] = tree match
       case apply @ Apply(fun, args) =>
         val widened = apply.tpe.widen
         val collected = collect(fun) ++ args.flatMap(collect)
         if isPlacedFunction(widened) then
           extractOutType(widened) match
-            case Some((inType, outType)) => (apply, inType, outType) :: Nil
+            case Some((peer, inType, outType, placement)) => (apply, peer, inType, outType, placement) :: Nil
             case None => Nil
         else collected
       case TypeApply(fun, args) => collect(fun) ++ args.flatMap(collect)
@@ -46,9 +45,7 @@ object PlacedFunctionFinder:
       case _ => Nil
 
     val found = collect(body.asTerm)
-//    if found.nonEmpty then report.info(s"==> Total found ${UUID.randomUUID()}: ${found.map(_._1)}")
-
-    val registrations = found.map { case (placedFunction, inType, outType) =>
+    val registrations = found.map { case (placedFunction, peer, inType, outType, placement) =>
       val encoderIn = AppliedType(TypeRepr.of[Encoder].typeSymbol.typeRef, List(inType))
       val encoderOut = AppliedType(TypeRepr.of[Encoder].typeSymbol.typeRef, List(outType))
       val encoderInImplicit = Implicits.search(encoderIn) match
@@ -58,17 +55,20 @@ object PlacedFunctionFinder:
         case iss: ImplicitSearchSuccess => iss.tree
         case _: ImplicitSearchFailure => report.errorAndAbort(s"No ${encoderOut.show} found in implicit scope")
 
-      (inType.asType, outType.asType) match
-        case ('[inT], '[outT]) =>
+      (peer.asType, inType.asType, outType.asType, placement.asType) match
+        case ('[type peer <: Peer; peer], '[type inT <: Product; inT], '[outT], '[type placement[_, _ <: Peer]; placement]) =>
           '{
-            $net.registerFunction[inT, outT, [_, _ <: Peer] =>> Any](
-              ${ placedFunction.asExprOf },
+            $net.registerFunction[inT, outT, placement](
+              ${ placedFunction.asExprOf[Multitier#PlacedFunction[peer, inT, outT, placement]] },
             )(using
               ${ encoderInImplicit.asExprOf[Encoder[inT]] },
               ${ encoderOutImplicit.asExprOf[Encoder[outT]] },
             )
           }
-        case _ => report.errorAndAbort(s"Placed function with incompatible types: inType=${inType.show}, outType=${outType.show}")
+        case _ =>
+          report.errorAndAbort(
+            s"Invalid type parameters for placed function: peer=${peer.show}, inType=${inType.show}, outType=${outType.show}, placement=${placement.show}",
+          )
     }
 
     val block = registrations match
@@ -78,7 +78,6 @@ object PlacedFunctionFinder:
         val statements = multiple.init.map(_.asTerm)
         val lastExpr = multiple.last
         Block(statements, lastExpr.asTerm).asExprOf[Unit]
-
     block
   end findPlacedFunctionsImpl
 end PlacedFunctionFinder
