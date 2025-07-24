@@ -20,25 +20,27 @@ trait Multitier:
 
   trait PlacedFunction[Local <: Peer, -In <: Product: Codec, Out: Encoder, P[_, _ <: Peer]: PlaceableValue]:
     val localPeerRepr: PeerRepr
+    val resourceReference: ResourceReference
     override def toString: String = s"λ@${localPeerRepr.baseTypeRepr}"
     def apply(inputs: In): P[Out, Local]
 
-  private class PlacedFunctionImpl[Local <: Peer, In <: Product: Codec, Out: Encoder, P[_, _ <: Peer]: PlaceableValue](
+  class PlacedFunctionImpl[Local <: Peer, In <: Product: Codec, Out: Encoder, P[_, _ <: Peer]: PlaceableValue](
       override val localPeerRepr: PeerRepr,
+      override val resourceReference: ResourceReference,
   )(
       body: In => P[Out, Local],
   ) extends PlacedFunction[Local, In, Out, P]:
     def apply(inputs: In): P[Out, Local] = body(inputs)
 
-  def function[In <: Product: Codec, Out: Encoder, P[_, _ <: Peer]: PlaceableValue, Local <: Peer](
+  inline def function[In <: Product: Codec, Out: Codec, P[_, _ <: Peer]: PlaceableValue, Local <: Peer](
       body: MultitierLabel[Local] ?=> In => Out,
   )(using NotGiven[MultitierLabel[Local]], Network): PlacedFunction[Local, In, Out, P] =
     given MultitierLabel[Local]()
     val resourceReference = ResourceReference(hashBody(body), localPeerRepr, NetworkResource.ValueType.Value)
-    PlacedFunctionImpl[Local, In, Out, P](peer[Local]) { inputs =>
+    PlacedFunctionImpl[Local, In, Out, P](peer[Local], resourceReference) { inputs =>
       val result =
         if localPeerRepr <:< peer[Local] then body(inputs)
-        else summon[Network].callFunction[In, Out](inputs, resourceReference)
+        else summon[Network].callFunction[In, Out, Local, P](inputs, resourceReference)
       summon[PlaceableValue[P]].lift(Some(result), resourceReference)
     }
 
@@ -74,6 +76,12 @@ trait Multitier:
       flow: F[Flow[V], Remote],
   )(using net: Network, ml: MultitierLabel[Local]): Flow[(net.ID, V)]
 
+  protected def _unwrap[V: Decoder, Local <: Peer, P[_, _ <: Peer]: PlaceableValue](placed: P[V, Local])(using Network, MultitierLabel[Local]): V =
+    summon[PlaceableValue[P]].unlift(placed)
+
+  extension [V: Decoder, Local <: Peer, F[_, _ <: Peer]: PlaceableValue](placed: F[V, Local])
+    def unwrap(using net: Network, ml: MultitierLabel[Local]): V = _unwrap(placed)
+
   extension [V: Decoder, Remote <: Peer, F[_, _ <: Peer]: PlaceableValue](value: F[V, Remote])
     def asLocal[Local <: TiedToSingle[Remote]](using Network, MultitierLabel[Local]): V = _asLocal(value)
     def asLocalAll[Local <: TiedToMultiple[Remote]](using net: Network, ml: MultitierLabel[Local]): Map[net.ID, V] =
@@ -86,7 +94,7 @@ trait Multitier:
 end Multitier
 
 object Multitier:
-  inline def function[In <: Product: Codec, Out: Encoder, P[_, _ <: Peer]: PlaceableValue, Local <: Peer](using
+  inline def function[In <: Product: Codec, Out: Codec, P[_, _ <: Peer]: PlaceableValue, Local <: Peer](using
       mt: Multitier,
       ng: NotGiven[mt.MultitierLabel[Local]],
       net: Network,

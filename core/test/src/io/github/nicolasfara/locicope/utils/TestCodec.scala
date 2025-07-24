@@ -1,6 +1,7 @@
 package io.github.nicolasfara.locicope.utils
 
 import io.circe.syntax.*
+import io.circe.generic.auto.*
 import io.circe.parser.decode as circeDecode
 import io.circe.{ Decoder as CirceDecoder, Encoder as CirceEncoder }
 import io.circe.{ Decoder, Encoder }

@@ -19,7 +19,7 @@ object PlacedFunctionFinder:
     def isPlacedFunction(tpe: TypeRepr): Boolean =
       tpe match
         case AppliedType(tycon, _) => isPlacedFunction(tycon)
-        case t => t.typeSymbol.name == "PlacedFunction"
+        case t => t.typeSymbol.name == TypeRepr.of[Multitier#PlacedFunction[?, ?, ?, ?]].typeSymbol.name
 
     def extractOutType(tpe: TypeRepr): Option[(TypeRepr, TypeRepr, TypeRepr, TypeRepr)] =
       tpe match
@@ -44,16 +44,18 @@ object PlacedFunctionFinder:
       case ident @ Ident(_) => collect(ident.symbol.tree)
       case _ => Nil
 
-    val found = collect(body.asTerm)
+    def getImplicitFromType(tpe: AppliedType): Term =
+      Implicits.search(tpe) match
+        case iss: ImplicitSearchSuccess => iss.tree
+        case _: ImplicitSearchFailure =>
+          report.errorAndAbort(s"No implicit found for type ${tpe.show}")
+
+    val found = collect(body.asTerm).distinct
     val registrations = found.map { case (placedFunction, peer, inType, outType, placement) =>
       val encoderIn = AppliedType(TypeRepr.of[Encoder].typeSymbol.typeRef, List(inType))
       val encoderOut = AppliedType(TypeRepr.of[Encoder].typeSymbol.typeRef, List(outType))
-      val encoderInImplicit = Implicits.search(encoderIn) match
-        case iss: ImplicitSearchSuccess => iss.tree
-        case _: ImplicitSearchFailure => report.errorAndAbort(s"No ${encoderIn.show} found in implicit scope")
-      val encoderOutImplicit = Implicits.search(encoderOut) match
-        case iss: ImplicitSearchSuccess => iss.tree
-        case _: ImplicitSearchFailure => report.errorAndAbort(s"No ${encoderOut.show} found in implicit scope")
+      val encoderInImplicit = getImplicitFromType(encoderIn)
+      val encoderOutImplicit = getImplicitFromType(encoderOut)
 
       (peer.asType, inType.asType, outType.asType, placement.asType) match
         case ('[type peer <: Peer; peer], '[type inT <: Product; inT], '[outT], '[type placement[_, _ <: Peer]; placement]) =>
