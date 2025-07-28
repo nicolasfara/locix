@@ -1,10 +1,11 @@
 package io.github.nicolasfara.locicope.utils
 
 import io.github.nicolasfara.locicope.multiparty.multitier.Multitier
-import io.github.nicolasfara.locicope.network.{ Network, NetworkError, NetworkResource }
+import io.github.nicolasfara.locicope.network.{Network, NetworkError, NetworkResource}
 import io.github.nicolasfara.locicope.placement.Peers.Peer
-import io.github.nicolasfara.locicope.placement.PlaceableValue
-import io.github.nicolasfara.locicope.serialization.{ Decoder, Encoder, Codec }
+import io.github.nicolasfara.locicope.placement.{Placeable, PlaceableValue}
+import io.github.nicolasfara.locicope.serialization.{Codec, Decoder, Encoder}
+import ox.flow.Flow
 
 import scala.collection.mutable
 
@@ -25,7 +26,7 @@ class InMemoryNetwork extends Network:
   override def getValue[V: Decoder](produced: NetworkResource.ResourceReference): Either[NetworkError, V] =
     registeredResources.get(produced).toRight(NetworkError.ValueNotRegistered).map(_.asInstanceOf[V])
 
-  override def callFunction[In <: Product: Codec, Out: Codec, Pl <: Peer, P[_, _ <: Peer]: PlaceableValue](
+  override def callFunction[In <: Product: Codec, Out: Codec, Pl <: Peer, P[_, _ <: Peer]: Placeable](
       inputs: In,
       resourceReference: NetworkResource.ResourceReference,
   ): Out =
@@ -33,7 +34,11 @@ class InMemoryNetwork extends Network:
     registeredFunctions.get(resourceReference) match
       case Some(function) =>
         val placed = function.asInstanceOf[Multitier#PlacedFunction[Pl, In, Out, P]].apply(inputs)
-        summon[PlaceableValue[P]].unlift(placed) // Unwrap the placed value to get the actual result
+        summon[Placeable[P]].unlift(placed) // Unwrap the placed value to get the actual result
       case None =>
         throw new IllegalArgumentException(s"No function registered for resource reference: $resourceReference")
+
+  override def registerFlow[V: Encoder](flow: Flow[V], produced: NetworkResource.ResourceReference): Unit = ???
+
+  override def getFlow[V: Decoder](produced: NetworkResource.ResourceReference): Either[NetworkError, Flow[V]] = ???
 end InMemoryNetwork

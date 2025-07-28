@@ -1,7 +1,7 @@
 package io.github.nicolasfara.locicope.multiparty.multitier
 
 import io.github.nicolasfara.locicope.placement.PlacementType.{on, given}
-import io.github.nicolasfara.locicope.utils.{InMemoryNetwork, Placement, TestCodec}
+import io.github.nicolasfara.locicope.utils.{InMemoryNetwork, PlacementUtils, TestCodec}
 import org.scalatest.Inside
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
@@ -15,7 +15,7 @@ class MultitierTest extends AnyFlatSpecLike, Matchers, Inside:
 
     given InMemoryNetwork()
 
-    val valueOnServer = Placement.remotePlacement[Int, Server](10)
+    val valueOnServer = PlacementUtils.remotePlacement[Int, Server](10)
     multitier[Client]:
       placed[Client]:
         val localValue = valueOnServer.asLocal
