@@ -15,6 +15,6 @@ object PlacementUtils:
   transparent inline def remoteFlowPlacement[T: Encoder, P <: Peer](value: Flow[T])(using pv: Placeable[on], net: Network): Flow[T] on P =
     pv.liftFlow(Some(value), ResourceReference(hashBody(value), peer[P], NetworkResource.ValueType.Flow))
   transparent inline def localPlacement[T: Encoder, P <: Peer](value: T)(using pv: Placeable[on], net: Network): T on P =
-    pv.lift(None, ResourceReference(hashBody(value), peer[P], NetworkResource.ValueType.Value))
+    pv.lift(Some(value), ResourceReference(hashBody(value), peer[P], NetworkResource.ValueType.Value))
   transparent inline def localFlowPlacement[T: Encoder, P <: Peer](value: Flow[T])(using pv: Placeable[on], net: Network): Flow[T] on P =
-    pv.liftFlow(None, ResourceReference(hashBody(value), peer[P], NetworkResource.ValueType.Flow))
+    pv.liftFlow(Some(value), ResourceReference(hashBody(value), peer[P], NetworkResource.ValueType.Flow))

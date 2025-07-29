@@ -10,15 +10,10 @@ import scala.compiletime.erasedValue
 
 object PlacementType:
   infix opaque type on[+V, -P <: Peer] = PlacedType[V, P]
-//  infix opaque type flowOn[+V, -P <: Peer] = PlacedFlowType[V, P]
 
   private enum PlacedType[+V, -P <: Peer]:
     case Local(value: V, resourceReference: ResourceReference)
     case Remote(resourceReference: ResourceReference)
-
-//  private enum PlacedFlowType[+V, -P <: Peer]:
-//    case Local(value: Flow[V], resourceReference: ResourceReference)
-//    case Remote(resourceReference: ResourceReference)
 
   given Placeable[on] with
     override def lift[V: Encoder, P <: Peer](value: Option[V], resourceReference: ResourceReference)(using Network): on[V, P] = value match
@@ -35,12 +30,17 @@ object PlacementType:
         case None => PlacedType.Remote(resourceReference)
 
     override def unlift[V: Decoder, P <: Peer](value: on[V, P])(using Network): V = value match
-      case PlacedType.Local(value,  _) => value
+      case PlacedType.Local(value, _) => value
       case PlacedType.Remote(resourceReference) =>
         summon[Network].getValue(resourceReference) match
           case Right(v) => v
           case Left(error) => throw new RuntimeException(s"Error retrieving value: $error")
 
-    override def unliftFlow[V: Decoder, P <: Peer](value: on[Flow[V], P])(using Network): Flow[V] = ???
+    override def unliftFlow[V: Decoder, P <: Peer](value: on[Flow[V], P])(using Network): Flow[V] = value match
+      case PlacedType.Local(value, _) => value
+      case PlacedType.Remote(resourceReference) =>
+        summon[Network].getFlow(resourceReference) match
+          case Right(v) => v
+          case Left(error) => throw new RuntimeException(s"Error retrieving flow: $error")
   end given
 end PlacementType

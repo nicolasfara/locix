@@ -1,10 +1,10 @@
 package io.github.nicolasfara.locicope.utils
 
 import io.github.nicolasfara.locicope.multiparty.multitier.Multitier
-import io.github.nicolasfara.locicope.network.{Network, NetworkError, NetworkResource}
+import io.github.nicolasfara.locicope.network.{ Network, NetworkError, NetworkResource }
 import io.github.nicolasfara.locicope.placement.Peers.Peer
-import io.github.nicolasfara.locicope.placement.{Placeable, PlaceableValue}
-import io.github.nicolasfara.locicope.serialization.{Codec, Decoder, Encoder}
+import io.github.nicolasfara.locicope.placement.Placeable
+import io.github.nicolasfara.locicope.serialization.{ Codec, Decoder, Encoder }
 import ox.flow.Flow
 
 import scala.collection.mutable
@@ -38,7 +38,12 @@ class InMemoryNetwork extends Network:
       case None =>
         throw new IllegalArgumentException(s"No function registered for resource reference: $resourceReference")
 
-  override def registerFlow[V: Encoder](flow: Flow[V], produced: NetworkResource.ResourceReference): Unit = ???
+  override def registerFlow[V: Encoder](flow: Flow[V], produced: NetworkResource.ResourceReference): Unit =
+    registeredResources(produced) = flow
 
-  override def getFlow[V: Decoder](produced: NetworkResource.ResourceReference): Either[NetworkError, Flow[V]] = ???
+  override def getFlow[V: Decoder](produced: NetworkResource.ResourceReference): Either[NetworkError, Flow[V]] =
+    registeredResources.get(produced) match
+      case Some(flow: Flow[V] @unchecked) => Right(flow)
+      case _ => Left(NetworkError.ValueNotRegistered)
+  end getFlow
 end InMemoryNetwork

@@ -1,9 +1,7 @@
 package io.github.nicolasfara.locicope.multiparty.multitier
 
-import io.circe.{ Decoder as CirceDecoder, Encoder as CirceEncoder }
 import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
 import io.github.nicolasfara.locicope.macros.PlacedFunctionFinder.findPlacedFunctions
-import io.github.nicolasfara.locicope.placement.Peers.Quantifier.{ Multiple, Single }
 import io.github.nicolasfara.locicope.placement.Peers.{ peer, Peer, PeerRepr, TiedToMultiple, TiedToSingle }
 import io.github.nicolasfara.locicope.network.{ Network, NetworkResource }
 import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
@@ -11,7 +9,6 @@ import io.github.nicolasfara.locicope.placement.Placeable
 import io.github.nicolasfara.locicope.serialization.{ Codec, Decoder, Encoder }
 import ox.flow.Flow
 
-import scala.annotation.targetName
 import scala.util.NotGiven
 
 trait Multitier:
@@ -64,10 +61,24 @@ trait Multitier:
   inline def placedFlow[V: Encoder, P <: Peer, F[_, _ <: Peer]: Placeable](body: MultitierLabel[P] ?=> Flow[V])(using
       NotGiven[MultitierLabel[P]],
       Network,
-  ): F[Flow[V], P] = ???
+  ): F[Flow[V], P] =
+    scribe.info("Entering placed flow on peer: " + peer[P].baseTypeRepr)
+    given MultitierLabel[P]()
+    val placedPeerRepr = peer[P]
+    val resourceReference = ResourceReference(hashBody(body), localPeerRepr, NetworkResource.ValueType.Flow)
+    if localPeerRepr <:< placedPeerRepr then
+      val bodyFlow = body
+      summon[Placeable[F]].liftFlow(Some(bodyFlow), resourceReference)
+    else
+      findPlacedFunctions(body, summon[Network])
+      summon[Placeable[F]].liftFlow(None, resourceReference)
+  end placedFlow
 
   extension [V: Decoder, Local <: Peer, F[_, _ <: Peer]: Placeable](placed: F[V, Local])
     def unwrap(using net: Network, ml: MultitierLabel[Local]): V = summon[Placeable[F]].unlift(placed)
+
+  extension [V: Decoder, Local <: Peer, F[_, _ <: Peer] : Placeable](placed: F[Flow[V], Local])
+    def unwrap(using net: Network, ml: MultitierLabel[Local]): Flow[V] = summon[Placeable[F]].unliftFlow(placed)
 
   extension [V: Decoder, Remote <: Peer, F[_, _ <: Peer]: Placeable](value: F[V, Remote])
     def asLocal[Local <: TiedToSingle[Remote]](using Network, MultitierLabel[Local]): V =
@@ -76,7 +87,8 @@ trait Multitier:
       ???
 
   extension [V: Decoder, Remote <: Peer, F[_, _ <: Peer]: Placeable](flow: F[Flow[V], Remote])
-    def asLocal[Local <: TiedToSingle[Remote]](using Network, MultitierLabel[Local]): Flow[V] = ???
+    def asLocal[Local <: TiedToSingle[Remote]](using Network, MultitierLabel[Local]): Flow[V] =
+      summon[Placeable[F]].unliftFlow(flow)
     def asLocalAll[Local <: TiedToMultiple[Remote]](using net: Network, ml: MultitierLabel[Local]): Flow[(net.ID, V)] =
       ???
 end Multitier
