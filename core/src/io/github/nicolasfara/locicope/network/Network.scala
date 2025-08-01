@@ -15,9 +15,9 @@ trait Network:
 
   def registerValue[V: Encoder](value: V, produced: ResourceReference): Unit
   def registerFlow[V: Encoder](flow: Flow[V], produced: ResourceReference): Unit
-  def registerFunction[In <: Product: Encoder, Out: Encoder, F[_, _ <: Peer]](function: Multitier#PlacedFunction[?, In, Out, F]): Unit
+  def registerFunction[In <: Product: Encoder, Out: Encoder, On[_, _ <: Peer]](function: Multitier#PlacedFunction[In, Out, On, ?]): Unit
 
-  def getValue[V: Decoder](produced: ResourceReference): Either[NetworkError, V]
+  def getValue[V](produced: ResourceReference)(using Decoder[V]): Either[NetworkError, V]
   def getFlow[V: Decoder](produced: ResourceReference): Either[NetworkError, Flow[V]]
 
   def callFunction[In <: Product: Codec, Out: Codec, Pl <: Peer, P[_, _ <: Peer]: Placeable](inputs: In, resourceReference: ResourceReference): Out

@@ -23,7 +23,7 @@ object PlacedFunctionFinder:
 
     def extractOutType(tpe: TypeRepr): Option[(TypeRepr, TypeRepr, TypeRepr, TypeRepr)] =
       tpe match
-        case AppliedType(_, List(peer, inType, outType, placement)) => Some((peer, inType, outType, placement))
+        case AppliedType(_, List(inType, outType, placement, peer)) => Some((peer, inType, outType, placement))
         case _ => None
 
     def collect(tree: Tree): List[(Term, TypeRepr, TypeRepr, TypeRepr, TypeRepr)] = tree match
@@ -61,7 +61,7 @@ object PlacedFunctionFinder:
         case ('[type peer <: Peer; peer], '[type inT <: Product; inT], '[outT], '[type placement[_, _ <: Peer]; placement]) =>
           '{
             $net.registerFunction[inT, outT, placement](
-              ${ placedFunction.asExprOf[Multitier#PlacedFunction[peer, inT, outT, placement]] },
+              ${ placedFunction.asExprOf[Multitier#PlacedFunction[inT, outT, placement, peer]] },
             )(using
               ${ encoderInImplicit.asExprOf[Encoder[inT]] },
               ${ encoderOutImplicit.asExprOf[Encoder[outT]] },

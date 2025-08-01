@@ -18,7 +18,7 @@ class InMemoryNetwork extends Network:
   override def registerValue[V: Encoder](value: V, produced: NetworkResource.ResourceReference): Unit =
     registeredResources(produced) = value
 
-  override def registerFunction[In <: Product: Encoder, Out: Encoder, F[_, _ <: Peer]](function: Multitier#PlacedFunction[?, In, Out, F]): Unit =
+  override def registerFunction[In <: Product: Encoder, Out: Encoder, On[_, _ <: Peer]](function: Multitier#PlacedFunction[In, Out, On, ?]): Unit =
     val resourceReference = function.resourceReference
     registeredFunctions(resourceReference) = function
 
@@ -26,15 +26,15 @@ class InMemoryNetwork extends Network:
   override def getValue[V: Decoder](produced: NetworkResource.ResourceReference): Either[NetworkError, V] =
     registeredResources.get(produced).toRight(NetworkError.ValueNotRegistered).map(_.asInstanceOf[V])
 
-  override def callFunction[In <: Product: Codec, Out: Codec, Pl <: Peer, P[_, _ <: Peer]: Placeable](
+  override def callFunction[In <: Product: Codec, Out: Codec, Placement <: Peer, On[_, _ <: Peer]: Placeable](
       inputs: In,
       resourceReference: NetworkResource.ResourceReference,
   ): Out =
     given net: Network = this
     registeredFunctions.get(resourceReference) match
       case Some(function) =>
-        val placed = function.asInstanceOf[Multitier#PlacedFunction[Pl, In, Out, P]].apply(inputs)
-        summon[Placeable[P]].unlift(placed) // Unwrap the placed value to get the actual result
+        val placed = function.asInstanceOf[Multitier#PlacedFunction[In, Out, On, Placement]].apply(inputs)
+        summon[Placeable[On]].unlift(placed) // Unwrap the placed value to get the actual result
       case None =>
         throw new IllegalArgumentException(s"No function registered for resource reference: $resourceReference")
 

@@ -16,30 +16,30 @@ trait Multitier:
 
   protected val localPeerRepr: PeerRepr
 
-  trait PlacedFunction[Local <: Peer, -In <: Product: Codec, Out: Encoder, P[_, _ <: Peer]: Placeable]:
+  trait PlacedFunction[-In <: Product: Codec, Out: Encoder, P[_, _ <: Peer]: Placeable, Local <: Peer]:
     val localPeerRepr: PeerRepr
     val resourceReference: ResourceReference
     override def toString: String = s"λ@${localPeerRepr.baseTypeRepr}"
     def apply(inputs: In): P[Out, Local]
 
-  class PlacedFunctionImpl[Local <: Peer, In <: Product: Codec, Out: Encoder, P[_, _ <: Peer]: Placeable](
+  class PlacedFunctionImpl[Local <: Peer, In <: Product: Codec, Out: Encoder, On[_, _ <: Peer]: Placeable](
       override val localPeerRepr: PeerRepr,
       override val resourceReference: ResourceReference,
   )(
-      body: In => P[Out, Local],
-  ) extends PlacedFunction[Local, In, Out, P]:
-    def apply(inputs: In): P[Out, Local] = body(inputs)
+      body: In => On[Out, Local],
+  ) extends PlacedFunction[In, Out, On, Local]:
+    def apply(inputs: In): On[Out, Local] = body(inputs)
 
-  inline def function[In <: Product: Codec, Out: Codec, P[_, _ <: Peer]: Placeable, Local <: Peer](
+  inline def function[In <: Product: Codec, Out: Codec, On[_, _ <: Peer]: Placeable, Local <: Peer](
       body: MultitierLabel[Local] ?=> In => Out,
-  )(using NotGiven[MultitierLabel[Local]], Network): PlacedFunction[Local, In, Out, P] =
+  )(using NotGiven[MultitierLabel[Local]], Network): PlacedFunction[In, Out, On, Local] =
     given MultitierLabel[Local]()
     val resourceReference = ResourceReference(hashBody(body), localPeerRepr, NetworkResource.ValueType.Value)
-    PlacedFunctionImpl[Local, In, Out, P](peer[Local], resourceReference) { inputs =>
+    PlacedFunctionImpl[Local, In, Out, On](peer[Local], resourceReference) { inputs =>
       val result =
         if localPeerRepr <:< peer[Local] then body(inputs)
-        else summon[Network].callFunction[In, Out, Local, P](inputs, resourceReference)
-      summon[Placeable[P]].lift(Some(result), resourceReference)
+        else summon[Network].callFunction[In, Out, Local, On](inputs, resourceReference)
+      summon[Placeable[On]].lift(Some(result), resourceReference)
     }
 
   inline def placed[V: Encoder, P <: Peer, F[_, _ <: Peer]: Placeable](body: MultitierLabel[P] ?=> V)(using
@@ -77,7 +77,7 @@ trait Multitier:
   extension [V: Decoder, Local <: Peer, F[_, _ <: Peer]: Placeable](placed: F[V, Local])
     def unwrap(using net: Network, ml: MultitierLabel[Local]): V = summon[Placeable[F]].unlift(placed)
 
-  extension [V: Decoder, Local <: Peer, F[_, _ <: Peer] : Placeable](placed: F[Flow[V], Local])
+  extension [V: Decoder, Local <: Peer, F[_, _ <: Peer]: Placeable](placed: F[Flow[V], Local])
     def unwrap(using net: Network, ml: MultitierLabel[Local]): Flow[V] = summon[Placeable[F]].unliftFlow(placed)
 
   extension [V: Decoder, Remote <: Peer, F[_, _ <: Peer]: Placeable](value: F[V, Remote])
@@ -94,16 +94,17 @@ trait Multitier:
 end Multitier
 
 object Multitier:
-  inline def function[In <: Product: Codec, Out: Codec, P[_, _ <: Peer]: Placeable, Local <: Peer](using
+  inline def function[In <: Product: Codec, Out: Codec, On[_, _ <: Peer]: Placeable, Local <: Peer](using
       mt: Multitier,
       ng: NotGiven[mt.MultitierLabel[Local]],
       net: Network,
   )(
       body: mt.MultitierLabel[Local] ?=> In => Out,
-  ): mt.PlacedFunction[Local, In, Out, P] = mt.function(body)
+  ): mt.PlacedFunction[In, Out, On, Local] = mt.function(body)
 
   inline def placed[P <: Peer](using
       net: Network,
+  )(using
       mt: Multitier,
       ng: NotGiven[mt.MultitierLabel[P]],
   )[V: Encoder, F[_, _ <: Peer]: Placeable](body: mt.MultitierLabel[P] ?=> V): F[V, P] = mt.placed(body)
@@ -114,7 +115,7 @@ object Multitier:
       ng: NotGiven[mt.MultitierLabel[P]],
   )[V: Encoder, F[_, _ <: Peer]: Placeable](body: mt.MultitierLabel[P] ?=> Flow[V]): F[Flow[V], P] = mt.placedFlow(body)
 
-  inline def multitier[P <: Peer](body: Multitier ?=> Unit)(using Network): Unit =
+  inline def multitier[P <: Peer](using Network)(body: Multitier ?=> Unit): Unit =
     given MultitierImpl(peer[P])
     body
 end Multitier
