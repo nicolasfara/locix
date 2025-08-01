@@ -16,9 +16,6 @@ import ox.flow.Flow
 
 import scala.util.NotGiven
 
-trait Foo:
-  def foo(r: Int): Int
-
 class SingleValueMultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
   import io.github.nicolasfara.locicope.utils.ClientServerArch.*
 
