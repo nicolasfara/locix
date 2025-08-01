@@ -46,7 +46,7 @@ trait Multitier:
       NotGiven[MultitierLabel[P]],
       Network,
   ): F[V, P] =
-    scribe.info("Entering placed function on peer: " + peer[P].baseTypeRepr)
+    scribe.debug("Entering placed function on peer: " + peer[P].baseTypeRepr)
     given MultitierLabel[P]()
     val placedPeerRepr = peer[P]
     val resourceReference = ResourceReference(hashBody(body), localPeerRepr, NetworkResource.ValueType.Value)
@@ -62,7 +62,7 @@ trait Multitier:
       NotGiven[MultitierLabel[P]],
       Network,
   ): F[Flow[V], P] =
-    scribe.info("Entering placed flow on peer: " + peer[P].baseTypeRepr)
+    scribe.debug("Entering placed flow on peer: " + peer[P].baseTypeRepr)
     given MultitierLabel[P]()
     val placedPeerRepr = peer[P]
     val resourceReference = ResourceReference(hashBody(body), localPeerRepr, NetworkResource.ValueType.Flow)
