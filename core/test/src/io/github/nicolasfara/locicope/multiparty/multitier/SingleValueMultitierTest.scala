@@ -1,12 +1,12 @@
 package io.github.nicolasfara.locicope.multiparty.multitier
 
 import io.github.nicolasfara.locicope.placement.PlacementType.{ on, given }
-import io.github.nicolasfara.locicope.utils.{ InMemoryNetwork, PlacementUtils, TestCodec }
+import io.github.nicolasfara.locicope.utils.TestCodec
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
 import io.github.nicolasfara.locicope.multiparty.multitier.Multitier.*
 import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
-import io.github.nicolasfara.locicope.network.{ Network, NetworkError }
+import io.github.nicolasfara.locicope.network.Network
 import io.github.nicolasfara.locicope.placement.Placeable
 import io.github.nicolasfara.locicope.serialization.{ Codec, Decoder, Encoder }
 import io.github.nicolasfara.locicope.utils.TestCodec.given
