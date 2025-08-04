@@ -16,6 +16,7 @@ import ox.flow.Flow
 
 class MultiValueMultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
   import io.github.nicolasfara.locicope.utils.ClientServerArch.*
+
   trait NetworkInt extends Network:
     type ID = Int
 
@@ -24,7 +25,7 @@ class MultiValueMultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAn
   before:
     resetStubs()
 
-  "The Multitier capability" should "return empty map when no reachable devices in the network" in:
+  "The Multitier capability operating on multiple values" should "return empty map when no reachable devices in the network" in:
     (net.registerValue(_: Int, _: ResourceReference)(using _: Encoder[Int])).returns(_ => ())
     (net
       .getAllValues(_: ResourceReference)(using _: Decoder[Int]))

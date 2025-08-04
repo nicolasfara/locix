@@ -22,7 +22,7 @@ class SingleValueMultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeA
   before:
     resetStubs()
 
-  "The Multitier capability" should "access a remote value" in:
+  "The Multitier capability operating on single value" should "access a remote value" in:
     // Setup the network to return a value when requested
     (net.registerValue(_: Int, _: ResourceReference)(using _: Encoder[Int])).returns(_ => ())
     (net
@@ -30,7 +30,7 @@ class SingleValueMultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeA
       .returns:
         case (ResourceReference(_, _, _), _) => Right(10)
 
-    multitier[Client](using net): mt ?=> 
+    multitier[Client](using net): mt ?=>
       val valueOnServer: Int on Server = placed[Server](using net)(10)
       placed[Client](using net): ml ?=>
         val localValue = valueOnServer.asLocal(using summon, summon, net, mt, ml)

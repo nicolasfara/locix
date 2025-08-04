@@ -1,8 +1,8 @@
 package io.github.nicolasfara.locicope.collective
 
 import io.github.nicolasfara.locicope.network.Network
-import io.github.nicolasfara.locicope.placement.Peers.{ Peer, TiedToMultiple }
-import io.github.nicolasfara.locicope.placement.PlaceableFlow
+import io.github.nicolasfara.locicope.placement.Peers.{Peer, TiedToMultiple}
+import io.github.nicolasfara.locicope.placement.Placeable
 import io.github.nicolasfara.locicope.serialization.Encoder
 
 trait Collective:
@@ -21,6 +21,6 @@ object Collective:
   def branch[V](using coll: Collective)(cond: Boolean)(th: coll.NValue[V])(el: coll.NValue[V]): coll.NValue[V] =
     coll.branch(cond)(th)(el)
 
-  def collective[V, C <: TiedToMultiple[C], F[_, _ <: Peer]: PlaceableFlow](using
+  def collective[V, C <: TiedToMultiple[C], F[_, _ <: Peer]: Placeable](using
       Network,
   )(program: Collective ?=> V): F[V, C] = ???
