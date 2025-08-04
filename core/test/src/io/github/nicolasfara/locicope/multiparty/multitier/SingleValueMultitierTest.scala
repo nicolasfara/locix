@@ -14,8 +14,6 @@ import org.scalamock.stubs.Stubs
 import org.scalatest.BeforeAndAfter
 import ox.flow.Flow
 
-import scala.util.NotGiven
-
 class SingleValueMultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
   import io.github.nicolasfara.locicope.utils.ClientServerArch.*
 
@@ -32,10 +30,10 @@ class SingleValueMultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeA
       .returns:
         case (ResourceReference(_, _, _), _) => Right(10)
 
-    multitier[Client](using net):
+    multitier[Client](using net): mt ?=> 
       val valueOnServer: Int on Server = placed[Server](using net)(10)
-      placed[Client](using net):
-        val localValue = valueOnServer.asLocal(using summon, summon, net, summon)
+      placed[Client](using net): ml ?=>
+        val localValue = valueOnServer.asLocal(using summon, summon, net, mt, ml)
         localValue shouldBe 10
         localValue
     // Verify that the network methods were called properly
@@ -136,9 +134,9 @@ class SingleValueMultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeA
     def placedOnServer(using Network, Multitier) = function[(Int, Int), Int, on, Server]:
       case (x: Int, y: Int) => x + y
 
-    multitier[Client](using net):
-      placed[Client](using net):
-        val result = placedOnServer(using net, summon)((10, 10)).asLocal(using summon, summon, net, summon)
+    multitier[Client](using net): mt ?=>
+      placed[Client](using net): ml ?=>
+        val result = placedOnServer(using net, summon)((10, 10)).asLocal(using summon, summon, net, mt, ml)
         result shouldBe 20
         10
     // Verify that the network methods were called properly
@@ -163,9 +161,9 @@ class SingleValueMultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeA
     def placedOnServer(using Network, Multitier) = function[(Int, Int), Int, on, Server]:
       case (x: Int, y: Int) => x + y
 
-    multitier[Server](using net):
-      placed[Client](using net):
-        placedOnServer(using net, summon)((10, 10)).asLocal(using summon, summon, net, summon)
+    multitier[Server](using net): mt ?=>
+      placed[Client](using net): ml ?=>
+        placedOnServer(using net, summon)((10, 10)).asLocal(using summon, summon, net, mt, ml)
     // Verify that the network methods were called properly
     (net
       .registerFunction(_: Multitier#PlacedFunction[(Int, Int), Int, on, Server])(using

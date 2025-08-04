@@ -84,6 +84,6 @@ object Peers:
    *   the other peer type on which the quantifier is defined.
    */
   enum Quantifier[+P <: Peer]:
-    case Single()
     case Multiple()
+    case Single()
 end Peers

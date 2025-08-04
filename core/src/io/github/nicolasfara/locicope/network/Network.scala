@@ -13,11 +13,14 @@ enum NetworkError:
 trait Network:
   type ID
 
+  def localId: ID
+
   def registerValue[V: Encoder](value: V, produced: ResourceReference): Unit
   def registerFlow[V: Encoder](flow: Flow[V], produced: ResourceReference): Unit
   def registerFunction[In <: Product: Encoder, Out: Encoder, On[_, _ <: Peer]](function: Multitier#PlacedFunction[In, Out, On, ?]): Unit
 
   def getValue[V](produced: ResourceReference)(using Decoder[V]): Either[NetworkError, V]
+  def getAllValues[V: Decoder](produced: ResourceReference): Map[ID, V]
   def getFlow[V: Decoder](produced: ResourceReference): Either[NetworkError, Flow[V]]
 
   def callFunction[In <: Product: Codec, Out: Codec, Pl <: Peer, P[_, _ <: Peer]: Placeable](inputs: In, resourceReference: ResourceReference): Out

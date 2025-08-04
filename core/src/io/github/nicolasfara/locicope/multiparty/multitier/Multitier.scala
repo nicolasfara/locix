@@ -81,10 +81,10 @@ trait Multitier:
     def unwrap(using net: Network, ml: MultitierLabel[Local]): Flow[V] = summon[Placeable[F]].unliftFlow(placed)
 
   extension [V: Decoder, Remote <: Peer, F[_, _ <: Peer]: Placeable](value: F[V, Remote])
-    def asLocal[Local <: TiedToSingle[Remote]](using Network, MultitierLabel[Local]): V =
+    def asLocal[Local <: TiedToSingle[Remote]](using net: Network, mt: Multitier, ml: mt.MultitierLabel[Local]): V =
       summon[Placeable[F]].unlift(value)
-    def asLocalAll[Local <: TiedToMultiple[Remote]](using net: Network, ml: MultitierLabel[Local]): Map[net.ID, V] =
-      ???
+    def asLocalAll[Local <: TiedToMultiple[Remote]](using net: Network, mt: Multitier, ml: mt.MultitierLabel[Local]): Map[net.ID, V] =
+      summon[Placeable[F]].unliftAll(value)
 
   extension [V: Decoder, Remote <: Peer, F[_, _ <: Peer]: Placeable](flow: F[Flow[V], Remote])
     def asLocal[Local <: TiedToSingle[Remote]](using Network, MultitierLabel[Local]): Flow[V] =

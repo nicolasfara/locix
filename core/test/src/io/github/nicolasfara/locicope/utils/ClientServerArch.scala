@@ -4,5 +4,5 @@ import io.github.nicolasfara.locicope.placement.Peers.Peer
 import io.github.nicolasfara.locicope.placement.Peers.Quantifier.{ Multiple, Single }
 
 object ClientServerArch:
-  type Client <: Peer { type Tie <: Single[Server] }
-  type Server <: Peer { type Tie <: Multiple[Client] }
+  type Client <: { type Tie <: Single[Server] }
+  type Server <: { type Tie <: Multiple[Client] }
