@@ -46,5 +46,12 @@ object PlacementType:
     override def unliftAll[V: Decoder, P <: Peer](value: on[V, P])(using net: Network): Map[net.ID, V] = value match
       case PlacedType.Local(value, _) => Map(net.localId -> value)
       case PlacedType.Remote(resourceReference) => net.getAllValues[V](resourceReference)
+
+    override def unliftFlowAll[V: Decoder, P <: Peer](value: on[Flow[V], P])(using net: Network): Flow[(net.ID, V)] = value match
+      case PlacedType.Local(value, _) => value.map(elem => (net.localId, elem))
+      case PlacedType.Remote(resourceReference) =>
+        net.getAllFlows[V](resourceReference) match
+          case Right(flow) => flow
+          case Left(error) => throw new RuntimeException(s"Error retrieving flow: $error")
   end given
 end PlacementType

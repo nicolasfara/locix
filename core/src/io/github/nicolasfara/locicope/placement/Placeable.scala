@@ -12,3 +12,4 @@ trait Placeable[Placed[_, _ <: Peer]]:
   def unlift[V: Decoder, P <: Peer](value: Placed[V, P])(using Network): V
   def unliftAll[V: Decoder, P <: Peer](value: Placed[V, P])(using net: Network): Map[net.ID, V]
   def unliftFlow[V: Decoder, P <: Peer](value: Placed[Flow[V], P])(using Network): Flow[V]
+  def unliftFlowAll[V: Decoder, P <: Peer](value: Placed[Flow[V], P])(using net: Network): Flow[(net.ID, V)]

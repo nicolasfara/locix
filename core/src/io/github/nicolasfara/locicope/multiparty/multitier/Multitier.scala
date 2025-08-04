@@ -90,7 +90,7 @@ trait Multitier:
     def asLocal[Local <: TiedToSingle[Remote]](using Network, MultitierLabel[Local]): Flow[V] =
       summon[Placeable[F]].unliftFlow(flow)
     def asLocalAll[Local <: TiedToMultiple[Remote]](using net: Network, ml: MultitierLabel[Local]): Flow[(net.ID, V)] =
-      ???
+      summon[Placeable[F]].unliftFlowAll(flow)
 end Multitier
 
 object Multitier:

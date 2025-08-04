@@ -22,5 +22,6 @@ trait Network:
   def getValue[V](produced: ResourceReference)(using Decoder[V]): Either[NetworkError, V]
   def getAllValues[V: Decoder](produced: ResourceReference): Map[ID, V]
   def getFlow[V: Decoder](produced: ResourceReference): Either[NetworkError, Flow[V]]
+  def getAllFlows[V: Decoder](produced: ResourceReference): Either[NetworkError, Flow[(ID, V)]]
 
   def callFunction[In <: Product: Codec, Out: Codec, Pl <: Peer, P[_, _ <: Peer]: Placeable](inputs: In, resourceReference: ResourceReference): Out

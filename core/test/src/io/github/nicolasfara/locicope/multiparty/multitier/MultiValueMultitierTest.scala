@@ -57,4 +57,24 @@ class MultiValueMultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAn
 
     (net.registerValue(_: Int, _: ResourceReference)(using _: Encoder[Int])).times shouldBe 1
     (net.getAllValues(_: ResourceReference)(using _: Decoder[Int])).times shouldBe 1
+  it should "return a flow which is the combination of the flows returned by the connected peers" in:
+    val sequenceToReturn = Seq((1, 1), (2, 1), (3, 1), (1, 2), (2, 2), (3, 2), (1, 3), (2, 3), (3, 3))
+    (net.registerFlow(_: Flow[Int], _: ResourceReference)(using _: Encoder[Int])).returns(_ => ())
+    (net.registerValue(_: Int, _: ResourceReference)(using _: Encoder[Int])).returns(_ => ())
+    (net
+      .getAllFlows(_: ResourceReference)(using _: Decoder[Int]))
+      .returns:
+        case (ResourceReference(_, _, _), _) => Right(Flow.fromIterable(sequenceToReturn))
+
+    multitier[Server](using net):
+      val flowOnClient: Flow[Int] on Client = placedFlow[Client](using net)(Flow.fromIterable(Seq(1, 2, 3)))
+      placed[Server](using net): ctx ?=>
+        val localFlow = flowOnClient.asLocalAll(using summon, summon, net, summon)
+        val values = localFlow.runToList()
+        values shouldBe sequenceToReturn.toList
+        values.map(_._2).sum
+
+    (net.registerFlow(_: Flow[Int], _: ResourceReference)(using _: Encoder[Int])).times shouldBe 0 // On server, no flow registered
+    (net.registerValue(_: Int, _: ResourceReference)(using _: Encoder[Int])).times shouldBe 1
+    (net.getAllFlows(_: ResourceReference)(using _: Decoder[Int])).times shouldBe 1
 end MultiValueMultitierTest
