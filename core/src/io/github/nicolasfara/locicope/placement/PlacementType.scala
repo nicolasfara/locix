@@ -1,9 +1,9 @@
 package io.github.nicolasfara.locicope.placement
 
-import Peers.Peer
+import Peers.{ Peer, PeerRepr }
 import io.github.nicolasfara.locicope.network.{ Network, NetworkResource }
 import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
-import io.github.nicolasfara.locicope.serialization.{ Decoder, Encoder }
+import io.github.nicolasfara.locicope.serialization.{ Codec, Decoder, Encoder }
 import ox.flow.Flow
 
 import scala.compiletime.erasedValue
@@ -53,5 +53,16 @@ object PlacementType:
         net.getAllFlows[V](resourceReference) match
           case Right(flow) => flow
           case Left(error) => throw new RuntimeException(s"Error retrieving flow: $error")
+
+    override def comm[V: Codec, Sender <: Peer, Receiver <: Peer](value: on[V, Sender], localPeerRepr: PeerRepr)(using Network): on[V, Receiver] =
+      value match
+        case PlacedType.Local(value, ref) =>
+          summon[Network].registerValue(value, ref)
+          PlacedType.Remote(ResourceReference(ref.resourceId, localPeerRepr, ref.valueType))
+        case PlacedType.Remote(ref) =>
+          summon[Network].getValue(ref) match
+            case Right(value) => PlacedType.Local(value, ResourceReference(ref.resourceId, localPeerRepr, ref.valueType))
+            case _ => throw new RuntimeException(s"Error retrieving value for comm: $ref")
+
   end given
 end PlacementType

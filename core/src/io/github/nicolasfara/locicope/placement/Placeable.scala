@@ -2,8 +2,8 @@ package io.github.nicolasfara.locicope.placement
 
 import io.github.nicolasfara.locicope.network.Network
 import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
-import io.github.nicolasfara.locicope.placement.Peers.Peer
-import io.github.nicolasfara.locicope.serialization.{Decoder, Encoder}
+import io.github.nicolasfara.locicope.placement.Peers.{Peer, PeerRepr}
+import io.github.nicolasfara.locicope.serialization.{Codec, Decoder, Encoder}
 import ox.flow.Flow
 
 trait Placeable[Placed[_, _ <: Peer]]:
@@ -13,3 +13,4 @@ trait Placeable[Placed[_, _ <: Peer]]:
   def unliftAll[V: Decoder, P <: Peer](value: Placed[V, P])(using net: Network): Map[net.ID, V]
   def unliftFlow[V: Decoder, P <: Peer](value: Placed[Flow[V], P])(using Network): Flow[V]
   def unliftFlowAll[V: Decoder, P <: Peer](value: Placed[Flow[V], P])(using net: Network): Flow[(net.ID, V)]
+  def comm[V: Codec, Sender <: Peer, Receiver <: Peer](value: Placed[V, Sender], localPeerRepr: PeerRepr)(using Network): Placed[V, Receiver]
