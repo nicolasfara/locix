@@ -2,8 +2,8 @@ package io.github.nicolasfara.locicope.placement
 
 import io.github.nicolasfara.locicope.network.Network
 import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
-import io.github.nicolasfara.locicope.placement.Peers.{Peer, PeerRepr}
-import io.github.nicolasfara.locicope.serialization.{Codec, Decoder, Encoder}
+import io.github.nicolasfara.locicope.placement.Peers.{ Peer, PeerRepr }
+import io.github.nicolasfara.locicope.serialization.{ Codec, Decoder, Encoder }
 import ox.flow.Flow
 
 trait Placeable[Placed[_, _ <: Peer]]:

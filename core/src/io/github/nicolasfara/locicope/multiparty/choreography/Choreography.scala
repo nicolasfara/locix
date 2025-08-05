@@ -41,10 +41,10 @@ end Choreography
 object Choreography:
   inline def at[P <: Peer](using
       net: Network,
-  )(using
+  )[V: Encoder, F[_, _ <: Peer]: Placeable](using
       choreo: Choreography,
       ng: NotGiven[choreo.ChoreographyLabel[P]],
-  )[V: Encoder, F[_, _ <: Peer]: Placeable](
+  )(
       body: choreo.ChoreographyLabel[P] ?=> V,
   ): F[V, P] = choreo.at[P, V, F](body)
 

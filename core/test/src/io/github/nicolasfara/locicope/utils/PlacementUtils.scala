@@ -1,12 +1,12 @@
 package io.github.nicolasfara.locicope.utils
 
 import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
-import io.github.nicolasfara.locicope.network.{Network, NetworkResource}
+import io.github.nicolasfara.locicope.network.{ Network, NetworkResource }
 import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
-import io.github.nicolasfara.locicope.placement.Peers.{Peer, peer}
+import io.github.nicolasfara.locicope.placement.Peers.{ peer, Peer }
 import io.github.nicolasfara.locicope.placement.Placeable
 import io.github.nicolasfara.locicope.placement.PlacementType.on
-import io.github.nicolasfara.locicope.serialization.{Decoder, Encoder}
+import io.github.nicolasfara.locicope.serialization.{ Decoder, Encoder }
 import ox.flow.Flow
 
 object PlacementUtils:

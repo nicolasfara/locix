@@ -1,7 +1,7 @@
 package io.github.nicolasfara.locicope.collective
 
 import io.github.nicolasfara.locicope.network.Network
-import io.github.nicolasfara.locicope.placement.Peers.{Peer, TiedToMultiple}
+import io.github.nicolasfara.locicope.placement.Peers.{ Peer, TiedToMultiple }
 import io.github.nicolasfara.locicope.placement.Placeable
 import io.github.nicolasfara.locicope.serialization.Encoder
 
