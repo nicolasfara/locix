@@ -32,10 +32,8 @@ trait Choreography:
   )(using Network): F[V, Receiver] = summon[Placeable[F]].comm[V, Sender, Receiver](effect, localPeerRepr)
 
   extension [V: Decoder, P <: Peer, F[_, _ <: Peer]: Placeable](value: F[V, P])
-    def unwrapAll[Local <: TiedToMultiple[P]](using net: Network, cl: ChoreographyLabel[Local]): Map[net.ID, V] =
+    def unwrap(using net: Network, cl: ChoreographyLabel[P]): Map[net.ID, V] =
       summon[Placeable[F]].unliftAll(value)
-    def unwrap(using Network, ChoreographyLabel[P]): V =
-      summon[Placeable[F]].unlift(value)
 end Choreography
 
 object Choreography:

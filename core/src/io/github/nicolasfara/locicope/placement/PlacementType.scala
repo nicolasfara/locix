@@ -13,6 +13,7 @@ object PlacementType:
 
   private enum PlacedType[+V, -P <: Peer]:
     case Local(value: V, resourceReference: ResourceReference)
+    case LocalMultiple(value: Map[?, V], resourceReference: ResourceReference)
     case Remote(resourceReference: ResourceReference)
 
   given Placeable[on] with
@@ -35,6 +36,8 @@ object PlacementType:
         summon[Network].getValue(resourceReference) match
           case Right(v) => v
           case Left(error) => throw new RuntimeException(s"Error retrieving value: $error")
+      case _ =>
+        throw new IllegalArgumentException("Cannot unlift a value that is not local or remote")
 
     override def unliftFlow[V: Decoder, P <: Peer](value: on[Flow[V], P])(using Network): Flow[V] = value match
       case PlacedType.Local(value, _) => value
@@ -42,10 +45,13 @@ object PlacementType:
         summon[Network].getFlow(resourceReference) match
           case Right(v) => v
           case Left(error) => throw new RuntimeException(s"Error retrieving flow: $error")
+      case _ =>
+        throw new IllegalArgumentException("Cannot unlift a flow that is not local or remote")
 
     override def unliftAll[V: Decoder, P <: Peer](value: on[V, P])(using net: Network): Map[net.ID, V] = value match
       case PlacedType.Local(value, _) => Map(net.localId -> value)
       case PlacedType.Remote(resourceReference) => net.getAllValues[V](resourceReference)
+      case PlacedType.LocalMultiple(value, _) => value.asInstanceOf[Map[net.ID, V]]
 
     override def unliftFlowAll[V: Decoder, P <: Peer](value: on[Flow[V], P])(using net: Network): Flow[(net.ID, V)] = value match
       case PlacedType.Local(value, _) => value.map(elem => (net.localId, elem))
@@ -53,16 +59,18 @@ object PlacementType:
         net.getAllFlows[V](resourceReference) match
           case Right(flow) => flow
           case Left(error) => throw new RuntimeException(s"Error retrieving flow: $error")
+      case _ =>
+        throw new IllegalArgumentException("Cannot unlift a flow that is not local or remote")
 
-    override def comm[V: Codec, Sender <: Peer, Receiver <: Peer](value: on[V, Sender], localPeerRepr: PeerRepr)(using Network): on[V, Receiver] =
+    override def comm[V: Codec, Sender <: Peer, Receiver <: Peer](value: V on Sender, localPeerRepr: PeerRepr)(using net: Network): on[V, Receiver] =
       value match
         case PlacedType.Local(value, ref) =>
           summon[Network].registerValue(value, ref)
           PlacedType.Remote(ResourceReference(ref.resourceId, localPeerRepr, ref.valueType))
         case PlacedType.Remote(ref) =>
-          summon[Network].getValue(ref) match
-            case Right(value) => PlacedType.Local(value, ResourceReference(ref.resourceId, localPeerRepr, ref.valueType))
-            case _ => throw new RuntimeException(s"Error retrieving value for comm: $ref")
+          PlacedType.LocalMultiple(summon[Network].getAllValues(ref), ResourceReference(ref.resourceId, localPeerRepr, ref.valueType))
+        case _ =>
+          throw new IllegalArgumentException("Cannot perform comm on a value that is not local or remote")
 
   end given
 end PlacementType
