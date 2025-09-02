@@ -30,7 +30,7 @@ class SingleValueMultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeA
       .returns:
         case (ResourceReference(_, _, _), _) => Right(10)
 
-    multitier[Client](using net): mt ?=>
+    Multitier.run[Client](using net): mt ?=>
       val valueOnServer: Int on Server = placed[Server](using net)(10)
       placed[Client](using net): ml ?=>
         val localValue = valueOnServer.asLocal(using summon, summon, net, mt, ml)
@@ -47,7 +47,7 @@ class SingleValueMultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeA
       .returns:
         case (ResourceReference(_, _, _), _) => Right(Flow.fromIterable(Seq(1, 2, 3)))
 
-    multitier[Client](using net):
+    Multitier.run[Client](using net):
       val flowOnServer: Flow[Int] on Server = placedFlow[Server](using net)(Flow.fromIterable(Seq(1, 2, 3)))
       placed[Client](using net):
         val localFlow = flowOnServer.asLocal(using summon, summon, net, summon)
@@ -62,7 +62,7 @@ class SingleValueMultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeA
     // Setup the network to return a value when requested
     (net.registerValue(_: Int, _: ResourceReference)(using _: Encoder[Int])).returns(_ => ())
 
-    multitier[Client](using net):
+    Multitier.run[Client](using net):
       val valueOnClient: Int on Client = placed[Client](using net)(20)
       placed[Client](using net):
         val localValue = valueOnClient.unwrap(using summon, summon, net, summon)
@@ -78,7 +78,7 @@ class SingleValueMultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeA
     (net.registerFlow(_: Flow[Int], _: ResourceReference)(using _: Encoder[Int])).returns(_ => ())
     (net.registerValue(_: Int, _: ResourceReference)(using _: Encoder[Int])).returns(_ => ())
 
-    multitier[Client](using net):
+    Multitier.run[Client](using net):
       val flowOnClient: Flow[Int] on Client = placedFlow[Client](using net)(Flow.fromIterable(Seq(4, 5, 6)))
       placed[Client](using net):
         val localFlow = flowOnClient.unwrap(using summon, summon, net, summon)
@@ -103,7 +103,7 @@ class SingleValueMultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeA
     def placedOnServer(using Network, Multitier) = function[(Int, Int), Int, on, Client]:
       case (x: Int, y: Int) => x + y
 
-    multitier[Client](using net):
+    Multitier.run[Client](using net):
       placed[Client](using net):
         val result = placedOnServer(using net, summon)((10, 10)).unwrap(using summon, summon, net, summon)
         result shouldBe 20
@@ -134,7 +134,7 @@ class SingleValueMultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeA
     def placedOnServer(using Network, Multitier) = function[(Int, Int), Int, on, Server]:
       case (x: Int, y: Int) => x + y
 
-    multitier[Client](using net): mt ?=>
+    Multitier.run[Client](using net): mt ?=>
       placed[Client](using net): ml ?=>
         val result = placedOnServer(using net, summon)((10, 10)).asLocal(using summon, summon, net, mt, ml)
         result shouldBe 20
@@ -161,7 +161,7 @@ class SingleValueMultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeA
     def placedOnServer(using Network, Multitier) = function[(Int, Int), Int, on, Server]:
       case (x: Int, y: Int) => x + y
 
-    multitier[Server](using net): mt ?=>
+    Multitier.run[Server](using net): mt ?=>
       placed[Client](using net): ml ?=>
         placedOnServer(using net, summon)((10, 10)).asLocal(using summon, summon, net, mt, ml)
     // Verify that the network methods were called properly

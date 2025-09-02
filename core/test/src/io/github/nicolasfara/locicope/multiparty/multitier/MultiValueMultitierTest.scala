@@ -32,7 +32,7 @@ class MultiValueMultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAn
       .returns:
         case (ResourceReference(_, _, _), _) => Map.empty
 
-    multitier[Server](using net): mt ?=>
+    Multitier.run[Server](using net): mt ?=>
       val valueOnClient: Int on Client = placed[Client](using net)(10)
       placed[Server](using net): ctx ?=>
         val localValue = valueOnClient.asLocalAll(using summon, summon, net, mt, ctx)
@@ -48,7 +48,7 @@ class MultiValueMultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAn
       .returns:
         case (ResourceReference(_, _, _), _) => Map(1 -> 10, 2 -> 10, 3 -> 10)
 
-    multitier[Server](using net): mt ?=>
+    Multitier.run[Server](using net): mt ?=>
       val valueOnClient: Int on Client = placed[Client](using net)(10)
       placed[Server](using net): ctx ?=>
         val localValue = valueOnClient.asLocalAll(using summon, summon, net, mt, ctx)
@@ -67,7 +67,7 @@ class MultiValueMultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAn
       .returns:
         case (ResourceReference(_, _, _), _) => Right(Flow.fromIterable(sequenceToReturn))
 
-    multitier[Server](using net):
+    Multitier.run[Server](using net):
       val flowOnClient: Flow[Int] on Client = placedFlow[Client](using net)(Flow.fromIterable(Seq(1, 2, 3)))
       placed[Server](using net): ctx ?=>
         val localFlow = flowOnClient.asLocalAll(using summon, summon, net, summon)

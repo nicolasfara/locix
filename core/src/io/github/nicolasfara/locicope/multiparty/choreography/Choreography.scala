@@ -53,7 +53,7 @@ object Choreography:
       effect: F[V, Remote],
   ): F[V, Local] = choreo.comm[V, Remote, Local, F](effect)
 
-  inline def choreography[P <: Peer](using Network)(body: Choreography ?=> Unit): Unit =
+  inline def run[P <: Peer](using Network)(body: Choreography ?=> Unit): Unit =
     given ChoreographyImpl(peer[P])
     body
 end Choreography

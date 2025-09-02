@@ -115,7 +115,7 @@ object Multitier:
       ng: NotGiven[mt.MultitierLabel[P]],
   )[V: Encoder, F[_, _ <: Peer]: Placeable](body: mt.MultitierLabel[P] ?=> Flow[V]): F[Flow[V], P] = mt.placedFlow(body)
 
-  inline def multitier[P <: Peer](using Network)(body: Multitier ?=> Unit): Unit =
+  inline def run[P <: Peer](using Network)(body: Multitier ?=> Unit): Unit =
     given MultitierImpl(peer[P])
     body
 end Multitier

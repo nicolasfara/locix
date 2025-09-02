@@ -29,7 +29,7 @@ class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
       .returns:
         case (ResourceReference(_, _, _), _) => Map(1 -> 10)
 
-    choreography[Server](using net): choreo ?=>
+    Choreography.run[Server](using net): choreo ?=>
       val valueOnClient: Int on Client = at[Client](using net)(10)
       val valueOnServer: Int on Server = comm[Client, Server](using choreo, net)(valueOnClient)
       at[Server](using net): ctx ?=>
@@ -46,7 +46,7 @@ class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
       .returns:
         case (ResourceReference(_, _, _), _) => Map(1 -> 10)
 
-    choreography[Client](using net): choreo ?=>
+    Choreography.run[Client](using net): choreo ?=>
       val valueOnClient: Int on Client = at[Client](using net)(10)
       val valueOnServer: Int on Server = comm[Client, Server](using choreo, net)(valueOnClient)
       at[Server](using net): ctx ?=>
@@ -63,7 +63,7 @@ class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
       .returns:
         case (ResourceReference(_, _, _), _) => Map(1 -> 10, 2 -> 20)
 
-    choreography[Server](using net): choreo ?=>
+    Choreography.run[Server](using net): choreo ?=>
       val valueOnClient: Int on Client = at[Client](using net)(10)
       val valueOnServer: Int on Server = comm[Client, Server](using choreo, net)(valueOnClient)
       at[Server](using net): ctx ?=>

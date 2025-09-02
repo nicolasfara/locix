@@ -21,6 +21,6 @@ object Collective:
   def branch[V](using coll: Collective)(cond: Boolean)(th: coll.NValue[V])(el: coll.NValue[V]): coll.NValue[V] =
     coll.branch(cond)(th)(el)
 
-  def collective[V, C <: TiedToMultiple[C], F[_, _ <: Peer]: Placeable](using
+  def run[V, C <: TiedToMultiple[C], F[_, _ <: Peer]: Placeable](using
       Network,
   )(program: Collective ?=> V): F[V, C] = ???
