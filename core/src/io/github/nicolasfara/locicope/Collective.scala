@@ -53,7 +53,12 @@ object Collective:
     PlacementType.liftFlow(flowResult, resourceReference)
   end apply
 
-  inline def run[V, P <: TiedToMultiple[P]](using Net)(block: Collective ?=> V): Unit = ???
+  inline def run[V, P <: TiedToMultiple[P]](using Net)(block: Collective ?=> V): Unit =
+    val handler = new HandlerImpl[V](peer[P])
+    Locicope.handle(block)(using handler)
+
+  private class HandlerImpl[V](peerRepr: PeerRepr) extends Locicope.Handler[Collective.Effect, V, Unit]:
+    override def handle(program: Locicope[Effect] ?=> V): Unit = program(using new Locicope(EffectImpl(peerRepr)))
 
   private def executeRound[V](using
       coll: Collective,
@@ -90,18 +95,17 @@ object Collective:
     override def stateAt[V](path: String): Option[V] = state.get(path).map(_.asInstanceOf[V])
     override def setStateAt[V](value: V): Unit = currentState.update(currentPath, value)
     override def neighborsValuesAt[V: Decoder as decoder](path: String): Map[Int, V] =
-      inboundMessage.flatMap { case (id, msg) =>
-        msg
-          .get(path)
-          .map(v =>
-            id -> decoder
-              .decode(v)
-              .fold(
-                ex => throw IllegalStateException(s"Error decoding neighbor value $ex"),
-                identity,
-              ),
-          )
-      }
+      inboundMessage.flatMap:
+        case (id, msg) =>
+          msg
+            .get(path)
+            .map: v =>
+              id -> decoder
+                .decode(v)
+                .fold(
+                  ex => throw IllegalStateException(s"Error decoding neighbor value $ex"),
+                  identity,
+                )
     override def setValueAt[V: Encoder](value: V): Unit = toSend.update(currentPath, summon[Encoder[V]].encode(value))
     override def createExport: Map[String, Array[Byte]] = toSend.toMap
     override def createState: Map[String, Any] = currentState.toMap
