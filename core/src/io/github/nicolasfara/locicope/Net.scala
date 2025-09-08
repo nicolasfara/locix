@@ -9,6 +9,7 @@ object Net:
 
   enum NetError extends Throwable:
     case ValueNotRegistered
+  def id(using net: Net): Int = net.effect.id
 
   def getValue[V: Decoder](ref: ResourceReference)(using net: Net): Either[NetError, V] =
     net.effect.getValue[V](ref)
@@ -31,6 +32,7 @@ object Net:
     Locicope.handle(program)(using handler)
 
   trait Effect:
+    def id: Int
     def getValue[V: Decoder](ref: ResourceReference): Either[NetError, V]
     def getValues[V: Decoder](ref: ResourceReference): Either[NetError, Map[Int, V]]
     def setValue[V: Encoder](value: V, ref: ResourceReference): Unit
