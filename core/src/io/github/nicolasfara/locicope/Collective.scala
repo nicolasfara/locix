@@ -1,7 +1,7 @@
 package io.github.nicolasfara.locicope
 
 import io.github.nicolasfara.locicope.Net.{ getValues, setValue, Net }
-import io.github.nicolasfara.locicope.PlacementType.on
+import io.github.nicolasfara.locicope.PlacementType.{ on, PeerScope }
 import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
 import io.github.nicolasfara.locicope.network.NetworkResource
 import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
@@ -15,7 +15,7 @@ import scala.concurrent.duration.{ DurationInt, FiniteDuration }
 object Collective:
   type Collective = Locicope[Collective.Effect]
 
-  private type OutboundMessage = Map[String, Array[Byte]]
+  type OutboundMessage = Map[String, Array[Byte]]
   private type InboundMessage = Map[Int, OutboundMessage]
   private type State = Map[String, Any]
 
@@ -28,36 +28,36 @@ object Collective:
   def mux[Value](condition: Boolean)(ifTrue: Value)(ifFalse: Value)(using coll: Collective, vm: coll.effect.VM): Value =
     coll.effect.mux(using vm)(condition)(ifTrue)(ifFalse)
 
-  def apply[V: Codec, P <: TiedToMultiple[P]](using
+  inline def collective[V: Codec, P <: TiedToMultiple[P]](using
       coll: Collective,
       net: Net,
+      outboundCodec: Codec[OutboundMessage],
   )(every: FiniteDuration = 1.second)(
       block: coll.effect.VM ?=> V,
   ): Flow[V] on P =
     val localPeerRepr = peer[P]
-    given emtpyVm: coll.effect.VM = emptyVm
-    val resourceReference = ResourceReference(hashBody(block), localPeerRepr, NetworkResource.ValueType.Value)
+    val resourceReference = ResourceReference(hashBody(block(using emptyVm)), localPeerRepr, NetworkResource.ValueType.Value)
     val flowResult = if coll.effect.localPeerRepr <:< localPeerRepr then
       var lastState: State = Map.empty
-      val resultFlow = Flow.tick(
-        every, {
-          val neighborMessages = getValues[OutboundMessage](resourceReference).toTry.fold(ex => throw ex, identity)
-          val (newValue, newState, exported) = executeRound(using coll)(neighborMessages, lastState)(block)
-          setValue[OutboundMessage](exported, resourceReference)
-          lastState = newState
-          newValue
-        },
-      )
+      val resultFlow = Flow.repeatEval({
+        val neighborMessages = getValues[OutboundMessage](resourceReference).toTry.fold(ex => throw ex, identity)
+        val (newValue, newState, exported) = executeRound(using coll)(neighborMessages, lastState)(block)
+        setValue[OutboundMessage](exported, resourceReference)
+        lastState = newState
+        newValue
+      })
       Some(resultFlow)
     else None
     PlacementType.liftFlow(flowResult, resourceReference)
-  end apply
+  end collective
 
-  inline def run[V, P <: TiedToMultiple[P]](using Net)(block: Collective ?=> V): Unit =
+  inline def run[P <: TiedToMultiple[P]](using Net)[V](inline block: (Collective, PeerScope[P]) ?=> V): Unit =
     val handler = new HandlerImpl[V](peer[P])
+    given CollectivePeerScope[P]()
     Locicope.handle(block)(using handler)
 
-  private class HandlerImpl[V](peerRepr: PeerRepr) extends Locicope.Handler[Collective.Effect, V, Unit]:
+  class CollectivePeerScope[P <: TiedToMultiple[P]] extends PeerScope[P]
+  class HandlerImpl[V](peerRepr: PeerRepr) extends Locicope.Handler[Collective.Effect, V, Unit]:
     override def handle(program: Locicope[Effect] ?=> V): Unit = program(using new Locicope(EffectImpl(peerRepr)))
 
   private def executeRound[V](using
@@ -78,18 +78,21 @@ object Collective:
     def createState: Map[String, Any] = Map.empty
 
   private def createVm(using coll: Collective)(state: State, inboundMessage: InboundMessage): coll.effect.VM = new coll.effect.VM:
-    private val stack = mutable.ArrayDeque[String]()
-    private val call = mutable.Map[String, Int]()
+    private val stack = mutable.Stack[InvocationCoordinate]()
+    private val trace = mutable.Map[String, Int]()
     private val currentState: mutable.Map[String, Any] = mutable.Map()
     private val toSend: mutable.Map[String, Array[Byte]] = mutable.Map()
 
+    case class InvocationCoordinate(key: String, invocationCount: Int):
+      override def toString: String = s"$key.$invocationCount"
+
     override def currentPath: String = stack.reverse.mkString("/")
     override def align[V](slot: String)(body: () => V): V =
-      val counter = call.getOrElse(currentPath, 0)
-      call.update(currentPath, counter + 1)
-      stack.append(s"$slot.$counter")
+      val invocationCount = trace.get(currentPath).map(_ + 1).getOrElse(0)
+      stack.push(InvocationCoordinate(slot, invocationCount))
       val result = body()
-      stack.removeLast()
+      val _ = stack.pop()
+      trace.update(currentPath, invocationCount)
       result
 
     override def stateAt[V](path: String): Option[V] = state.get(path).map(_.asInstanceOf[V])
@@ -115,10 +118,13 @@ object Collective:
 
     override def repeat[Value](using vm: VM)(initial: Value)(f: Value => Value): Value =
       vm.align("repeat"): () =>
-        f(vm.stateAt(vm.currentPath).getOrElse(initial))
+        val result = f(vm.stateAt(vm.currentPath).getOrElse(initial))
+        vm.setStateAt(result)
+        result
 
     override def neighbors[Value: Codec](using vm: VM)(value: Value): Field[Value] =
       vm.align("neighbors"): () =>
+        vm.setValueAt(value)
         Field(value, vm.neighborsValuesAt[Value](vm.currentPath))
 
     override def branch[Value](using vm: VM)(condition: Boolean)(ifTrue: => Value)(ifFalse: => Value): Value =
@@ -128,14 +134,13 @@ object Collective:
     override def mux[Value](using VM)(condition: Boolean)(ifTrue: Value)(ifFalse: Value): Value =
       if condition then ifTrue else ifFalse
 
-  given outboundCodec: Codec[OutboundMessage] with
-    override def decode(data: Array[Byte]): Either[String, OutboundMessage] = ???
-    override def encode(value: OutboundMessage): Array[Byte] = ???
-
   trait Effect:
     protected[locicope] val localPeerRepr: PeerRepr
 
-    case class Field[V](default: V, overrides: Map[Int, V])
+    case class Field[V](local: V, overrides: Map[Int, V]):
+      def sum(using num: Numeric[V]): V =
+        import num.*
+        overrides.values.foldLeft(local)(plus)
 
     trait VM:
       def currentPath: String

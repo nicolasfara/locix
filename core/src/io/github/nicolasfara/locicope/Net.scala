@@ -1,7 +1,8 @@
 package io.github.nicolasfara.locicope
 
 import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
-import io.github.nicolasfara.locicope.serialization.{Decoder, Encoder}
+import io.github.nicolasfara.locicope.serialization.{ Decoder, Encoder }
+import ox.flow.Flow
 
 object Net:
   type Net = Locicope[Net.Effect]
@@ -14,11 +15,25 @@ object Net:
 
   def getValues[V: Decoder](ref: ResourceReference)(using net: Net): Either[NetError, Map[Int, V]] =
     net.effect.getValues[V](ref)
-    
+
   def setValue[V: Encoder](value: V, ref: ResourceReference)(using net: Net): Unit =
     net.effect.setValue[V](value, ref)
+
+  def setFlow[V: Encoder](value: Flow[V], ref: ResourceReference)(using net: Net): Unit =
+    net.effect.setFlow[V](value, ref)
+
+  def getFlow[V: Decoder](ref: ResourceReference)(using net: Net): Either[NetError, Flow[V]] =
+    net.effect.getFlow[V](ref)
+
+  def run[V](program: Net ?=> V): V =
+    val handler = new Locicope.Handler[Net.Effect, V, V]:
+      override def handle(program: Locicope[Effect] ?=> V): V = ???
+    Locicope.handle(program)(using handler)
 
   trait Effect:
     def getValue[V: Decoder](ref: ResourceReference): Either[NetError, V]
     def getValues[V: Decoder](ref: ResourceReference): Either[NetError, Map[Int, V]]
     def setValue[V: Encoder](value: V, ref: ResourceReference): Unit
+    def setFlow[V: Encoder](value: Flow[V], ref: ResourceReference): Unit
+    def getFlow[V: Decoder](ref: ResourceReference): Either[NetError, Flow[V]]
+end Net
