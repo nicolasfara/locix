@@ -41,7 +41,7 @@ object Collective:
       var lastState: State = Map.empty
       val resultFlow = Flow.repeatEval({
         val neighborMessages = getValues[OutboundMessage](resourceReference).toTry.fold(ex => throw ex, identity)
-        val (newValue, newState, exported) = executeRound(using coll)(neighborMessages, lastState)(block)
+        val (newValue, newState, exported) = executeRound(using coll)(Net.id, neighborMessages, lastState)(block)
         setValue[OutboundMessage](exported, resourceReference)
         lastState = newState
         newValue
@@ -62,12 +62,13 @@ object Collective:
 
   private def executeRound[V](using
       coll: Collective,
-  )(messages: InboundMessage, state: State)(program: coll.effect.VM ?=> V): (V, State, OutboundMessage) =
-    given vm: coll.effect.VM = createVm(using coll)(state, messages)
+  )(id: Int, messages: InboundMessage, state: State)(program: coll.effect.VM ?=> V): (V, State, OutboundMessage) =
+    given vm: coll.effect.VM = createVm(using coll)(id, state, messages)
     val result = program(using vm)
     (result, vm.createState, vm.createExport)
 
   private def emptyVm(using coll: Collective): coll.effect.VM = new coll.effect.VM:
+    val localId: Int = 0
     def currentPath: String = ""
     def align[V](slot: String)(body: () => V): V = body()
     def stateAt[V](path: String): Option[V] = None
@@ -77,7 +78,7 @@ object Collective:
     def createExport: Map[String, Array[Byte]] = Map.empty
     def createState: Map[String, Any] = Map.empty
 
-  private def createVm(using coll: Collective)(state: State, inboundMessage: InboundMessage): coll.effect.VM = new coll.effect.VM:
+  private def createVm(using coll: Collective)(id: Int, state: State, inboundMessage: InboundMessage): coll.effect.VM = new coll.effect.VM:
     private val stack = mutable.Stack[InvocationCoordinate]()
     private val trace = mutable.Map[String, Int]()
     private val currentState: mutable.Map[String, Any] = mutable.Map()
@@ -85,6 +86,8 @@ object Collective:
 
     case class InvocationCoordinate(key: String, invocationCount: Int):
       override def toString: String = s"$key.$invocationCount"
+      
+    override val localId: Int = id
 
     override def currentPath: String = stack.reverse.mkString("/")
     override def align[V](slot: String)(body: () => V): V =
@@ -134,6 +137,8 @@ object Collective:
     override def mux[Value](using VM)(condition: Boolean)(ifTrue: Value)(ifFalse: Value): Value =
       if condition then ifTrue else ifFalse
 
+    override def localId(using vm: VM): Int = vm.localId
+
   trait Effect:
     protected[locicope] val localPeerRepr: PeerRepr
 
@@ -143,6 +148,7 @@ object Collective:
         overrides.values.foldLeft(local)(plus)
 
     trait VM:
+      val localId: Int
       def currentPath: String
       def align[V](slot: String)(body: () => V): V
       def stateAt[V](path: String): Option[V]
@@ -156,4 +162,5 @@ object Collective:
     def neighbors[Value: Codec](using VM)(value: Value): Field[Value]
     def branch[Value](using VM)(condition: Boolean)(ifTrue: => Value)(ifFalse: => Value): Value
     def mux[Value](using VM)(condition: Boolean)(ifTrue: Value)(ifFalse: Value): Value
+    def localId(using VM): Int
 end Collective

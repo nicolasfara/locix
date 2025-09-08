@@ -28,9 +28,10 @@ class CollectiveTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
       repeat(0)(_ + 1)
     // Setup stubs
     var lastExport: OutboundMessage = null
-    (netEffect.getValues(_: ResourceReference)(using _: Decoder[OutboundMessage])).returns(_ => Right(Map.empty))
+    (() => netEffect.id).returnsWith(1)
+    (netEffect.getValues(_: ResourceReference)(using _: Decoder[OutboundMessage])).returnsWith(Right(Map.empty))
     (netEffect.setValue(_: OutboundMessage, _: ResourceReference)(using _: Encoder[OutboundMessage])).returns(outbound => lastExport = outbound._1)
-    (netEffect.setFlow(_: Flow[Int], _: ResourceReference)(using _: Encoder[Int])).returns(_ => ())
+    (netEffect.setFlow(_: Flow[Int], _: ResourceReference)(using _: Encoder[Int])).returnsWith(())
 
     Collective.run[Smartphone](using net):
       val res = temporalEvolution(using net, summon)
@@ -44,6 +45,7 @@ class CollectiveTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
 
     // Setup stubs
     var lastExport: OutboundMessage = null
+    (() => netEffect.id).returnsWith(1)
     (netEffect.getValues(_: ResourceReference)(using _: Decoder[OutboundMessage])).returns(_ => Right(Map.empty))
     (netEffect.setValue(_: OutboundMessage, _: ResourceReference)(using _: Encoder[OutboundMessage])).returns(outbound => lastExport = outbound._1)
     (netEffect.setFlow(_: Flow[Int], _: ResourceReference)(using _: Encoder[Int])).returns(_ => ())
@@ -66,6 +68,7 @@ class CollectiveTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
       2 -> Map("neighbors.0" -> summon[Encoder[Int]].encode(2)),
       3 -> Map("neighbors.0" -> summon[Encoder[Int]].encode(3)),
     )
+    (() => netEffect.id).returnsWith(1)
     (netEffect.getValues(_: ResourceReference)(using _: Decoder[OutboundMessage])).returns(_ => Right(neighborValues))
     (netEffect.setValue(_: OutboundMessage, _: ResourceReference)(using _: Encoder[OutboundMessage])).returns(outbound => lastExport = outbound._1)
     (netEffect.setFlow(_: Flow[Int], _: ResourceReference)(using _: Encoder[Int])).returns(_ => ())
