@@ -1,9 +1,9 @@
 package io.github.nicolasfara.locicope
 
-import io.github.nicolasfara.locicope.Net.{Net, getFlow, getValue}
+import io.github.nicolasfara.locicope.Net.{ getFlow, getValue, Net }
 import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
-import io.github.nicolasfara.locicope.placement.Peers.{Peer, Quantifier, TiedToMultiple, TiedToSingle}
-import io.github.nicolasfara.locicope.serialization.{Codec, Encoder}
+import io.github.nicolasfara.locicope.placement.Peers.{ Peer, TiedToMultiple, TiedToSingle }
+import io.github.nicolasfara.locicope.serialization.{ Codec, Encoder }
 import ox.flow.Flow
 
 object PlacementType:
@@ -29,7 +29,12 @@ object PlacementType:
         Net.setFlow(flow, ref)
         Placement.Local(flow, ref)
       .getOrElse(Placement.Remote(ref))
-      
+
+  protected[locicope] def getRef[V, P <: Peer](value: V on P): ResourceReference = value match
+    case Placement.Local(_, ref) => ref
+    case Placement.LocalAll(_, ref) => ref
+    case Placement.Remote(ref) => ref
+
   extension [V: Codec, Remote <: Peer](p: Flow[V] on Remote)
     def unwrap(using PeerScope[Remote], Net): Flow[V] = p match
       case Placement.Local(value, _) => value
@@ -37,7 +42,6 @@ object PlacementType:
       case Placement.Remote(ref) => getFlow(ref).fold(ex => throw IllegalStateException("Value not found", ex), identity)
 
   extension [V: Codec, Remote <: Peer](p: on[V, Remote])
-    def asFlow[Local <: { type Tie <: Quantifier[Remote] }](using PeerScope[Local], Net): Flow[V] = ???
     def unwrap(using PeerScope[Remote], Net): V = p match
       case Placement.Local(value, _) => value
       case Placement.LocalAll(value, ref) => throw IllegalStateException("Something went wrong, please report this issue.")

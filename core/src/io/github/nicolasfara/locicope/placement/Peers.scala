@@ -73,6 +73,11 @@ object Peers:
   type TiedToMultiple[P <: Peer] = { type Tie <: Multiple[P] }
 
   /**
+   * Prototype of a peer in the network which is tied to other [[P]] peers. The quantifier can be either [[Single]] or [[Multiple]].
+   */
+  type TiedWith[P <: Peer] = { type Tie <: Quantifier[P] }
+
+  /**
    * Tie cardinality of a peer.
    *
    * {{{
