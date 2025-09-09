@@ -21,6 +21,7 @@ class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
 
   "A choreography program" should "allow retrieving through the network a remote value after communication" in:
     (netEffect.setValue(_: Int, _: ResourceReference)(using _: Encoder[Int])).returnsWith(())
+    // Simulate two clients sending the value [0, 1]
     (netEffect.getValues(_: ResourceReference)(using _: Decoder[Int])).returnsWith(Right(Map(0 -> 10, 1 -> 11)))
     def choreographyProgram(using Net, Choreography): Unit =
       val foo: Int on Client = Choreography.at[Client](10)
@@ -29,6 +30,7 @@ class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
         val localValue: Map[Int, Int] = fooOnServer.unwrap
         localValue shouldBe Map(0 -> 10, 1 -> 11) // Multiple clients send the value
         localValue
+    // Run the choreography program from the server side
     Choreography.run[Server](choreographyProgram)
     (netEffect.setValue(_: Int, _: ResourceReference)(using _: Encoder[Int])).times shouldBe 1 // Register value on `at[Server]`
     (netEffect.getValues(_: ResourceReference)(using _: Decoder[Int])).times shouldBe 1 // Retrieve value on `comm`
