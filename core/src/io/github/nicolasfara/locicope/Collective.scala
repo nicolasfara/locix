@@ -86,7 +86,7 @@ object Collective:
 
     case class InvocationCoordinate(key: String, invocationCount: Int):
       override def toString: String = s"$key.$invocationCount"
-      
+
     override val localId: Int = id
 
     override def currentPath: String = stack.reverse.mkString("/")
@@ -131,21 +131,39 @@ object Collective:
         Field(value, vm.neighborsValuesAt[Value](vm.currentPath))
 
     override def branch[Value](using vm: VM)(condition: Boolean)(ifTrue: => Value)(ifFalse: => Value): Value =
-      vm.align("branch"): () =>
+      vm.align(s"branch[$condition]"): () =>
         if condition then ifTrue else ifFalse
 
     override def mux[Value](using VM)(condition: Boolean)(ifTrue: Value)(ifFalse: Value): Value =
       if condition then ifTrue else ifFalse
 
     override def localId(using vm: VM): Int = vm.localId
+  end EffectImpl
 
   trait Effect:
     protected[locicope] val localPeerRepr: PeerRepr
 
     case class Field[V](local: V, overrides: Map[Int, V]):
+      /**
+       * Calculates the sum of all values in the Field, including the local value.
+       * @param num
+       *   the Numeric type class instance for the value type V
+       * @return
+       *   the sum of all values in the Field
+       */
       def sum(using num: Numeric[V]): V =
         import num.*
         overrides.values.foldLeft(local)(plus)
+
+      /**
+       * Converts the Field into a [[Map]] where the key is the peer ID and the value is the corresponding value from the Field.
+       * @param vm
+       *   the virtual machine context
+       * @return
+       *   a Map[Int, V] representing the Field values for each peer
+       */
+      def toMap(using vm: VM): Map[Int, V] = overrides + (localId -> local)
+    end Field
 
     trait VM:
       val localId: Int
@@ -163,4 +181,5 @@ object Collective:
     def branch[Value](using VM)(condition: Boolean)(ifTrue: => Value)(ifFalse: => Value): Value
     def mux[Value](using VM)(condition: Boolean)(ifTrue: Value)(ifFalse: Value): Value
     def localId(using VM): Int
+  end Effect
 end Collective
