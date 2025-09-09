@@ -1,9 +1,9 @@
 package io.github.nicolasfara.locicope
 
-import io.github.nicolasfara.locicope.Net.{ getFlow, getValue, Net }
+import io.github.nicolasfara.locicope.Net.{Net, getFlow, getValue, getValues, id}
 import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
-import io.github.nicolasfara.locicope.placement.Peers.{ Peer, TiedToMultiple, TiedToSingle }
-import io.github.nicolasfara.locicope.serialization.{ Codec, Encoder }
+import io.github.nicolasfara.locicope.placement.Peers.{Peer, TiedToMultiple, TiedToSingle}
+import io.github.nicolasfara.locicope.serialization.{Codec, Encoder}
 import ox.flow.Flow
 
 object PlacementType:
@@ -11,7 +11,7 @@ object PlacementType:
 
   private enum Placement[V, P <: Peer]:
     case Local(value: V, ref: ResourceReference)
-    case LocalAll(value: Map[?, V], ref: ResourceReference)
+    case LocalAll(value: Map[Int, V], ref: ResourceReference)
     case Remote(ref: ResourceReference)
 
   trait PeerScope[P <: Peer]
@@ -34,6 +34,11 @@ object PlacementType:
     case Placement.Local(_, ref) => ref
     case Placement.LocalAll(_, ref) => ref
     case Placement.Remote(ref) => ref
+    
+  protected[locicope] def getLocalValue[V, P <: Peer](value: V on P)(using Net): Option[V] = value match
+    case Placement.Local(v, _) => Some(v)
+    case Placement.LocalAll(values, _) => values.get(id)
+    case Placement.Remote(_) => None
 
   extension [V: Codec, Remote <: Peer](p: Flow[V] on Remote)
     def unwrap(using PeerScope[Remote], Net): Flow[V] = p match
@@ -42,10 +47,10 @@ object PlacementType:
       case Placement.Remote(ref) => getFlow(ref).fold(ex => throw IllegalStateException("Value not found", ex), identity)
 
   extension [V: Codec, Remote <: Peer](p: on[V, Remote])
-    def unwrap(using PeerScope[Remote], Net): V = p match
-      case Placement.Local(value, _) => value
-      case Placement.LocalAll(value, ref) => throw IllegalStateException("Something went wrong, please report this issue.")
-      case Placement.Remote(ref) => getValue(ref).fold(ex => throw IllegalStateException("Value not found", ex), identity)
+    def unwrap(using PeerScope[Remote], Net): Map[Int, V] = p match
+      case Placement.Local(value, _) => Map(id -> value)
+      case Placement.LocalAll(values, _) => values
+      case Placement.Remote(ref) => getValues(ref).fold(ex => throw IllegalStateException("Value not found", ex), identity)
     def asLocal[Local <: TiedToSingle[Remote]](using PeerScope[Local], Net): V = ???
     def asLocalAll[Local <: TiedToMultiple[Remote]](using PeerScope[Local], Net): Map[Int, V] = ???
 end PlacementType
