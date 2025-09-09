@@ -1,7 +1,7 @@
 package io.github.nicolasfara.locicope
 
-import io.github.nicolasfara.locicope.Net.Net
-import io.github.nicolasfara.locicope.PlacementType.{ on, unwrap, PeerScope }
+import io.github.nicolasfara.locicope.Net.{ getValue, id, setValue, Net }
+import io.github.nicolasfara.locicope.PlacementType.{ getLocalValue, on, unwrap, PeerScope }
 import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
 import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
 import io.github.nicolasfara.locicope.network.NetworkResource.ValueType.Value
@@ -19,9 +19,8 @@ object Choreography:
   inline def comm[V: Codec, Sender <: Peer, Receiver <: TiedWith[Sender]](using
       Net,
       Choreography,
-      ChoreoPeerScope[Sender],
   )(value: V on Sender): V on Receiver =
-    summon[Choreography].effect.comm[V, Sender, Receiver](value)
+    summon[Choreography].effect.comm[V, Sender, Receiver](value)(peer[Sender])
 
   inline def run[P <: Peer](using Net)[V](program: Choreography ?=> V): Unit =
     val handler: ChoreoHandler[V] = ChoreoHandler[V](peer[P])
@@ -42,21 +41,23 @@ object Choreography:
       else None
       PlacementType.lift(placementValue, resourceReference)
 
-    override def comm[V: Codec, Sender <: Peer, Receiver <: TiedWith[Sender]](value: V on Sender)(using Net, ChoreoPeerScope[Sender]): V on Receiver =
-      val senderPeerRepr = summon[ChoreoPeerScope[Sender]].peerRepr
+    override def comm[V: Codec, Sender <: Peer, Receiver <: TiedWith[Sender]](value: V on Sender)(senderPeerRepr: PeerRepr)(using
+        Net,
+    ): V on Receiver =
       val ref = PlacementType.getRef(value)
-      if senderPeerRepr <:< localPeerRepr then
-        val localValue = value.unwrap
-        summon[Net].effect.setValue(localValue, ref)
-        PlacementType.lift(None, ref)
-      else
-        summon[Net].effect.getValue(ref) match
-          case Left(ex) => throw IllegalStateException("Value not found", ex)
-          case Right(v) => PlacementType.lift(Some(v), ref)
+      val placedValue = if senderPeerRepr <:< localPeerRepr then
+        val localValue = getLocalValue(value) match
+          case Some(value) => value
+          case None => throw IllegalStateException("Please fill a bug report, something went wrong during `comm`.")
+        setValue(localValue, ref)
+        Some(localValue)
+      else None
+      PlacementType.lift(placedValue, ref)
+  end EffectImpl
 
   trait Effect:
     protected[locicope] val localPeerRepr: PeerRepr
 
     def at[V: Encoder, P <: Peer](body: ChoreoPeerScope[P] ?=> V)(peerRepr: PeerRepr)(using Net, NotGiven[ChoreoPeerScope[P]]): V on P
-    def comm[V: Codec, Sender <: Peer, Receiver <: TiedWith[Sender]](value: V on Sender)(using Net, ChoreoPeerScope[Sender]): V on Receiver
+    def comm[V: Codec, Sender <: Peer, Receiver <: TiedWith[Sender]](value: V on Sender)(senderPeerRepr: PeerRepr)(using Net): V on Receiver
 end Choreography

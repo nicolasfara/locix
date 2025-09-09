@@ -9,6 +9,7 @@ object Net:
 
   enum NetError extends Throwable:
     case ValueNotRegistered
+
   def id(using net: Net): Int = net.effect.id
 
   def getValue[V: Decoder](ref: ResourceReference)(using net: Net): Either[NetError, V] =
