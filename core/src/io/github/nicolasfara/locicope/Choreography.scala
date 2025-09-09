@@ -1,12 +1,12 @@
 package io.github.nicolasfara.locicope
 
-import io.github.nicolasfara.locicope.Net.{ getValue, id, setValue, Net }
-import io.github.nicolasfara.locicope.PlacementType.{ getLocalValue, on, unwrap, PeerScope }
+import io.github.nicolasfara.locicope.Net.{ setValue, Net }
+import io.github.nicolasfara.locicope.PlacementType.{ getLocalValue, on, PeerScope }
 import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
 import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
 import io.github.nicolasfara.locicope.network.NetworkResource.ValueType.Value
 import io.github.nicolasfara.locicope.placement.Peers.{ peer, Peer, PeerRepr, TiedWith }
-import io.github.nicolasfara.locicope.serialization.{ Codec, Decoder, Encoder }
+import io.github.nicolasfara.locicope.serialization.{ Codec, Encoder }
 
 import scala.util.NotGiven
 
