@@ -23,7 +23,7 @@ object Choreography:
     summon[Choreography].effect.comm[V, Sender, Receiver](value)(peer[Sender])
 
   inline def run[P <: Peer](using Net)[V](program: Choreography ?=> V): Unit =
-    val handler: ChoreoHandler[V] = ChoreoHandler[V](peer[P])
+    val handler = ChoreoHandler[V](peer[P])
     Locicope.handle(program)(using handler)
 
   class ChoreoPeerScope[P <: Peer](val peerRepr: PeerRepr) extends PeerScope[P]
@@ -31,7 +31,7 @@ object Choreography:
   class ChoreoHandler[V](peerRepr: PeerRepr) extends Locicope.Handler[Choreography.Effect, V, Unit]:
     override def handle(program: Locicope[Effect] ?=> V): Unit = program(using new Locicope(EffectImpl(peerRepr)))
 
-  class EffectImpl(val localPeerRepr: PeerRepr) extends Effect:
+  private class EffectImpl(val localPeerRepr: PeerRepr) extends Effect:
     override def at[V: Encoder, P <: Peer](body: ChoreoPeerScope[P] ?=> V)(peerRepr: PeerRepr)(using Net, NotGiven[ChoreoPeerScope[P]]): V on P =
       given ChoreoPeerScope[P](peerRepr)
       val resourceReference = ResourceReference(hashBody(body), localPeerRepr, Value)
