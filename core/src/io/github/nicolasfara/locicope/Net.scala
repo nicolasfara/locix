@@ -3,6 +3,8 @@ package io.github.nicolasfara.locicope
 import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
 import io.github.nicolasfara.locicope.serialization.{ Decoder, Encoder }
 import ox.flow.Flow
+import io.github.nicolasfara.locicope.serialization.Codec
+import io.github.nicolasfara.locicope.placement.Peers.Peer
 
 object Net:
   type Net = Locicope[Net.Effect]
@@ -27,6 +29,12 @@ object Net:
   def getFlow[V: Decoder](ref: ResourceReference)(using net: Net): Either[NetError, Flow[V]] =
     net.effect.getFlow[V](ref)
 
+  def registerFunction[In <: Product: Codec, Out: Codec](function: Multitier.Effect#PlacedFunction[In, Out, ?])(using net: Net): Unit =
+    net.effect.registerFunction[In, Out](function)
+
+  def invokeFunction[In <: Product: Codec, Out: Codec](inputs: In, ref: ResourceReference)(using net: Net): Out =
+    net.effect.invokeFunction[In, Out](inputs, ref)
+
   def run[V](program: Net ?=> V): V =
     val handler = new Locicope.Handler[Net.Effect, V, V]:
       override def handle(program: Locicope[Effect] ?=> V): V = ???
@@ -39,4 +47,6 @@ object Net:
     def setValue[V: Encoder](value: V, ref: ResourceReference): Unit
     def setFlow[V: Encoder](value: Flow[V], ref: ResourceReference): Unit
     def getFlow[V: Decoder](ref: ResourceReference): Either[NetError, Flow[V]]
+    def invokeFunction[In <: Product: Codec, Out: Codec](inputs: In, ref: ResourceReference): Out
+    def registerFunction[In <: Product: Codec, Out: Codec](function: Multitier.Effect#PlacedFunction[In, Out, ?]): Unit
 end Net
