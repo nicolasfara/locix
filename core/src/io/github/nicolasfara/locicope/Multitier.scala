@@ -11,6 +11,10 @@ import io.github.nicolasfara.locicope.serialization.Codec
 import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
 import scala.util.NotGiven
 import io.github.nicolasfara.locicope.placement.Peers.peer
+import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
+import io.github.nicolasfara.locicope.network.NetworkResource.ValueType
+import io.github.nicolasfara.locicope.Net.registerFunction
+import io.github.nicolasfara.locicope.Net.invokeFunction
 
 object Multitier:
   type Multitier = Locicope[Multitier.Effect]
@@ -38,31 +42,56 @@ object Multitier:
   class MultitierHandlerImpl[V](peerRepr: PeerRepr) extends Locicope.Handler[Multitier.Effect, V, Unit]:
     override def handle(program: Locicope[Effect] ?=> V): Unit = program(using new Locicope(EffectImpl(peerRepr)))
 
-  private class EffectImpl(val localPeerRepr: PeerRepr) extends Effect:
+  private class EffectImpl(override val localPeerRepr: PeerRepr) extends Effect:
     private class PlacedFunctionImpl[In <: Product: Codec, Out: Encoder, Local <: Peer](
         val localPeerRepr: PeerRepr,
         val resourceReference: ResourceReference,
-    ) extends PlacedFunction[In, Out, Local]:
+    )(body: In => Out on Local) extends PlacedFunction[In, Out, Local]:
       override def toString: String = s"λ@${localPeerRepr.baseTypeRepr}"
-      override def apply(inputs: In): Out on Local = ???
+      override def apply(inputs: In): Out on Local = body(inputs)
 
-    override def placed[V: Encoder, P <: Peer](body: (PeerScope[P]) ?=> V)(peerRepr: PeerRepr)(using Net): V on P = ???
+    override def placed[V: Encoder, P <: Peer](body: MultitierPeerScope[P] ?=> V)(peerRepr: PeerRepr)(using Net): V on P =
+      given MultitierPeerScope[P] = new MultitierPeerScopeImpl[P](peerRepr)
+      val resourceReference = ResourceReference(hashBody(body), localPeerRepr, ValueType.Value)
+      val placedValue = if localPeerRepr <:< peerRepr then
+        val result = body
+        Some(result) 
+      else None
+      PlacementType.lift(placedValue, resourceReference)
 
-    override def placedFlow[V: Encoder, P <: Peer](body: (PeerScope[P]) ?=> Flow[V])(peerRepr: PeerRepr)(using Net): Flow[V] on P = ???
+    override def placedFlow[V: Encoder, P <: Peer](body: MultitierPeerScope[P] ?=> Flow[V])(peerRepr: PeerRepr)(using Net): Flow[V] on P =
+      given MultitierPeerScope[P] = new MultitierPeerScopeImpl[P](peerRepr)
+      val resourceReference = ResourceReference(hashBody(body), localPeerRepr, ValueType.Flow)
+      val placedValue = if localPeerRepr <:< peerRepr then
+        val result = body
+        Some(result) 
+      else None
+      PlacementType.liftFlow(placedValue, resourceReference)
 
-    override def function[In <: Product: Codec, Out: Codec, P <: Peer](body: (PeerScope[P]) ?=> In => Out)(peerRepr: PeerRepr)(using
+    override def function[In <: Product: Codec, Out: Codec, P <: Peer](body: MultitierPeerScope[P] ?=> In => Out)(peerRepr: PeerRepr)(using
         Net,
-    ): PlacedFunction[In, Out, P] = ???
+    ): PlacedFunction[In, Out, P] = 
+      given MultitierPeerScope[P] = new MultitierPeerScopeImpl[P](peerRepr)
+      val resourceReference = ResourceReference(hashBody(body), localPeerRepr, ValueType.Value)
+      val placedFunction = PlacedFunctionImpl[In, Out, P](peerRepr, resourceReference) { inputs =>
+        val result = if localPeerRepr <:< peerRepr then body(inputs)
+        else invokeFunction[In, Out](inputs, resourceReference)
+        PlacementType.lift(Some(result), resourceReference)
+      }
+      if localPeerRepr <:< peerRepr then registerFunction(placedFunction)
+      placedFunction
 
   trait Effect:
+    protected[locicope] val localPeerRepr: PeerRepr
+
     trait PlacedFunction[-In <: Product: Codec, Out: Encoder, Local <: Peer]:
       val localPeerRepr: PeerRepr
       val resourceReference: ResourceReference
       def apply(inputs: In): Out on Local
 
-    def placed[V: Encoder, P <: Peer](body: PeerScope[P] ?=> V)(peerRepr: PeerRepr)(using Net): V on P
-    def placedFlow[V: Encoder, P <: Peer](body: PeerScope[P] ?=> Flow[V])(peerRepr: PeerRepr)(using Net): Flow[V] on P
-    def function[In <: Product: Codec, Out: Codec, P <: Peer](body: PeerScope[P] ?=> (In => Out))(peerRepr: PeerRepr)(using
+    def placed[V: Encoder, P <: Peer](body: MultitierPeerScope[P] ?=> V)(peerRepr: PeerRepr)(using Net): V on P
+    def placedFlow[V: Encoder, P <: Peer](body: MultitierPeerScope[P] ?=> Flow[V])(peerRepr: PeerRepr)(using Net): Flow[V] on P
+    def function[In <: Product: Codec, Out: Codec, P <: Peer](body: MultitierPeerScope[P] ?=> (In => Out))(peerRepr: PeerRepr)(using
         Net,
     ): PlacedFunction[In, Out, P]
 end Multitier
