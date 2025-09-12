@@ -15,6 +15,7 @@ import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
 import io.github.nicolasfara.locicope.network.NetworkResource.ValueType
 import io.github.nicolasfara.locicope.Net.registerFunction
 import io.github.nicolasfara.locicope.Net.invokeFunction
+import io.github.nicolasfara.locicope.macros.PlacedFunctionFinder.findPlacedFunctions
 
 object Multitier:
   type Multitier = Locicope[Multitier.Effect]
@@ -43,12 +44,15 @@ object Multitier:
     override def handle(program: Locicope[Effect] ?=> V): Unit = program(using new Locicope(EffectImpl(peerRepr)))
 
   private class EffectImpl(override val localPeerRepr: PeerRepr) extends Effect:
-    private class PlacedFunctionImpl[In <: Product: Codec, Out: Encoder, Local <: Peer](
-        val localPeerRepr: PeerRepr,
-        val resourceReference: ResourceReference,
-    )(body: In => Out on Local) extends PlacedFunction[In, Out, Local]:
-      override def toString: String = s"λ@${localPeerRepr.baseTypeRepr}"
-      override def apply(inputs: In): Out on Local = body(inputs)
+    private class PlacedFunctionImpl[In <: Product: Codec, Out: Codec, Local <: Peer](
+        override val funcPeerRepr: PeerRepr,
+        override val resourceReference: ResourceReference,
+    )(override val body: In => Out)(using Net) extends PlacedFunction[In, Out, Local]:
+      override def toString: String = s"λ@${funcPeerRepr.baseTypeRepr}"
+      override def apply(inputs: In): Out on Local =
+        val result = if localPeerRepr <:< funcPeerRepr then body(inputs)
+        else invokeFunction[In, Out](inputs, resourceReference)
+        PlacementType.lift(Some(result), resourceReference)
 
     override def placed[V: Encoder, P <: Peer](body: MultitierPeerScope[P] ?=> V)(peerRepr: PeerRepr)(using Net): V on P =
       given MultitierPeerScope[P] = new MultitierPeerScopeImpl[P](peerRepr)
@@ -56,7 +60,9 @@ object Multitier:
       val placedValue = if localPeerRepr <:< peerRepr then
         val result = body
         Some(result) 
-      else None
+      else
+        findPlacedFunctions(body, summon)
+        None
       PlacementType.lift(placedValue, resourceReference)
 
     override def placedFlow[V: Encoder, P <: Peer](body: MultitierPeerScope[P] ?=> Flow[V])(peerRepr: PeerRepr)(using Net): Flow[V] on P =
@@ -65,7 +71,9 @@ object Multitier:
       val placedValue = if localPeerRepr <:< peerRepr then
         val result = body
         Some(result) 
-      else None
+      else
+        findPlacedFunctions(body, summon)
+        None
       PlacementType.liftFlow(placedValue, resourceReference)
 
     override def function[In <: Product: Codec, Out: Codec, P <: Peer](body: MultitierPeerScope[P] ?=> In => Out)(peerRepr: PeerRepr)(using
@@ -73,20 +81,15 @@ object Multitier:
     ): PlacedFunction[In, Out, P] = 
       given MultitierPeerScope[P] = new MultitierPeerScopeImpl[P](peerRepr)
       val resourceReference = ResourceReference(hashBody(body), localPeerRepr, ValueType.Value)
-      val placedFunction = PlacedFunctionImpl[In, Out, P](peerRepr, resourceReference) { inputs =>
-        val result = if localPeerRepr <:< peerRepr then body(inputs)
-        else invokeFunction[In, Out](inputs, resourceReference)
-        PlacementType.lift(Some(result), resourceReference)
-      }
-      if localPeerRepr <:< peerRepr then registerFunction(placedFunction)
-      placedFunction
+      PlacedFunctionImpl[In, Out, P](peerRepr, resourceReference)(body)
 
   trait Effect:
     protected[locicope] val localPeerRepr: PeerRepr
 
     trait PlacedFunction[-In <: Product: Codec, Out: Encoder, Local <: Peer]:
-      val localPeerRepr: PeerRepr
+      val funcPeerRepr: PeerRepr
       val resourceReference: ResourceReference
+      protected[locicope] val body: In => Out
       def apply(inputs: In): Out on Local
 
     def placed[V: Encoder, P <: Peer](body: MultitierPeerScope[P] ?=> V)(peerRepr: PeerRepr)(using Net): V on P

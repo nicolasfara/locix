@@ -54,7 +54,7 @@ trait Multitier:
       val bodyValue = body
       summon[Placeable[F]].lift(Some(bodyValue), resourceReference)
     else
-      findPlacedFunctions(body, summon[Network])
+      // findPlacedFunctions(body, summon[Network])
       summon[Placeable[F]].lift(None, resourceReference)
   end placed
 
@@ -70,7 +70,7 @@ trait Multitier:
       val bodyFlow = body
       summon[Placeable[F]].liftFlow(Some(bodyFlow), resourceReference)
     else
-      findPlacedFunctions(body, summon[Network])
+      // findPlacedFunctions(body, summon[Network])
       summon[Placeable[F]].liftFlow(None, resourceReference)
   end placedFlow
 

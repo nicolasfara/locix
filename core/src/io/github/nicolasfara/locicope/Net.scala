@@ -29,8 +29,8 @@ object Net:
   def getFlow[V: Decoder](ref: ResourceReference)(using net: Net): Either[NetError, Flow[V]] =
     net.effect.getFlow[V](ref)
 
-  def registerFunction[In <: Product: Codec, Out: Codec](function: Multitier.Effect#PlacedFunction[In, Out, ?])(using net: Net): Unit =
-    net.effect.registerFunction[In, Out](function)
+  def registerFunction[In <: Product: Codec, Out: Codec, P <: Peer](function: In => Out)(ref: ResourceReference)(using net: Net): Unit =
+    net.effect.registerFunction[In, Out, P](function)(ref)
 
   def invokeFunction[In <: Product: Codec, Out: Codec](inputs: In, ref: ResourceReference)(using net: Net): Out =
     net.effect.invokeFunction[In, Out](inputs, ref)
@@ -48,5 +48,5 @@ object Net:
     def setFlow[V: Encoder](value: Flow[V], ref: ResourceReference): Unit
     def getFlow[V: Decoder](ref: ResourceReference): Either[NetError, Flow[V]]
     def invokeFunction[In <: Product: Codec, Out: Codec](inputs: In, ref: ResourceReference): Out
-    def registerFunction[In <: Product: Codec, Out: Codec](function: Multitier.Effect#PlacedFunction[In, Out, ?]): Unit
+    def registerFunction[In <: Product: Codec, Out: Codec, P <: Peer](function: In => Out)(ref: ResourceReference): Unit
 end Net
