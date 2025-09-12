@@ -8,7 +8,7 @@ import scalalib._
 import com.goyeau.mill.scalafix.ScalafixModule
 
 trait CommonScala extends ScalaModule with ScalafixModule {
-  def scalaVersion = "3.7.1"
+  def scalaVersion = "3.7.3"
 //  def scoverageVersion = "2.1.0"
   def scalacOptions = Seq(
     "-Werror",
@@ -19,7 +19,7 @@ trait CommonScala extends ScalaModule with ScalafixModule {
     "-Xcheck-macros",
 //    "-source:3.8",
 //    "-Xprint:cc",
-//    "-Ycheck:all",
+   "-Ycheck:all",
 //    "-Ycc-debug",
     "-experimental",
     "-feature",

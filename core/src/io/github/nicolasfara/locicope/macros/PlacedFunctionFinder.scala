@@ -1,38 +1,40 @@
 package io.github.nicolasfara.locicope.macros
 
-import io.github.nicolasfara.locicope.multiparty.multitier.Multitier
-import io.github.nicolasfara.locicope.network.Network
+import io.github.nicolasfara.locicope.Multitier
+import io.github.nicolasfara.locicope.Multitier.Multitier as MtEff
+import io.github.nicolasfara.locicope.Net.Net
 import io.github.nicolasfara.locicope.placement.Peers.Peer
 import io.github.nicolasfara.locicope.serialization.Encoder
 
 import scala.annotation.tailrec
 import scala.quoted.{ Expr, Quotes }
+import io.github.nicolasfara.locicope.serialization.Codec
 
 object PlacedFunctionFinder:
-  inline def findPlacedFunctions(inline body: Any, network: Network): Unit =
+  inline def findPlacedFunctions(inline body: Any, network: Net): Unit =
     ${ findPlacedFunctionsImpl('body, 'network) }
 
-  private def findPlacedFunctionsImpl(body: Expr[Any], net: Expr[Network])(using q: Quotes): Expr[Unit] =
+  private def findPlacedFunctionsImpl(body: Expr[Any], net: Expr[Net])(using q: Quotes): Expr[Unit] =
     import q.reflect.*
 
     @tailrec
     def isPlacedFunction(tpe: TypeRepr): Boolean =
       tpe match
         case AppliedType(tycon, _) => isPlacedFunction(tycon)
-        case t => t.typeSymbol.name == TypeRepr.of[Multitier#PlacedFunction[?, ?, ?, ?]].typeSymbol.name
+        case t => t.typeSymbol == TypeRepr.of[Multitier.Effect].typeSymbol.typeMember("PlacedFunction")
 
-    def extractOutType(tpe: TypeRepr): Option[(TypeRepr, TypeRepr, TypeRepr, TypeRepr)] =
+    def extractOutType(tpe: TypeRepr): Option[(TypeRepr, TypeRepr, TypeRepr)] =
       tpe match
-        case AppliedType(_, List(inType, outType, placement, peer)) => Some((peer, inType, outType, placement))
+        case AppliedType(_, List(inType, outType, placement, peer)) => Some((peer, inType, outType))
         case _ => None
 
-    def collect(tree: Tree): List[(Term, TypeRepr, TypeRepr, TypeRepr, TypeRepr)] = tree match
+    def collect(tree: Tree): List[(Term, TypeRepr, TypeRepr, TypeRepr)] = tree match
       case apply @ Apply(fun, args) =>
         val widened = apply.tpe.widen
         val collected = collect(fun) ++ args.flatMap(collect)
         if isPlacedFunction(widened) then
           extractOutType(widened) match
-            case Some((peer, inType, outType, placement)) => (apply, peer, inType, outType, placement) :: Nil
+            case Some((peer, inType, outType)) => (apply, peer, inType, outType) :: Nil
             case None => Nil
         else collected
       case TypeApply(fun, args) => collect(fun) ++ args.flatMap(collect)
@@ -51,25 +53,30 @@ object PlacedFunctionFinder:
           report.errorAndAbort(s"No implicit found for type ${tpe.show}")
 
     val found = collect(body.asTerm).distinct
-    val registrations = found.map { case (placedFunction, peer, inType, outType, placement) =>
+    val registrations = found.map { case (placedFunction, peer, inType, outType) =>
       val encoderIn = AppliedType(TypeRepr.of[Encoder].typeSymbol.typeRef, List(inType))
       val encoderOut = AppliedType(TypeRepr.of[Encoder].typeSymbol.typeRef, List(outType))
+      val multitierType = AppliedType(TypeRepr.of[Multitier.Multitier].typeSymbol.typeRef, Nil)
       val encoderInImplicit = getImplicitFromType(encoderIn)
       val encoderOutImplicit = getImplicitFromType(encoderOut)
+      val multitierCapability = getImplicitFromType(multitierType)
 
-      (peer.asType, inType.asType, outType.asType, placement.asType) match
-        case ('[type peer <: Peer; peer], '[type inT <: Product; inT], '[outT], '[type placement[_, _ <: Peer]; placement]) =>
+      (peer.asType, inType.asType, outType.asType) match
+        case ('[type peer <: Peer; peer], '[type inT <: Product; inT], '[outT]) =>
           '{
-            $net.registerFunction[inT, outT, placement](
-              ${ placedFunction.asExprOf[Multitier#PlacedFunction[inT, outT, placement, peer]] },
-            )(using
-              ${ encoderInImplicit.asExprOf[Encoder[inT]] },
-              ${ encoderOutImplicit.asExprOf[Encoder[outT]] },
-            )
+            // val capability = ${ multitierCapability.asExprOf[MtEff] }
+            // val pf = ${ placedFunction.asExprOf[capability.effect.PlacedFunction[inT, outT, peer]] }
+            // $net.effect.registerFunction[inT, outT, peer](
+            //   pf.body,
+            // )(pf.resourceReference)(using
+            //   ${ encoderInImplicit.asExprOf[Codec[inT]] },
+            //   ${ encoderOutImplicit.asExprOf[Codec[outT]] },
+            // )
+            ()
           }
         case _ =>
           report.errorAndAbort(
-            s"Invalid type parameters for placed function: peer=${peer.show}, inType=${inType.show}, outType=${outType.show}, placement=${placement.show}",
+            s"Invalid type parameters for placed function: peer=${peer.show}, inType=${inType.show}, outType=${outType.show}",
           )
     }
 
