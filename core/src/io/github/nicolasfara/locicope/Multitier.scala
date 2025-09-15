@@ -8,7 +8,7 @@ import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
 import io.github.nicolasfara.locicope.PlacementType.PeerScope
 import ox.flow.Flow
 import io.github.nicolasfara.locicope.serialization.Codec
-import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
+import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 import scala.util.NotGiven
 import io.github.nicolasfara.locicope.placement.Peers.peer
 import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
@@ -46,7 +46,7 @@ object Multitier:
   private class EffectImpl(override val localPeerRepr: PeerRepr) extends Effect:
     private class PlacedFunctionImpl[In <: Product: Codec, Out: Codec, Local <: Peer](
         override val funcPeerRepr: PeerRepr,
-        override val resourceReference: ResourceReference,
+        override val resourceReference: Reference,
     )(override val body: In => Out)(using Net) extends PlacedFunction[In, Out, Local]:
       override def toString: String = s"λ@${funcPeerRepr.baseTypeRepr}"
       override def apply(inputs: In): Out on Local =
@@ -56,7 +56,7 @@ object Multitier:
 
     override def placed[V: Encoder, P <: Peer](body: MultitierPeerScope[P] ?=> V)(peerRepr: PeerRepr)(using Net): V on P =
       given MultitierPeerScope[P] = new MultitierPeerScopeImpl[P](peerRepr)
-      val resourceReference = ResourceReference(hashBody(body), localPeerRepr, ValueType.Value)
+      val resourceReference = Reference(hashBody(body), localPeerRepr, ValueType.Value)
       val placedValue = if localPeerRepr <:< peerRepr then
         val result = body
         Some(result) 
@@ -67,7 +67,7 @@ object Multitier:
 
     override def placedFlow[V: Encoder, P <: Peer](body: MultitierPeerScope[P] ?=> Flow[V])(peerRepr: PeerRepr)(using Net): Flow[V] on P =
       given MultitierPeerScope[P] = new MultitierPeerScopeImpl[P](peerRepr)
-      val resourceReference = ResourceReference(hashBody(body), localPeerRepr, ValueType.Flow)
+      val resourceReference = Reference(hashBody(body), localPeerRepr, ValueType.Flow)
       val placedValue = if localPeerRepr <:< peerRepr then
         val result = body
         Some(result) 
@@ -80,7 +80,7 @@ object Multitier:
         Net,
     ): PlacedFunction[In, Out, P] = 
       given MultitierPeerScope[P] = new MultitierPeerScopeImpl[P](peerRepr)
-      val resourceReference = ResourceReference(hashBody(body), localPeerRepr, ValueType.Value)
+      val resourceReference = Reference(hashBody(body), localPeerRepr, ValueType.Value)
       PlacedFunctionImpl[In, Out, P](peerRepr, resourceReference)(body)
 
   trait Effect:
@@ -88,7 +88,7 @@ object Multitier:
 
     trait PlacedFunction[-In <: Product: Codec, Out: Encoder, Local <: Peer]:
       val funcPeerRepr: PeerRepr
-      val resourceReference: ResourceReference
+      val resourceReference: Reference
       protected[locicope] val body: In => Out
       def apply(inputs: In): Out on Local
 

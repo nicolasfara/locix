@@ -4,7 +4,7 @@ import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
 import io.github.nicolasfara.locicope.macros.PlacedFunctionFinder.findPlacedFunctions
 import io.github.nicolasfara.locicope.placement.Peers.{ peer, Peer, PeerRepr, TiedToMultiple, TiedToSingle }
 import io.github.nicolasfara.locicope.network.{ Network, NetworkResource }
-import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
+import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 import io.github.nicolasfara.locicope.placement.Placeable
 import io.github.nicolasfara.locicope.serialization.{ Codec, Decoder, Encoder }
 import ox.flow.Flow
@@ -18,13 +18,13 @@ trait Multitier:
 
   trait PlacedFunction[-In <: Product: Codec, Out: Encoder, P[_, _ <: Peer]: Placeable, Local <: Peer]:
     val localPeerRepr: PeerRepr
-    val resourceReference: ResourceReference
+    val resourceReference: Reference
     override def toString: String = s"λ@${localPeerRepr.baseTypeRepr}"
     def apply(inputs: In): P[Out, Local]
 
   class PlacedFunctionImpl[Local <: Peer, In <: Product: Codec, Out: Encoder, On[_, _ <: Peer]: Placeable](
       override val localPeerRepr: PeerRepr,
-      override val resourceReference: ResourceReference,
+      override val resourceReference: Reference,
   )(
       body: In => On[Out, Local],
   ) extends PlacedFunction[In, Out, On, Local]:
@@ -34,7 +34,7 @@ trait Multitier:
       body: MultitierLabel[Local] ?=> In => Out,
   )(using NotGiven[MultitierLabel[Local]], Network): PlacedFunction[In, Out, On, Local] =
     given MultitierLabel[Local]()
-    val resourceReference = ResourceReference(hashBody(body), localPeerRepr, NetworkResource.ValueType.Value)
+    val resourceReference = Reference(hashBody(body), localPeerRepr, NetworkResource.ValueType.Value)
     PlacedFunctionImpl[Local, In, Out, On](peer[Local], resourceReference) { inputs =>
       val result =
         if localPeerRepr <:< peer[Local] then body(inputs)
@@ -49,7 +49,7 @@ trait Multitier:
     scribe.debug("Entering placed function on peer: " + peer[P].baseTypeRepr)
     given MultitierLabel[P]()
     val placedPeerRepr = peer[P]
-    val resourceReference = ResourceReference(hashBody(body), localPeerRepr, NetworkResource.ValueType.Value)
+    val resourceReference = Reference(hashBody(body), localPeerRepr, NetworkResource.ValueType.Value)
     if localPeerRepr <:< placedPeerRepr then
       val bodyValue = body
       summon[Placeable[F]].lift(Some(bodyValue), resourceReference)
@@ -65,7 +65,7 @@ trait Multitier:
     scribe.debug("Entering placed flow on peer: " + peer[P].baseTypeRepr)
     given MultitierLabel[P]()
     val placedPeerRepr = peer[P]
-    val resourceReference = ResourceReference(hashBody(body), localPeerRepr, NetworkResource.ValueType.Flow)
+    val resourceReference = Reference(hashBody(body), localPeerRepr, NetworkResource.ValueType.Flow)
     if localPeerRepr <:< placedPeerRepr then
       val bodyFlow = body
       summon[Placeable[F]].liftFlow(Some(bodyFlow), resourceReference)

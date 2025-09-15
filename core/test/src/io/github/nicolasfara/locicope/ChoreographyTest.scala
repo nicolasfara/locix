@@ -3,7 +3,7 @@ package io.github.nicolasfara.locicope
 import io.github.nicolasfara.locicope.Choreography.Choreography
 import io.github.nicolasfara.locicope.Net.Net
 import io.github.nicolasfara.locicope.PlacementType.{ on, unwrap }
-import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
+import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 import io.github.nicolasfara.locicope.serialization.{ Decoder, Encoder }
 import io.github.nicolasfara.locicope.utils.ClientServerArch.{ Client, Server }
 import org.scalamock.stubs.Stubs
@@ -20,9 +20,9 @@ class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
     resetStubs()
 
   "A choreography program" should "allow retrieving through the network a remote value after communication" in:
-    (netEffect.setValue(_: Int, _: ResourceReference)(using _: Encoder[Int])).returnsWith(())
+    (netEffect.setValue(_: Int, _: Reference)(using _: Encoder[Int])).returnsWith(())
     // Simulate two clients sending the value [0, 1]
-    (netEffect.getValues(_: ResourceReference)(using _: Decoder[Int])).returnsWith(Right(Map(0 -> 10, 1 -> 11)))
+    (netEffect.getValues(_: Reference)(using _: Decoder[Int])).returnsWith(Right(Map(0 -> 10, 1 -> 11)))
     def choreographyProgram(using Net, Choreography): Unit =
       val foo: Int on Client = Choreography.at[Client](10)
       val fooOnServer: Int on Server = Choreography.comm(foo)
@@ -32,6 +32,6 @@ class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
         localValue
     // Run the choreography program from the server side
     Choreography.run[Server](choreographyProgram)
-    (netEffect.setValue(_: Int, _: ResourceReference)(using _: Encoder[Int])).times shouldBe 1 // Register value on `at[Server]`
-    (netEffect.getValues(_: ResourceReference)(using _: Decoder[Int])).times shouldBe 1 // Retrieve value on `comm`
+    (netEffect.setValue(_: Int, _: Reference)(using _: Encoder[Int])).times shouldBe 1 // Register value on `at[Server]`
+    (netEffect.getValues(_: Reference)(using _: Decoder[Int])).times shouldBe 1 // Retrieve value on `comm`
 end ChoreographyTest

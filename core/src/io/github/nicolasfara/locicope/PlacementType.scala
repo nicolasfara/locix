@@ -1,7 +1,7 @@
 package io.github.nicolasfara.locicope
 
 import io.github.nicolasfara.locicope.Net.{Net, getFlow, getValue, getValues, id}
-import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
+import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 import io.github.nicolasfara.locicope.placement.Peers.{Peer, TiedToMultiple, TiedToSingle, TiedWith}
 import io.github.nicolasfara.locicope.serialization.{Codec, Encoder}
 import ox.flow.Flow
@@ -10,27 +10,27 @@ object PlacementType:
   opaque infix type on[V, P <: Peer] = Placement[V, P]
 
   private enum Placement[V, P <: Peer]:
-    case Local(value: V, ref: ResourceReference)
-    case LocalAll(value: Map[Int, V], ref: ResourceReference)
-    case Remote(ref: ResourceReference)
+    case Local(value: V, ref: Reference)
+    case LocalAll(value: Map[Int, V], ref: Reference)
+    case Remote(ref: Reference)
 
   trait PeerScope[P <: Peer]
 
-  def lift[V: Encoder, P <: Peer](value: Option[V], ref: ResourceReference)(using net: Net): V on P =
+  def lift[V: Encoder, P <: Peer](value: Option[V], ref: Reference)(using net: Net): V on P =
     value
       .map: value =>
         Net.setValue(value, ref)
         Placement.Local(value, ref)
       .getOrElse(Placement.Remote(ref))
 
-  def liftFlow[V: Encoder, P <: Peer](value: Option[Flow[V]], ref: ResourceReference)(using net: Net): Flow[V] on P =
+  def liftFlow[V: Encoder, P <: Peer](value: Option[Flow[V]], ref: Reference)(using net: Net): Flow[V] on P =
     value
       .map: flow =>
         Net.setFlow(flow, ref)
         Placement.Local(flow, ref)
       .getOrElse(Placement.Remote(ref))
 
-  protected[locicope] def getRef[V, P <: Peer](value: V on P): ResourceReference = value match
+  protected[locicope] def getRef[V, P <: Peer](value: V on P): Reference = value match
     case Placement.Local(_, ref) => ref
     case Placement.LocalAll(_, ref) => ref
     case Placement.Remote(ref) => ref

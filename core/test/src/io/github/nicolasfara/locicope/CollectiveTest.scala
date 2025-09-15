@@ -3,7 +3,7 @@ package io.github.nicolasfara.locicope
 import io.github.nicolasfara.locicope.Collective.{ collective, neighbors, repeat, Collective, OutboundMessage }
 import io.github.nicolasfara.locicope.Net.Net
 import io.github.nicolasfara.locicope.PlacementType.{ on, unwrap }
-import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
+import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 import io.github.nicolasfara.locicope.serialization.{ Decoder, Encoder }
 import io.github.nicolasfara.locicope.utils.CpsArch.Smartphone
 import org.scalamock.stubs.Stubs
@@ -29,9 +29,9 @@ class CollectiveTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
     // Setup stubs
     var lastExport: OutboundMessage = null
     (() => netEffect.id).returnsWith(1)
-    (netEffect.getValues(_: ResourceReference)(using _: Decoder[OutboundMessage])).returnsWith(Right(Map.empty))
-    (netEffect.setValue(_: OutboundMessage, _: ResourceReference)(using _: Encoder[OutboundMessage])).returns(outbound => lastExport = outbound._1)
-    (netEffect.setFlow(_: Flow[Int], _: ResourceReference)(using _: Encoder[Int])).returnsWith(())
+    (netEffect.getValues(_: Reference)(using _: Decoder[OutboundMessage])).returnsWith(Right(Map.empty))
+    (netEffect.setValue(_: OutboundMessage, _: Reference)(using _: Encoder[OutboundMessage])).returns(outbound => lastExport = outbound._1)
+    (netEffect.setFlow(_: Flow[Int], _: Reference)(using _: Encoder[Int])).returnsWith(())
 
     Collective.run[Smartphone](using net):
       val res = temporalEvolution(using net, summon)
@@ -46,9 +46,9 @@ class CollectiveTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
     // Setup stubs
     var lastExport: OutboundMessage = null
     (() => netEffect.id).returnsWith(1)
-    (netEffect.getValues(_: ResourceReference)(using _: Decoder[OutboundMessage])).returnsWith(Right(Map.empty))
-    (netEffect.setValue(_: OutboundMessage, _: ResourceReference)(using _: Encoder[OutboundMessage])).returns(outbound => lastExport = outbound._1)
-    (netEffect.setFlow(_: Flow[Int], _: ResourceReference)(using _: Encoder[Int])).returnsWith(())
+    (netEffect.getValues(_: Reference)(using _: Decoder[OutboundMessage])).returnsWith(Right(Map.empty))
+    (netEffect.setValue(_: OutboundMessage, _: Reference)(using _: Encoder[OutboundMessage])).returns(outbound => lastExport = outbound._1)
+    (netEffect.setFlow(_: Flow[Int], _: Reference)(using _: Encoder[Int])).returnsWith(())
 
     Collective.run[Smartphone](using net):
       val res = spatialComputation(using net, summon)
@@ -69,9 +69,9 @@ class CollectiveTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
       3 -> Map("neighbors.0" -> summon[Encoder[Int]].encode(3)),
     )
     (() => netEffect.id).returnsWith(1)
-    (netEffect.getValues(_: ResourceReference)(using _: Decoder[OutboundMessage])).returnsWith(Right(neighborValues))
-    (netEffect.setValue(_: OutboundMessage, _: ResourceReference)(using _: Encoder[OutboundMessage])).returns(outbound => lastExport = outbound._1)
-    (netEffect.setFlow(_: Flow[Int], _: ResourceReference)(using _: Encoder[Int])).returnsWith(())
+    (netEffect.getValues(_: Reference)(using _: Decoder[OutboundMessage])).returnsWith(Right(neighborValues))
+    (netEffect.setValue(_: OutboundMessage, _: Reference)(using _: Encoder[OutboundMessage])).returns(outbound => lastExport = outbound._1)
+    (netEffect.setFlow(_: Flow[Int], _: Reference)(using _: Encoder[Int])).returnsWith(())
 
     Collective.run[Smartphone](using net):
       val res = spatialComputation(using net, summon)
@@ -92,9 +92,9 @@ class CollectiveTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
       3 -> Map("branch[false].0/neighbors.0" -> summon[Encoder[Int]].encode(2)),
     )
     (() => netEffect.id).returnsWith(0) // Even id
-    (netEffect.getValues(_: ResourceReference)(using _: Decoder[OutboundMessage])).returnsWith(Right(neighborValues))
-    (netEffect.setValue(_: OutboundMessage, _: ResourceReference)(using _: Encoder[OutboundMessage])).returns(outbound => lastExport = outbound._1)
-    (netEffect.setFlow(_: Flow[Int], _: ResourceReference)(using _: Encoder[Int])).returnsWith(())
+    (netEffect.getValues(_: Reference)(using _: Decoder[OutboundMessage])).returnsWith(Right(neighborValues))
+    (netEffect.setValue(_: OutboundMessage, _: Reference)(using _: Encoder[OutboundMessage])).returns(outbound => lastExport = outbound._1)
+    (netEffect.setFlow(_: Flow[Int], _: Reference)(using _: Encoder[Int])).returnsWith(())
 
     Collective.run[Smartphone](using net):
       val res = spatialComputation(using net, summon)

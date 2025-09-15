@@ -1,7 +1,7 @@
 package io.github.nicolasfara.locicope.multiparty.choreography
 
 import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
-import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
+import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 import io.github.nicolasfara.locicope.placement.Peers.{ peer, Peer, PeerRepr, Quantifier, TiedToMultiple, TiedToSingle }
 import io.github.nicolasfara.locicope.network.{ Network, NetworkResource }
 import io.github.nicolasfara.locicope.placement.Placeable
@@ -20,7 +20,7 @@ trait Choreography:
       Network,
   ): F[V, P] =
     given ChoreographyLabel[P]()
-    val resourceReference = ResourceReference(hashBody(body), localPeerRepr, NetworkResource.ValueType.Value)
+    val resourceReference = Reference(hashBody(body), localPeerRepr, NetworkResource.ValueType.Value)
     val placedPeerRepr = peer[P]
     if localPeerRepr <:< placedPeerRepr then
       val result = body

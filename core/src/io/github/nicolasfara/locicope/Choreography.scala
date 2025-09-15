@@ -3,7 +3,7 @@ package io.github.nicolasfara.locicope
 import io.github.nicolasfara.locicope.Net.{ setValue, Net }
 import io.github.nicolasfara.locicope.PlacementType.{ getLocalValue, on, PeerScope }
 import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
-import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
+import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 import io.github.nicolasfara.locicope.network.NetworkResource.ValueType.Value
 import io.github.nicolasfara.locicope.placement.Peers.{ peer, Peer, PeerRepr, TiedWith }
 import io.github.nicolasfara.locicope.serialization.{ Codec, Encoder }
@@ -34,7 +34,7 @@ object Choreography:
   private class EffectImpl(val localPeerRepr: PeerRepr) extends Effect:
     override def at[V: Encoder, P <: Peer](body: ChoreoPeerScope[P] ?=> V)(peerRepr: PeerRepr)(using Net, NotGiven[ChoreoPeerScope[P]]): V on P =
       given ChoreoPeerScope[P](peerRepr)
-      val resourceReference = ResourceReference(hashBody(body), localPeerRepr, Value)
+      val resourceReference = Reference(hashBody(body), localPeerRepr, Value)
       val placementValue = if peerRepr <:< localPeerRepr then
         val result = body
         Some(result)
