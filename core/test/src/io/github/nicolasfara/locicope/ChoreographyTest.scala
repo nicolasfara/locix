@@ -27,7 +27,7 @@ class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
       val foo: Int on Client = Choreography.at[Client](10)
       val fooOnServer: Int on Server = Choreography.comm(foo)
       Choreography.at[Server]:
-        val localValue: Map[Int, Int] = fooOnServer.unwrap
+        val localValue: Map[Int, Int] = fooOnServer.unwrapAll
         localValue shouldBe Map(0 -> 10, 1 -> 11) // Multiple clients send the value
         localValue
     // Run the choreography program from the server side
