@@ -45,12 +45,27 @@ object PlacementType:
       case Placement.Local(value, _) => value
       case Placement.LocalAll(value, ref) => throw IllegalStateException("Something went wrong, please report this issue.")
       case Placement.Remote(ref) => getFlow(ref).fold(ex => throw IllegalStateException("Value not found", ex), identity)
+    def asLocal[Local <: TiedToSingle[Remote]](using PeerScope[Local], Net): Flow[V] = p match
+      case Placement.Local(value, _) => value
+      case Placement.LocalAll(value, ref) => throw IllegalStateException("Something went wrong, please report this issue.")
+      case Placement.Remote(ref) => getFlow(ref).fold(ex => throw IllegalStateException("Value not found", ex), identity)
+    
 
   extension [V: Codec, P <: Peer](p: on[V, P])
-    def unwrap(using PeerScope[P], Net): Map[Int, V] = p match
+    def unwrap(using PeerScope[P], Net): V = p match
+      case Placement.Local(value, _) => value
+      case Placement.LocalAll(values, _) => values.get(id).getOrElse(throw IllegalStateException("Value not found on local peer"))
+      case Placement.Remote(ref) => getValue(ref).fold(ex => throw IllegalStateException("Value not found", ex), identity)
+    def unwrapAll(using PeerScope[P], Net): Map[Int, V] = p match
       case Placement.Local(value, _) => Map(id -> value)
       case Placement.LocalAll(values, _) => values
       case Placement.Remote(ref) => getValues(ref).fold(ex => throw IllegalStateException("Value not found", ex), identity)
-    def asLocal[Local <: TiedToSingle[P]](using PeerScope[Local], Net): V = ???
-    def asLocalAll[Local <: TiedToMultiple[P]](using PeerScope[Local], Net): Map[Int, V] = ???
+    def asLocal[Local <: TiedToSingle[P]](using PeerScope[Local], Net): V = p match
+      case Placement.Local(value, _) => value
+      case Placement.LocalAll(values, _) => values.get(id).getOrElse(throw IllegalStateException("Value not found on local peer"))
+      case Placement.Remote(ref) => getValue(ref).fold(ex => throw IllegalStateException("Value not found", ex), identity)
+    def asLocalAll[Local <: TiedToMultiple[P]](using PeerScope[Local], Net): Map[Int, V] = p match
+      case Placement.Local(value, _) => Map(id -> value)
+      case Placement.LocalAll(values, _) => values
+      case Placement.Remote(ref) => getValues(ref).fold(ex => throw IllegalStateException("Value not found", ex), identity)
 end PlacementType
