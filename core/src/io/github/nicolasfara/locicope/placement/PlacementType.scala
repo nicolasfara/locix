@@ -2,7 +2,7 @@ package io.github.nicolasfara.locicope.placement
 
 import Peers.{ Peer, PeerRepr }
 import io.github.nicolasfara.locicope.network.{ Network, NetworkResource }
-import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
+import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 import io.github.nicolasfara.locicope.serialization.{ Codec, Decoder, Encoder }
 import ox.flow.Flow
 
@@ -12,18 +12,18 @@ object PlacementType:
   infix opaque type on[+V, -P <: Peer] = PlacedType[V, P]
 
   private enum PlacedType[+V, -P <: Peer]:
-    case Local(value: V, resourceReference: ResourceReference)
-    case LocalMultiple(value: Map[?, V], resourceReference: ResourceReference)
-    case Remote(resourceReference: ResourceReference)
+    case Local(value: V, resourceReference: Reference)
+    case LocalMultiple(value: Map[?, V], resourceReference: Reference)
+    case Remote(resourceReference: Reference)
 
   given Placeable[on] with
-    override def lift[V: Encoder, P <: Peer](value: Option[V], resourceReference: ResourceReference)(using Network): on[V, P] = value match
+    override def lift[V: Encoder, P <: Peer](value: Option[V], resourceReference: Reference)(using Network): on[V, P] = value match
       case Some(value) =>
         summon[Network].registerValue(value, resourceReference)
         PlacedType.Local(value, resourceReference)
       case None => PlacedType.Remote(resourceReference)
 
-    override def liftFlow[V: Encoder, P <: Peer](value: Option[Flow[V]], resourceReference: ResourceReference)(using Network): on[Flow[V], P] =
+    override def liftFlow[V: Encoder, P <: Peer](value: Option[Flow[V]], resourceReference: Reference)(using Network): on[Flow[V], P] =
       value match
         case Some(flow) =>
           summon[Network].registerFlow(flow, resourceReference)
@@ -66,9 +66,9 @@ object PlacementType:
       value match
         case PlacedType.Local(value, ref) =>
           summon[Network].registerValue(value, ref)
-          PlacedType.Remote(ResourceReference(ref.resourceId, localPeerRepr, ref.valueType))
+          PlacedType.Remote(Reference(ref.resourceId, localPeerRepr, ref.valueType))
         case PlacedType.Remote(ref) =>
-          PlacedType.LocalMultiple(summon[Network].getAllValues(ref), ResourceReference(ref.resourceId, localPeerRepr, ref.valueType))
+          PlacedType.LocalMultiple(summon[Network].getAllValues(ref), Reference(ref.resourceId, localPeerRepr, ref.valueType))
         case _ =>
           throw new IllegalArgumentException("Cannot perform comm on a value that is not local or remote")
 

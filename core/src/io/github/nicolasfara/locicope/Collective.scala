@@ -4,7 +4,7 @@ import io.github.nicolasfara.locicope.Net.{ getValues, setValue, Net }
 import io.github.nicolasfara.locicope.PlacementType.{ on, PeerScope }
 import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
 import io.github.nicolasfara.locicope.network.NetworkResource
-import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
+import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 import io.github.nicolasfara.locicope.placement.Peers.{ peer, PeerRepr, TiedToMultiple }
 import io.github.nicolasfara.locicope.serialization.{ Codec, Decoder, Encoder }
 import ox.flow.Flow
@@ -36,7 +36,7 @@ object Collective:
       block: coll.effect.VM ?=> V,
   ): Flow[V] on P =
     val localPeerRepr = peer[P]
-    val resourceReference = ResourceReference(hashBody(block(using emptyVm)), localPeerRepr, NetworkResource.ValueType.Value)
+    val resourceReference = Reference(hashBody(block(using emptyVm)), localPeerRepr, NetworkResource.ValueType.Value)
     val flowResult = if coll.effect.localPeerRepr <:< localPeerRepr then
       var lastState: State = Map.empty
       val resultFlow = Flow.repeatEval({

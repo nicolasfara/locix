@@ -2,7 +2,7 @@ package io.github.nicolasfara.locicope.multiparty.choreography
 
 import io.github.nicolasfara.locicope.multiparty.choreography.Choreography.*
 import io.github.nicolasfara.locicope.network.Network
-import io.github.nicolasfara.locicope.network.NetworkResource.ResourceReference
+import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 import io.github.nicolasfara.locicope.placement.PlacementType.{ on, given }
 import io.github.nicolasfara.locicope.serialization.{ Decoder, Encoder }
 import org.scalamock.stubs.Stubs
@@ -23,11 +23,11 @@ class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
     resetStubs()
 
   "The Choreography capability" should "allow retrieving through the network a remote value after communication" in:
-    (net.registerValue(_: Int, _: ResourceReference)(using _: Encoder[Int])).returns(_ => ())
+    (net.registerValue(_: Int, _: Reference)(using _: Encoder[Int])).returns(_ => ())
     (net
-      .getAllValues(_: ResourceReference)(using _: Decoder[Int]))
+      .getAllValues(_: Reference)(using _: Decoder[Int]))
       .returns:
-        case (ResourceReference(_, _, _), _) => Map(1 -> 10)
+        case (Reference(_, _, _), _) => Map(1 -> 10)
 
     Choreography.run[Server](using net): choreo ?=>
       val valueOnClient: Int on Client = at[Client](using net)(10)
@@ -37,14 +37,14 @@ class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
         decodedValue shouldBe Map(1 -> 10)
         decodedValue
 
-    (net.registerValue(_: Int, _: ResourceReference)(using _: Encoder[Int])).times shouldBe 1 // Register value on `at`
-    (net.getAllValues(_: ResourceReference)(using _: Decoder[Int])).times shouldBe 1 // Retrieve value on `comm`
+    (net.registerValue(_: Int, _: Reference)(using _: Encoder[Int])).times shouldBe 1 // Register value on `at`
+    (net.getAllValues(_: Reference)(using _: Decoder[Int])).times shouldBe 1 // Retrieve value on `comm`
   it should "register in the network a value ready to be communicated" in:
-    (net.registerValue(_: Int, _: ResourceReference)(using _: Encoder[Int])).returns(_ => ())
+    (net.registerValue(_: Int, _: Reference)(using _: Encoder[Int])).returns(_ => ())
     (net
-      .getAllValues(_: ResourceReference)(using _: Decoder[Int]))
+      .getAllValues(_: Reference)(using _: Decoder[Int]))
       .returns:
-        case (ResourceReference(_, _, _), _) => Map(1 -> 10)
+        case (Reference(_, _, _), _) => Map(1 -> 10)
 
     Choreography.run[Client](using net): choreo ?=>
       val valueOnClient: Int on Client = at[Client](using net)(10)
@@ -54,14 +54,14 @@ class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
         decodedValue shouldBe Map(1 -> 10)
         decodedValue
 
-    (net.registerValue(_: Int, _: ResourceReference)(using _: Encoder[Int])).times shouldBe 2 // Register value on `at` and `comm`
-    (net.getValue(_: ResourceReference)(using _: Decoder[Int])).times shouldBe 0 // No retrieval on `Client` side
+    (net.registerValue(_: Int, _: Reference)(using _: Encoder[Int])).times shouldBe 2 // Register value on `at` and `comm`
+    (net.getValue(_: Reference)(using _: Decoder[Int])).times shouldBe 0 // No retrieval on `Client` side
   it should "allow retrieving multiple remote value when tied to multiple peers" in:
-    (net.registerValue(_: Int, _: ResourceReference)(using _: Encoder[Int])).returns(_ => ())
+    (net.registerValue(_: Int, _: Reference)(using _: Encoder[Int])).returns(_ => ())
     (net
-      .getAllValues(_: ResourceReference)(using _: Decoder[Int]))
+      .getAllValues(_: Reference)(using _: Decoder[Int]))
       .returns:
-        case (ResourceReference(_, _, _), _) => Map(1 -> 10, 2 -> 20)
+        case (Reference(_, _, _), _) => Map(1 -> 10, 2 -> 20)
 
     Choreography.run[Server](using net): choreo ?=>
       val valueOnClient: Int on Client = at[Client](using net)(10)
@@ -71,6 +71,6 @@ class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
         decodedValues shouldBe Map(1 -> 10, 2 -> 20)
         decodedValues
 
-    (net.registerValue(_: Int, _: ResourceReference)(using _: Encoder[Int])).times shouldBe 1 // Register value on `at`
-    (net.getAllValues(_: ResourceReference)(using _: Decoder[Int])).times shouldBe 1 // Retrieve values on `comm`
+    (net.registerValue(_: Int, _: Reference)(using _: Encoder[Int])).times shouldBe 1 // Register value on `at`
+    (net.getAllValues(_: Reference)(using _: Decoder[Int])).times shouldBe 1 // Retrieve values on `comm`
 end ChoreographyTest

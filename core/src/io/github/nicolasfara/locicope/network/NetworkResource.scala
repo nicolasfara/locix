@@ -18,5 +18,5 @@ object NetworkResource:
    * @param valueType
    *   description of the value type this resource holds, either a flow or a simple value.
    */
-  final case class ResourceReference(resourceId: String, onPeer: PeerRepr, valueType: ValueType):
+  final case class Reference(resourceId: String, onPeer: PeerRepr, valueType: ValueType):
     override def toString: String = s"$resourceId@$onPeer:${valueType.toString}"
