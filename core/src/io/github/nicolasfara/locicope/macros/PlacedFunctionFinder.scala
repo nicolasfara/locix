@@ -56,7 +56,7 @@ object PlacedFunctionFinder:
     val registrations = found.map { case (placedFunction, peer, inType, outType) =>
       val encoderIn = AppliedType(TypeRepr.of[Encoder].typeSymbol.typeRef, List(inType))
       val encoderOut = AppliedType(TypeRepr.of[Encoder].typeSymbol.typeRef, List(outType))
-      val multitierType = AppliedType(TypeRepr.of[Multitier.Multitier].typeSymbol.typeRef, Nil)
+      val multitierType = AppliedType(TypeRepr.of[MtEff].typeSymbol.typeRef, Nil)
       val encoderInImplicit = getImplicitFromType(encoderIn)
       val encoderOutImplicit = getImplicitFromType(encoderOut)
       val multitierCapability = getImplicitFromType(multitierType)
@@ -64,15 +64,14 @@ object PlacedFunctionFinder:
       (peer.asType, inType.asType, outType.asType) match
         case ('[type peer <: Peer; peer], '[type inT <: Product; inT], '[outT]) =>
           '{
-            // val capability = ${ multitierCapability.asExprOf[MtEff] }
-            // val pf = ${ placedFunction.asExprOf[capability.effect.PlacedFunction[inT, outT, peer]] }
-            // $net.effect.registerFunction[inT, outT, peer](
-            //   pf.body,
-            // )(pf.resourceReference)(using
-            //   ${ encoderInImplicit.asExprOf[Codec[inT]] },
-            //   ${ encoderOutImplicit.asExprOf[Codec[outT]] },
-            // )
-            ()
+            val capability = ${ multitierCapability.asExprOf[MtEff] }
+            val pf = ${ placedFunction.asExprOf[capability.effect.PlacedFunction[inT, outT, peer]] }
+            $net.effect.registerFunction[inT, outT, peer](
+              pf.body,
+            )(pf.resourceReference)(using
+              ${ encoderInImplicit.asExprOf[Codec[inT]] },
+              ${ encoderOutImplicit.asExprOf[Codec[outT]] },
+            )
           }
         case _ =>
           report.errorAndAbort(
