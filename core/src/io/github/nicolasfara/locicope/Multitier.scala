@@ -89,7 +89,7 @@ object Multitier:
     trait PlacedFunction[-In <: Product: Codec, Out: Encoder, Local <: Peer]:
       val funcPeerRepr: PeerRepr
       val resourceReference: Reference
-      protected[locicope] val body: In => Out
+      val body: In => Out
       def apply(inputs: In): Out on Local
 
     def placed[V: Encoder, P <: Peer](body: MultitierPeerScope[P] ?=> V)(peerRepr: PeerRepr)(using Net): V on P
