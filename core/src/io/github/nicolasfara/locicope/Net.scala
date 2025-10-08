@@ -35,10 +35,10 @@ object Net:
   def invokeFunction[In <: Product: Codec, Out: Codec](inputs: In, ref: Reference)(using net: Net): Out =
     net.effect.invokeFunction[In, Out](inputs, ref)
 
-  def run[V](program: Net ?=> V): V =
-    val handler = new Locicope.Handler[Net.Effect, V, V]:
-      override def handle(program: Locicope[Effect] ?=> V): V = ???
-    Locicope.handle(program)(using handler)
+  // def run[V](program: Net ?=> V): V =
+  //   val handler = new Locicope.Handler[Net.Effect, V, V]:
+  //     override def handle(program: Locicope[Effect] ?=> V): V = ???
+  //   Locicope.handle(program)(using handler)
 
   trait Effect:
     def id: Int

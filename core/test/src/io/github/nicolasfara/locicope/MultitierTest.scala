@@ -8,7 +8,7 @@ import io.github.nicolasfara.locicope.Net.Net
 import io.github.nicolasfara.locicope.Multitier.Multitier
 import io.github.nicolasfara.locicope.utils.TestCodec.given
 import io.github.nicolasfara.locicope.Multitier.placed
-import io.github.nicolasfara.locicope.utils.ClientServerArch.{Client, Server }
+import io.github.nicolasfara.locicope.utils.ClientServerArch.{ Client, Server }
 import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 import io.github.nicolasfara.locicope.serialization.Decoder
 import io.github.nicolasfara.locicope.serialization.Encoder
@@ -26,11 +26,13 @@ class MultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
 
   "The Multitier capability" should "access a remote value" in:
     (netEffect.getValue(_: Reference)(using _: Decoder[Int])).returnsWith(Right(10))
-    (netEffect.setValue(_: Int, _: Reference)(using _: Encoder[Int])).returns:
-      case (10, _, _) => ()
-      case _ @ (wrongValue, _, _) => fail(s"Unexpected value: $wrongValue")
+    (netEffect
+      .setValue(_: Int, _: Reference)(using _: Encoder[Int]))
+      .returns:
+        case (10, _, _) => ()
+        case _ @(wrongValue, _, _) => fail(s"Unexpected value: $wrongValue")
 
-    def multitierSingleValue(using Net, Multitier) = 
+    def multitierSingleValue(using Net, Multitier) =
       val valueOnServer = placed[Server](10)
       placed[Client]:
         val localValue = valueOnServer.asLocal
@@ -60,9 +62,11 @@ class MultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
     (netEffect.setValue(_: Int, _: Reference)(using _: Encoder[Int])).times shouldBe 1
 
   it should "access a local value without network calls" in:
-    (netEffect.setValue(_: Int, _: Reference)(using _: Encoder[Int])).returns:
-      case (42, _, _) => ()
-      case _ @ (wrongValue, _, _) => fail(s"Unexpected value: $wrongValue")
+    (netEffect
+      .setValue(_: Int, _: Reference)(using _: Encoder[Int]))
+      .returns:
+        case (42, _, _) => ()
+        case _ @(wrongValue, _, _) => fail(s"Unexpected value: $wrongValue")
 
     def multitierLocalValue(using Net, Multitier) =
       val valueOnClient = placed[Client](42)
@@ -77,9 +81,11 @@ class MultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
     (netEffect.setValue(_: Int, _: Reference)(using _: Encoder[Int])).times shouldBe 2
 
   it should "access a local flow without network calls" in:
-    (netEffect.setValue(_: Int, _: Reference)(using _: Encoder[Int])).returns:
-      case (15, _, _) => ()
-      case _ @ (wrongValue, _, _) => fail(s"Unexpected value: $wrongValue")
+    (netEffect
+      .setValue(_: Int, _: Reference)(using _: Encoder[Int]))
+      .returns:
+        case (15, _, _) => ()
+        case _ @(wrongValue, _, _) => fail(s"Unexpected value: $wrongValue")
     (netEffect.setFlow(_: Flow[Int], _: Reference)(using _: Encoder[Int])).returnsWith(())
 
     def multitierLocalFlow(using Net, Multitier) =

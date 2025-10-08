@@ -1,9 +1,9 @@
 package io.github.nicolasfara.locicope
 
-import io.github.nicolasfara.locicope.Net.{Net, getFlow, getValue, getValues, id}
+import io.github.nicolasfara.locicope.Net.{ getFlow, getValue, getValues, id, Net }
 import io.github.nicolasfara.locicope.network.NetworkResource.Reference
-import io.github.nicolasfara.locicope.placement.Peers.{Peer, TiedToMultiple, TiedToSingle, TiedWith}
-import io.github.nicolasfara.locicope.serialization.{Codec, Encoder}
+import io.github.nicolasfara.locicope.placement.Peers.{ Peer, TiedToMultiple, TiedToSingle, TiedWith }
+import io.github.nicolasfara.locicope.serialization.{ Codec, Encoder }
 import ox.flow.Flow
 
 object PlacementType:
@@ -34,7 +34,7 @@ object PlacementType:
     case Placement.Local(_, ref) => ref
     case Placement.LocalAll(_, ref) => ref
     case Placement.Remote(ref) => ref
-    
+
   protected[locicope] def getLocalValue[V, P <: Peer](value: V on P)(using Net): Option[V] = value match
     case Placement.Local(v, _) => Some(v)
     case Placement.LocalAll(values, _) => values.get(id)
@@ -49,7 +49,6 @@ object PlacementType:
       case Placement.Local(value, _) => value
       case Placement.LocalAll(value, ref) => throw IllegalStateException("Something went wrong, please report this issue.")
       case Placement.Remote(ref) => getFlow(ref).fold(ex => throw IllegalStateException("Value not found", ex), identity)
-    
 
   extension [V: Codec, P <: Peer](p: on[V, P])
     def unwrap(using PeerScope[P], Net): V = p match
