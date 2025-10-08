@@ -47,11 +47,13 @@ object Multitier:
     private class PlacedFunctionImpl[In <: Product: Codec, Out: Codec, Local <: Peer](
         override val funcPeerRepr: PeerRepr,
         override val resourceReference: Reference,
-    )(override val body: In => Out)(using Net) extends PlacedFunction[In, Out, Local]:
+    )(override val body: In => Out)(using Net)
+        extends PlacedFunction[In, Out, Local]:
       override def toString: String = s"λ@${funcPeerRepr.baseTypeRepr}"
       override def apply(inputs: In): Out on Local =
-        val result = if localPeerRepr <:< funcPeerRepr then body(inputs)
-        else invokeFunction[In, Out](inputs, resourceReference)
+        val result =
+          if localPeerRepr <:< funcPeerRepr then body(inputs)
+          else invokeFunction[In, Out](inputs, resourceReference)
         PlacementType.lift(Some(result), resourceReference)
 
     override def placed[V: Encoder, P <: Peer](body: MultitierPeerScope[P] ?=> V)(peerRepr: PeerRepr)(using Net): V on P =
@@ -59,7 +61,7 @@ object Multitier:
       val resourceReference = Reference(hashBody(body), localPeerRepr, ValueType.Value)
       val placedValue = if localPeerRepr <:< peerRepr then
         val result = body
-        Some(result) 
+        Some(result)
       else
         findPlacedFunctions(body, summon)
         None
@@ -70,7 +72,7 @@ object Multitier:
       val resourceReference = Reference(hashBody(body), localPeerRepr, ValueType.Flow)
       val placedValue = if localPeerRepr <:< peerRepr then
         val result = body
-        Some(result) 
+        Some(result)
       else
         findPlacedFunctions(body, summon)
         None
@@ -78,10 +80,11 @@ object Multitier:
 
     override def function[In <: Product: Codec, Out: Codec, P <: Peer](body: MultitierPeerScope[P] ?=> In => Out)(peerRepr: PeerRepr)(using
         Net,
-    ): PlacedFunction[In, Out, P] = 
+    ): PlacedFunction[In, Out, P] =
       given MultitierPeerScope[P] = new MultitierPeerScopeImpl[P](peerRepr)
       val resourceReference = Reference(hashBody(body), localPeerRepr, ValueType.Value)
       PlacedFunctionImpl[In, Out, P](peerRepr, resourceReference)(body)
+  end EffectImpl
 
   trait Effect:
     protected[locicope] val localPeerRepr: PeerRepr
