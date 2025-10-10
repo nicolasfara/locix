@@ -5,8 +5,8 @@ import io.github.nicolasfara.locicope.serialization.{ Decoder, Encoder }
 import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
 import io.github.nicolasfara.locicope.placement.Peers.TiedWith
 import io.github.nicolasfara.locicope.placement.Peers.Peer
-import io.github.nicolasfara.locicope.PlacementType.PeerScope
 import io.github.nicolasfara.locicope.placement.Peers.peer
+import io.github.nicolasfara.locicope.placement.PlacementType.PeerScope
 import scala.annotation.targetName
 import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 
@@ -34,12 +34,13 @@ object Network:
   def reachablePeers[P <: Peer](using net: Network)(peerRepr: PeerRepr): Set[net.effect.Address[P]] =
     net.effect.reachablePeersOf[P](peerRepr)
 
+  extension [P <: Peer](using net: Network)(address: net.effect.Address[P])
+    def id: net.effect.Id = net.effect.getId[P](address)
+
   trait Effect:
     type Address[_ <: Peer]
     type NetworkError <: Throwable
     type Id
-
-    extension [P <: Peer](address: Address[P]) def id: Id
 
     def register[V: Encoder](ref: Reference, data: V): Unit
 
@@ -52,4 +53,6 @@ object Network:
     )(address: Address[From], ref: Reference): Either[NetworkError, V]
 
     def reachablePeersOf[P <: Peer](peerRepr: PeerRepr): Set[Address[P]]
+
+    def getId[P <: Peer](address: Address[P]): Id
 end Network
