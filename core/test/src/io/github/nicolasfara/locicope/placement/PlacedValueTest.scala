@@ -11,14 +11,17 @@ import io.github.nicolasfara.locicope.placement.Peers.Peer
 import io.github.nicolasfara.locicope.serialization.Encoder
 import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 import io.github.nicolasfara.locicope.placement.Peers.TiedWith
-import io.github.nicolasfara.locicope.serialization.Decoder
+import io.github.nicolasfara.locicope.serialization.{ Decoder, Encoder }
 import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
 import io.github.nicolasfara.locicope.placement.PlacedValue.PlacedValue
-import io.github.nicolasfara.locicope.utils.ClientServerArch.Client
+import io.github.nicolasfara.locicope.utils.ClientServerArch.{ Client, Server }
 import io.github.nicolasfara.locicope.placement.Peers.peer
 import io.github.nicolasfara.locicope.network.NetworkResource.ValueType
-import io.github.nicolasfara.locicope.utils.TestCodec.{foo, given}
-import io.github.nicolasfara.locicope.placement.PlacedValue.unwrap
+import io.github.nicolasfara.locicope.utils.TestCodec.{ foo, given }
+import io.github.nicolasfara.locicope.placement.PlacedValue.{ asLocal, asLocalAll, unwrap }
+import io.github.nicolasfara.locicope.placement.PlacementType.PeerScope
+import io.github.nicolasfara.locicope.network.Network.localId
+import io.github.nicolasfara.locicope.placement.PlacementType.on
 
 class PlacedValueTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
   private trait IntNetwork extends Network.Effect:
@@ -32,10 +35,57 @@ class PlacedValueTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
     resetStubs()
 
   "A `PlacedValue`" should "allow lifting a value produced in a peer scope into a placed value" in:
-    def placedValueProgram(using Network, PlacedValue) = PlacedValue.on[Client, Int](10)
-    def placedValueProgramDouble(using Network, PlacedValue) = PlacedValue.on[Client, Double](10.0)
-    PlacedValue.run[Client]:
-      placedValueProgram.unwrap shouldBe 10
-      placedValueProgramDouble.unwrap shouldBe 10.0
-      10
-    ???
+    (netEffect.register[Int](_: Reference, _: Int)(using _: Encoder[Int])).returnsWith(())
+
+    def placedValueProgram(using Network, PlacedValue) = PlacedValue.on[Client](10)
+    val result = PlacedValue.run[Client]:
+      val unwrappedValue = placedValueProgram.unwrap
+      unwrappedValue shouldBe 10
+      unwrappedValue
+
+    result shouldBe 10
+    (netEffect.register[Int](_: Reference, _: Int)(using _: Encoder[Int])).times shouldBe 1 // Register the value on the network
+
+  it should "allow retrieving a placed value from a remote peer" in:
+    (netEffect.reachablePeersOf(_: PeerRepr)).returnsWith(Set("peer1"))
+    (netEffect.receive[Int, Server, Client](_: String, _: Reference)(using _: Decoder[Int])).returnsWith(Right(10))
+
+    def placedValueProgram(using Network, PlacedValue) = PlacedValue.on[Server](10)
+    val result = PlacedValue.run[Client]:
+      val localValue = placedValueProgram.asLocal
+      localValue shouldBe 10
+      localValue
+
+    result shouldBe 10
+    (netEffect.reachablePeersOf(_: PeerRepr)).times shouldBe 1 // Check reachable peers
+    (netEffect
+      .receive[Int, Server, Client](_: String, _: Reference)(using _: Decoder[Int]))
+      .times shouldBe 1 // Receive the value from the remote peer
+
+  it should "allow retrieving a placed value from multiple remote peers" in:
+    (netEffect.reachablePeersOf(_: PeerRepr)).returnsWith(Set("client1", "client2"))
+    (netEffect
+      .getId(_: netEffect.Address[Client]))
+      .returns:
+        case "client1" => 1
+        case "client2" => 2
+        case clientNotFound => fail(s"Peer `${clientNotFound}` not registered in the network")
+    (netEffect
+      .receive[Int, Client, Server](_: String, _: Reference)(using _: Decoder[Int]))
+      .returns:
+        case ("client1", _, _) => Right(1)
+        case ("client2", _, _) => Right(2)
+        case _ => Left(new NoSuchElementException("Peer not found"))
+
+    def placedValueProgram(using Network, PlacedValue) = PlacedValue.on[Client](Int.MaxValue)
+    val result = PlacedValue.run[Server]:
+      val localValues = placedValueProgram.asLocalAll
+      localValues shouldBe Map(1 -> 1, 2 -> 2)
+      localValues.values.sum
+
+    result shouldBe 3
+    (netEffect.reachablePeersOf(_: PeerRepr)).times shouldBe 1 // Check reachable peers
+    (netEffect
+      .receive[Int, Client, Server](_: String, _: Reference)(using _: Decoder[Int]))
+      .times shouldBe 2 // Receive the value from the remote peers
+end PlacedValueTest

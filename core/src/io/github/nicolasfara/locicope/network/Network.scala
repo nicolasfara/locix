@@ -9,9 +9,13 @@ import io.github.nicolasfara.locicope.placement.Peers.peer
 import io.github.nicolasfara.locicope.placement.PlacementType.PeerScope
 import scala.annotation.targetName
 import io.github.nicolasfara.locicope.network.NetworkResource.Reference
+import sttp.client4.DuplicateHeaderBehavior.Add
 
 object Network:
   type Network = Locicope[Network.Effect]
+
+  def localId[P <: Peer](using net: Network): net.effect.Address[P] =
+    net.effect.localId[P]
 
   def register[V: Encoder](ref: Reference, data: V)(using net: Network): Unit =
     net.effect.register[V](ref, data)
@@ -34,13 +38,14 @@ object Network:
   def reachablePeers[P <: Peer](using net: Network)(peerRepr: PeerRepr): Set[net.effect.Address[P]] =
     net.effect.reachablePeersOf[P](peerRepr)
 
-  extension [P <: Peer](using net: Network)(address: net.effect.Address[P])
-    def id: net.effect.Id = net.effect.getId[P](address)
+  extension [P <: Peer](using net: Network)(address: net.effect.Address[P]) def id: net.effect.Id = net.effect.getId[P](address)
 
   trait Effect:
     type Address[_ <: Peer]
     type NetworkError <: Throwable
     type Id
+
+    def localId[P <: Peer]: Address[P]
 
     def register[V: Encoder](ref: Reference, data: V): Unit
 
@@ -48,9 +53,7 @@ object Network:
         PeerScope[From],
     )(address: Address[To], ref: Reference, data: V): Either[NetworkError, Unit]
 
-    def receive[V: Decoder, From <: Peer, To <: TiedWith[From]](using
-        PeerScope[To],
-    )(address: Address[From], ref: Reference): Either[NetworkError, V]
+    def receive[V: Decoder, From <: Peer, To <: TiedWith[From]](address: Address[From], ref: Reference): Either[NetworkError, V]
 
     def reachablePeersOf[P <: Peer](peerRepr: PeerRepr): Set[Address[P]]
 

@@ -13,7 +13,7 @@ import io.github.nicolasfara.locicope.serialization.Decoder
 import io.github.nicolasfara.locicope.network.Network.{ reachablePeers, receive, register }
 import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
 import io.github.nicolasfara.locicope.placement.Peers.peer
-import io.github.nicolasfara.locicope.placement.PlacementType.{on, PeerScope}
+import io.github.nicolasfara.locicope.placement.PlacementType.{ on, PeerScope }
 import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
 import io.github.nicolasfara.locicope.network.NetworkResource.ValueType
 
@@ -22,7 +22,7 @@ object PlacedValue:
 
   class PlacedValuePeerScope[P <: Peer] extends PeerScope[P]
 
-  inline def on[P <: Peer, Value: Codec](using pv: PlacedValue, net: Network)(expression: PeerScope[P] ?=> Value): Value on P =
+  inline def on[P <: Peer](using pv: PlacedValue, net: Network)[Value: Codec](expression: PeerScope[P] ?=> Value): Value on P =
     pv.effect.on[P, Value](peer[P])(expression)
 
   extension [Remote <: Peer, Value: Codec](using pl: PlacedValue)(placedValue: Value on Remote)
@@ -49,7 +49,7 @@ object PlacedValue:
 
   private class EffectImpl(executionPeerRepr: PeerRepr) extends Effect:
     override def on[P <: Peer, Value: Codec](using
-      Network
+        Network,
     )(peerRepr: PeerRepr)(expression: PeerScope[P] ?=> Value): Value on P =
       given PeerScope[P] = new PlacedValuePeerScope[P]
       val resourceReference = Reference(hashBody(expression), peerRepr, ValueType.Value)

@@ -1,6 +1,5 @@
 package io.github.nicolasfara.locicope
 
-import io.github.nicolasfara.locicope.Net.{ getFlow, getValue, getValues, id, Net }
 import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 import io.github.nicolasfara.locicope.placement.Peers.{ Peer, TiedToMultiple, TiedToSingle, TiedWith }
 import io.github.nicolasfara.locicope.serialization.{ Codec, Encoder }
