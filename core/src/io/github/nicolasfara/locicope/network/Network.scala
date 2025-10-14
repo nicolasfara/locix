@@ -21,7 +21,6 @@ object Network:
     net.effect.register[V](ref, data)
 
   def send[V: Encoder, To <: Peer, From <: TiedWith[To]](using
-      scope: PeerScope[From],
       net: Network,
   )(address: net.effect.Address[To], ref: Reference, data: V): Either[net.effect.NetworkError, Unit] =
     net.effect.send[V, To, From](address, ref, data)
@@ -49,9 +48,7 @@ object Network:
 
     def register[V: Encoder](ref: Reference, data: V): Unit
 
-    def send[V: Encoder, To <: Peer, From <: TiedWith[To]](using
-        PeerScope[From],
-    )(address: Address[To], ref: Reference, data: V): Either[NetworkError, Unit]
+    def send[V: Encoder, To <: Peer, From <: TiedWith[To]](address: Address[To], ref: Reference, data: V): Either[NetworkError, Unit]
 
     def receive[V: Decoder, From <: Peer, To <: TiedWith[From]](address: Address[From], ref: Reference): Either[NetworkError, V]
 

@@ -57,7 +57,7 @@ object PlacedValue:
         val result = expression
         Some(result)
       else None
-      lift(placedValue, resourceReference)
+      lift(executionPeerRepr)(placedValue, resourceReference)
 
     override def unwrap[Local <: Peer, Value: Codec](using PeerScope[Local])(placedValue: Value on Local): Value =
       // https://dotty.epfl.ch/docs/reference/other-new-features/runtimeChecked.html#example
