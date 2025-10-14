@@ -9,7 +9,6 @@ import io.github.nicolasfara.locicope.placement.Peers.peer
 import io.github.nicolasfara.locicope.placement.PlacementType.PeerScope
 import scala.annotation.targetName
 import io.github.nicolasfara.locicope.network.NetworkResource.Reference
-import sttp.client4.DuplicateHeaderBehavior.Add
 
 object Network:
   type Network = Locicope[Network.Effect]
