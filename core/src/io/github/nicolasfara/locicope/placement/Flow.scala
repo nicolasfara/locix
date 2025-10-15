@@ -60,6 +60,11 @@ trait Flow[+V]:
    * Concatenate with another flow.
    */
   def concat[U >: V](other: Flow[U]): Flow[U]
+
+  /**
+   * Merge with another flow.
+   */
+  def merge[U >: V](other: Flow[U]): Flow[U]
   
   /**
    * Execute a side effect for each element.
@@ -162,6 +167,7 @@ object Flow:
     def takeWhile(predicate: V => Boolean): Flow[V] = IterableFlow(iterable.takeWhile(predicate))
     def dropWhile(predicate: V => Boolean): Flow[V] = IterableFlow(iterable.dropWhile(predicate))
     def concat[U >: V](other: Flow[U]): Flow[U] = ConcatFlow(List(this, other))
+    def merge[U >: V](other: Flow[U]): Flow[U] = MergeFlow(List(this, other))
     def foreach(f: V => Unit): Flow[V] = 
       IterableFlow(iterable.map { v => f(v); v })
     
@@ -207,6 +213,7 @@ object Flow:
     def takeWhile(predicate: V => Boolean): Flow[V] = filter(predicate)
     def dropWhile(predicate: V => Boolean): Flow[V] = filter(!predicate(_))
     def concat[U >: V](other: Flow[U]): Flow[U] = ConcatFlow(List(this, other))
+    def merge[U >: V](other: Flow[U]): Flow[U] = MergeFlow(List(this, other))
     def foreach(f: V => Unit): Flow[V] = 
       FutureFlow(future.map { v => f(v); v }(using ExecutionContext.global))
     
@@ -310,6 +317,7 @@ object Flow:
         )
       }
     def concat[U >: V](other: Flow[U]): Flow[U] = ConcatFlow(List(this, other))
+    def merge[U >: V](other: Flow[U]): Flow[U] = MergeFlow(List(this, other))
     def foreach(f: V => Unit): Flow[V] = 
       CallbackFlow { (onNext, onError, onComplete) =>
         register(v => { f(v); onNext(v) }, onError, onComplete)
@@ -393,6 +401,7 @@ object Flow:
       // Simplified - apply to all flows
       ConcatFlow(flows.map(_.dropWhile(predicate)))
     def concat[U >: V](other: Flow[U]): Flow[U] = ConcatFlow(flows :+ other)
+    def merge[U >: V](other: Flow[U]): Flow[U] = MergeFlow(flows :+ other)
     def foreach(f: V => Unit): Flow[V] = ConcatFlow(flows.map(_.foreach(f)))
     
     def fold[U](initial: U)(f: (U, V) => U)(using ExecutionContext): Future[U] =
@@ -494,6 +503,7 @@ object Flow:
         value
       )
     def concat[U >: V](other: Flow[U]): Flow[U] = ConcatFlow(List(this, other))
+    def merge[U >: V](other: Flow[U]): Flow[U] = MergeFlow(List(this, other))
     def foreach(f: V => Unit): Flow[V] = RepeatFlow(() => { val v = computation(); f(v); v })
     
     def fold[U](initial: U)(f: (U, V) => U)(using ExecutionContext): Future[U] =
@@ -684,6 +694,7 @@ object Flow:
         subscription
       }
     def concat[U >: Long](other: Flow[U]): Flow[U] = ConcatFlow(List(this, other))
+    def merge[U >: Long](other: Flow[U]): Flow[U] = MergeFlow(List(this, other))
     def foreach(f: Long => Unit): Flow[Long] = 
       CallbackFlow { (onNext, onError, onComplete) =>
         val active = new AtomicReference(true)
@@ -792,6 +803,7 @@ object Flow:
           case _ => state
       UnfoldFlow(skipWhile(seed), f)
     def concat[U >: V](other: Flow[U]): Flow[U] = ConcatFlow(List(this, other))
+    def merge[U >: V](other: Flow[U]): Flow[U] = MergeFlow(List(this, other))
     def foreach(g: V => Unit): Flow[V] = 
       UnfoldFlow(seed, (s: S) => f(s).map((v, nextS) => { g(v); (v, nextS) }))
     
@@ -886,6 +898,7 @@ object Flow:
     def takeWhile(predicate: U => Boolean): Flow[U] = FlatMapFlow(source, v => f(v).takeWhile(predicate))
     def dropWhile(predicate: U => Boolean): Flow[U] = FlatMapFlow(source, v => f(v).dropWhile(predicate))
     def concat[W >: U](other: Flow[W]): Flow[W] = ConcatFlow(List(this, other))
+    def merge[W >: U](other: Flow[W]): Flow[W] = MergeFlow(List(this, other))
     def foreach(g: U => Unit): Flow[U] = FlatMapFlow(source, v => f(v).foreach(g))
     
     def fold[W](initial: W)(g: (W, U) => W)(using ExecutionContext): Future[W] =
@@ -956,3 +969,159 @@ object Flow:
     
     def toIterator(using ExecutionContext): Iterator[U] =
       source.toIterator.flatMap(v => f(v).toIterator)
+
+  private case class MergeFlow[V](flows: List[Flow[V]]) extends Flow[V]:
+    def map[U](f: V => U): Flow[U] = MergeFlow(flows.map(_.map(f)))
+    def filter(predicate: V => Boolean): Flow[V] = MergeFlow(flows.map(_.filter(predicate)))
+    def flatMap[U](f: V => Flow[U]): Flow[U] = MergeFlow(flows.map(_.flatMap(f)))
+    def collect[U](pf: PartialFunction[V, U]): Flow[U] = MergeFlow(flows.map(_.collect(pf)))
+    def take(n: Int): Flow[V] = 
+      if n <= 0 then Flow.empty
+      else 
+        CallbackFlow { (onNext, onError, onComplete) =>
+          val active = new AtomicReference(true)
+          val subscriptions = mutable.ListBuffer[Subscription]()
+          val emittedCount = new AtomicReference(0)
+          
+          val subscription = new Subscription:
+            def cancel(): Unit = 
+              active.set(false)
+              subscriptions.foreach(_.cancel())
+            def isActive: Boolean = active.get()
+          
+          var completedCount = 0
+          
+          flows.foreach { flow =>
+            if subscription.isActive then
+              val sub = flow.subscribe(
+                v => 
+                  if subscription.isActive then
+                    val count = emittedCount.getAndUpdate(_ + 1)
+                    if count < n then
+                      onNext(v)
+                      if count + 1 == n then
+                        subscription.cancel()
+                        onComplete()
+                ,
+                onError,
+                () => 
+                  completedCount += 1
+                  if completedCount == flows.length && subscription.isActive then
+                    onComplete()
+              )(using ExecutionContext.global)
+              subscriptions += sub
+          }
+          subscription
+        }
+    def drop(n: Int): Flow[V] = 
+      if n <= 0 then this
+      else 
+        CallbackFlow { (onNext, onError, onComplete) =>
+          val active = new AtomicReference(true)
+          val subscriptions = mutable.ListBuffer[Subscription]()
+          val droppedCount = new AtomicReference(0)
+          
+          val subscription = new Subscription:
+            def cancel(): Unit = 
+              active.set(false)
+              subscriptions.foreach(_.cancel())
+            def isActive: Boolean = active.get()
+          
+          var completedCount = 0
+          
+          flows.foreach { flow =>
+            if subscription.isActive then
+              val sub = flow.subscribe(
+                v => 
+                  if subscription.isActive then
+                    if droppedCount.getAndUpdate(_ + 1) >= n then
+                      onNext(v)
+                ,
+                onError,
+                () => 
+                  completedCount += 1
+                  if completedCount == flows.length && subscription.isActive then
+                    onComplete()
+              )(using ExecutionContext.global)
+              subscriptions += sub
+          }
+          subscription
+        }
+    def takeWhile(predicate: V => Boolean): Flow[V] = 
+      MergeFlow(flows.map(_.takeWhile(predicate)))
+    def dropWhile(predicate: V => Boolean): Flow[V] = 
+      MergeFlow(flows.map(_.dropWhile(predicate)))
+    def concat[U >: V](other: Flow[U]): Flow[U] = ConcatFlow(List(this, other))
+    def merge[U >: V](other: Flow[U]): Flow[U] = MergeFlow(flows :+ other)
+    def foreach(f: V => Unit): Flow[V] = MergeFlow(flows.map(_.foreach(f)))
+    
+    def fold[U](initial: U)(f: (U, V) => U)(using ExecutionContext): Future[U] =
+      val promise = Promise[U]()
+      var accumulator = initial
+      subscribe(
+        v => accumulator = f(accumulator, v),
+        promise.failure,
+        () => promise.success(accumulator)
+      )
+      promise.future
+    
+    def reduce[U >: V](f: (U, U) => U)(using ExecutionContext): Future[U] =
+      val promise = Promise[U]()
+      var accumulator: Option[U] = None
+      subscribe(
+        v => accumulator = Some(accumulator.fold(v)(f(_, v))),
+        promise.failure,
+        () => accumulator match
+          case Some(value) => promise.success(value)
+          case None => promise.failure(new NoSuchElementException("Empty flow"))
+      )
+      promise.future
+    
+    def runToList()(using ExecutionContext): Future[List[V]] =
+      val promise = Promise[List[V]]()
+      val buffer = mutable.ListBuffer[V]()
+      subscribe(
+        buffer += _,
+        promise.failure,
+        () => promise.success(buffer.toList)
+      )
+      promise.future
+    
+    def subscribe(onNext: V => Unit, onError: Throwable => Unit, onComplete: () => Unit)(using ExecutionContext): Subscription =
+      val subscriptions = mutable.ListBuffer[Subscription]()
+      val active = new AtomicReference(true)
+      var completedCount = 0
+      
+      val subscription = new Subscription:
+        def cancel(): Unit = 
+          active.set(false)
+          subscriptions.foreach(_.cancel())
+        def isActive: Boolean = active.get()
+      
+      flows.foreach { flow =>
+        if subscription.isActive then
+          val sub = flow.subscribe(
+            onNext,
+            onError,
+            () => 
+              completedCount += 1
+              if completedCount == flows.length && subscription.isActive then
+                onComplete()
+          )
+          subscriptions += sub
+      }
+      subscription
+    
+    def toIterator(using ExecutionContext): Iterator[V] =
+      // For iterator, we need to interleave - this is a simplified approach
+      // that collects all values first (blocking)
+      val promise = Promise[List[V]]()
+      val buffer = mutable.ListBuffer[V]()
+      subscribe(
+        buffer += _,
+        promise.failure,
+        () => promise.success(buffer.toList)
+      )
+      import scala.concurrent.duration._
+      import scala.concurrent.Await
+      Await.result(promise.future, Duration.Inf).iterator

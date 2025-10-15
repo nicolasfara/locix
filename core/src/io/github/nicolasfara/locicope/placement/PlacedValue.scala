@@ -16,6 +16,7 @@ import io.github.nicolasfara.locicope.placement.Peers.peer
 import io.github.nicolasfara.locicope.placement.PlacementType.{ on, PeerScope }
 import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
 import io.github.nicolasfara.locicope.network.NetworkResource.ValueType
+import io.github.nicolasfara.locicope.placement.PlacementType.Id
 
 object PlacedValue:
   type PlacedValue = Locicope[PlacedValue.Effect]
@@ -53,11 +54,11 @@ object PlacedValue:
     )(peerRepr: PeerRepr)(expression: PeerScope[P] ?=> Value): Value on P =
       given PeerScope[P] = new PlacedValuePeerScope[P]
       val resourceReference = Reference(hashBody(expression), peerRepr, ValueType.Value)
-      val placedValue = if executionPeerRepr <:< peerRepr then
+      val placedValue: Option[PlacementType.Id[Value]] = if executionPeerRepr <:< peerRepr then
         val result = expression
         Some(result)
       else None
-      lift(executionPeerRepr)(placedValue, resourceReference)
+      liftF(executionPeerRepr)(placedValue, resourceReference)
 
     override def unwrap[Local <: Peer, Value: Codec](using PeerScope[Local])(placedValue: Value on Local): Value =
       // https://dotty.epfl.ch/docs/reference/other-new-features/runtimeChecked.html#example
@@ -73,7 +74,7 @@ object PlacedValue:
       peers
         .map: address =>
           val id = address.id
-          val receivedValue = receive[Value, Remote, Local](address, reference).fold(error => throw error, identity)
+          val receivedValue = receive[Id, Value, Remote, Local](address, reference).fold(error => throw error, identity)
           id -> receivedValue
         .toMap
 
@@ -85,7 +86,7 @@ object PlacedValue:
       if peers.size != 1 then throw IllegalStateException(s"Expected exactly one remote peer, found ${peers.size}.")
       val address = peers.head
       val PlacementType.Placed.Remote(reference) = placedValue.runtimeChecked
-      receive[Value, Remote, Local](address, reference).fold(error => throw error, identity)
+      receive[Id, Value, Remote, Local](address, reference).fold(error => throw error, identity)
 
     override def asLocalAll[Remote <: Peer, Local <: TiedToMultiple[Remote], Value: Codec](using
         ps: PeerScope[Local],
@@ -96,7 +97,7 @@ object PlacedValue:
       peers
         .map: address =>
           val id = address.id
-          val receivedValue = receive[Value, Remote, Local](address, reference).fold(error => throw error, identity)
+          val receivedValue = receive[Id, Value, Remote, Local](address, reference).fold(error => throw error, identity)
           id -> receivedValue
         .toMap
 
