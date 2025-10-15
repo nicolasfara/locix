@@ -16,7 +16,6 @@ import io.github.nicolasfara.locicope.placement.Peers.peer
 import io.github.nicolasfara.locicope.placement.PlacementType.{ on, PeerScope }
 import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
 import io.github.nicolasfara.locicope.network.NetworkResource.ValueType
-import io.github.nicolasfara.locicope.placement.PlacementType.Id
 
 object PlacedValue:
   type PlacedValue = Locicope[PlacedValue.Effect]
@@ -30,15 +29,11 @@ object PlacedValue:
     def unwrap(using PeerScope[Remote]): Value =
       pl.effect.unwrap(placedValue)
 
-    inline def locally[Local <: TiedWith[Remote]](using ps: PeerScope[Local], net: Network): Map[net.effect.Id, Value] =
-      pl.effect.locally[Remote, Local, Value](peer[Remote])(placedValue)
-
     inline def asLocal[Local <: TiedToSingle[Remote]](using PeerScope[Local], Network): Value =
       pl.effect.asLocal[Remote, Local, Value](peer[Remote])(placedValue)
 
     inline def asLocalAll[Local <: TiedToMultiple[Remote]](using ps: PeerScope[Local], net: Network): Map[net.effect.Id, Value] =
       pl.effect.asLocalAll[Remote, Local, Value](peer[Remote])(placedValue)
-  end extension
 
   inline def run[P <: Peer](using net: Network)[V: Codec](program: (PlacedValue, PeerScope[P]) ?=> V): V =
     given handler: Locicope.Handler[PlacedValue.Effect, V, V] = new HandlerImpl(peer[P])
@@ -49,12 +44,13 @@ object PlacedValue:
     override def handle(program: Locicope[Effect] ?=> Value): Value = program(using new Locicope(EffectImpl(executionPeerRepr)))
 
   private class EffectImpl(executionPeerRepr: PeerRepr) extends Effect:
+    type Id[V] = V
     override def on[P <: Peer, Value: Codec](using
         Network,
     )(peerRepr: PeerRepr)(expression: PeerScope[P] ?=> Value): Value on P =
       given PeerScope[P] = new PlacedValuePeerScope[P]
       val resourceReference = Reference(hashBody(expression), peerRepr, ValueType.Value)
-      val placedValue: Option[PlacementType.Id[Value]] = if executionPeerRepr <:< peerRepr then
+      val placedValue: Option[Id[Value]] = if executionPeerRepr <:< peerRepr then
         val result = expression
         Some(result)
       else None
@@ -65,19 +61,6 @@ object PlacedValue:
       val PlacementType.Placed.Local(value, _) = placedValue.runtimeChecked
       value.asInstanceOf[Value]
 
-    override def locally[Remote <: Peer, Local <: TiedWith[Remote], Value: Codec](using
-        scope: PeerScope[Local],
-        net: Network,
-    )(remotePeerRepr: PeerRepr)(placedValue: Value on Remote): Map[net.effect.Id, Value] =
-      val PlacementType.Placed.Remote(reference) = placedValue.runtimeChecked
-      val peers = reachablePeers[Remote](remotePeerRepr)
-      peers
-        .map: address =>
-          val id = address.id
-          val receivedValue = receive[Id, Value, Remote, Local](address, reference).fold(error => throw error, identity)
-          id -> receivedValue
-        .toMap
-
     override def asLocal[Remote <: Peer, Local <: TiedToSingle[Remote], Value: Codec](using
         PeerScope[Local],
         Network,
@@ -86,7 +69,7 @@ object PlacedValue:
       if peers.size != 1 then throw IllegalStateException(s"Expected exactly one remote peer, found ${peers.size}.")
       val address = peers.head
       val PlacementType.Placed.Remote(reference) = placedValue.runtimeChecked
-      receive[Id, Value, Remote, Local](address, reference).fold(error => throw error, identity)
+      receive[[V] =>> V, Value, Remote, Local](address, reference).fold(error => throw error, identity)
 
     override def asLocalAll[Remote <: Peer, Local <: TiedToMultiple[Remote], Value: Codec](using
         ps: PeerScope[Local],
@@ -97,7 +80,7 @@ object PlacedValue:
       peers
         .map: address =>
           val id = address.id
-          val receivedValue = receive[Id, Value, Remote, Local](address, reference).fold(error => throw error, identity)
+          val receivedValue = receive[[V] =>> V, Value, Remote, Local](address, reference).fold(error => throw error, identity)
           id -> receivedValue
         .toMap
 
@@ -116,20 +99,6 @@ object PlacedValue:
      *   the value wrapped in the placed value.
      */
     def unwrap[Local <: Peer, Value: Codec](using PeerScope[Local])(placedValue: Value on Local): Value
-
-    /**
-     * Given a placed value on a remote peer tied with the local peer, fetch all the instances of the value from the remote peer. Any call to this
-     * method on a placed value that is not on a remote peer or not tied with the local peer will result in a compile-time error.
-     *
-     * @param placedValue
-     *   the placed value to fetch the instances from.
-     * @return
-     *   a map of the ids of the remote peers and the corresponding values.
-     */
-    def locally[Remote <: Peer, Local <: TiedWith[Remote], Value: Codec](using
-        ps: PeerScope[Local],
-        net: Network,
-    )(remotePeerRepr: PeerRepr)(placedValue: Value on Remote): Map[net.effect.Id, Value]
 
     /**
      * Given a placed value on a remote peer tied with the local peer, fetch the instance of the value from the remote peer. This method can only by

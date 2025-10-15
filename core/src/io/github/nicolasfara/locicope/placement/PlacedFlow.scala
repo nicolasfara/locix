@@ -16,6 +16,7 @@ import io.github.nicolasfara.locicope.placement.Peers.peer
 import io.github.nicolasfara.locicope.placement.PlacementType.{ on, PeerScope, Placement }
 import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
 import io.github.nicolasfara.locicope.network.NetworkResource.ValueType
+import ox.flow.Flow
 
 object PlacedFlow:
   type PlacedFlow = Locicope[PlacedFlow.Effect]
@@ -29,15 +30,11 @@ object PlacedFlow:
     def unwrap(using PeerScope[Remote]): Flow[Value] =
       pf.effect.unwrap(placedFlow)
 
-    inline def locally[Local <: TiedWith[Remote]](using ps: PeerScope[Local], net: Network): Flow[(net.effect.Id, Value)] =
-      pf.effect.locally[Remote, Local, Value](peer[Remote])(placedFlow)
-
     inline def asLocal[Local <: TiedToSingle[Remote]](using PeerScope[Local], Network): Flow[Value] =
       pf.effect.asLocal[Remote, Local, Value](peer[Remote])(placedFlow)
 
     inline def asLocalAll[Local <: TiedToMultiple[Remote]](using ps: PeerScope[Local], net: Network): Flow[(net.effect.Id, Value)] =
       pf.effect.asLocalAll[Remote, Local, Value](peer[Remote])(placedFlow)
-  end extension
 
   inline def run[P <: Peer](using net: Network)[V: Codec](program: (PlacedFlow, PeerScope[P]) ?=> V): V =
     given handler: Locicope.Handler[PlacedFlow.Effect, V, V] = new HandlerImpl(peer[P])
@@ -64,22 +61,9 @@ object PlacedFlow:
       placedFlow.runtimeChecked match
         case PlacementType.Placed.Local[Flow[Value] @unchecked, Local @unchecked](flow, _) => flow
 
-    override def locally[Remote <: Peer, Local <: TiedWith[Remote], Value: Codec](using
-        ps: PeerScope[Local],
-        net: Network
-    )(remotePeerRepr: PeerRepr)(placedFlow: Flow[Value] on Remote): Flow[(net.effect.Id, Value)] =
-      val PlacementType.Placed.Remote(reference) = placedFlow.runtimeChecked
-      val peers = reachablePeers[Remote](remotePeerRepr)
-      peers.map: peerAddress =>
-        receive[Flow, Value, Remote, Local](peerAddress, reference).fold(
-          err => throw err,
-          flow => flow.map(value => (net.effect.getId(peerAddress), value)),
-        )
-      .foldLeft(Flow.empty[(net.effect.Id, Value)])(_.merge(_))
-
     override def asLocal[Remote <: Peer, Local <: TiedToSingle[Remote], Value: Codec](using
         ps: PeerScope[Local],
-        net: Network
+        net: Network,
     )(remotePeerRepr: PeerRepr)(placedFlow: Flow[Value] on Remote): Flow[Value] =
       val peers = reachablePeers[Remote](remotePeerRepr)
       if peers.size != 1 then throw IllegalStateException(s"Expected exactly one remote peer, found ${peers.size}.")
@@ -89,16 +73,17 @@ object PlacedFlow:
 
     override def asLocalAll[Remote <: Peer, Local <: TiedToMultiple[Remote], Value: Codec](using
         ps: PeerScope[Local],
-        net: Network
+        net: Network,
     )(remotePeerRepr: PeerRepr)(placedFlow: Flow[Value] on Remote): Flow[(net.effect.Id, Value)] =
       val PlacementType.Placed.Remote(reference) = placedFlow.runtimeChecked
       val peers = reachablePeers[Remote](remotePeerRepr)
-      peers.map: peerAddress =>
-        receive[Flow, Value, Remote, Local](peerAddress, reference).fold(
-          err => throw err,
-          flow => flow.map(value => (net.effect.getId(peerAddress), value)),
-        )
-      .foldLeft(Flow.empty[(net.effect.Id, Value)])(_.merge(_))
+      peers
+        .map: peerAddress =>
+          receive[Flow, Value, Remote, Local](peerAddress, reference).fold(
+            err => throw err,
+            flow => flow.map(value => (net.effect.getId(peerAddress), value)),
+          )
+        .foldLeft(Flow.empty[(net.effect.Id, Value)])(_.merge(_))
   end EffectImpl
 
   trait Effect extends Placement:
@@ -113,10 +98,10 @@ object PlacedFlow:
      *   a placed flow that can be accessed from other peers
      */
     def flowOn[P <: Peer, Value: Codec](using Network)(peerRepr: PeerRepr)(expression: PeerScope[P] ?=> Flow[Value]): Flow[Value] on P
-    
+
     /**
-     * Extract the placed flow. This method can only be called by the peer that owns the flow. Any attempt to call this method on a placed flow
-     * on a remote peer will result in a compile-time error.
+     * Extract the placed flow. This method can only be called by the peer that owns the flow. Any attempt to call this method on a placed flow on a
+     * remote peer will result in a compile-time error.
      *
      * @param placedFlow
      *   the placed flow to extract the flow from.
@@ -124,26 +109,11 @@ object PlacedFlow:
      *   the flow wrapped in the placed flow.
      */
     def unwrap[Local <: Peer, Value: Codec](using PeerScope[Local])(placedFlow: Flow[Value] on Local): Flow[Value]
-    
+
     /**
-     * Given a placed flow on a remote peer tied with the local peer, create a flow that emits values from all instances of the remote flow.
-     * Each emitted value is paired with the ID of the remote peer that produced it. Any call to this method on a placed flow that is not on
-     * a remote peer or not tied with the local peer will result in a compile-time error.
-     *
-     * @param placedFlow
-     *   the placed flow to fetch values from.
-     * @return
-     *   a flow that emits tuples of (peer ID, value) for all values from all remote flow instances.
-     */
-    def locally[Remote <: Peer, Local <: TiedWith[Remote], Value: Codec](using
-        ps: PeerScope[Local],
-        net: Network,
-    )(remotePeerRepr: PeerRepr)(placedFlow: Flow[Value] on Remote): Flow[(net.effect.Id, Value)]
-    
-    /**
-     * Given a placed flow on a remote peer tied with the local peer, create a local flow that receives values from the remote flow.
-     * This method can only be called if the local peer is tied to a single remote peer. Any call to this method on a placed flow that
-     * is not on a remote peer or not tied with the local peer will result in a compile-time error.
+     * Given a placed flow on a remote peer tied with the local peer, create a local flow that receives values from the remote flow. This method can
+     * only be called if the local peer is tied to a single remote peer. Any call to this method on a placed flow that is not on a remote peer or not
+     * tied with the local peer will result in a compile-time error.
      *
      * @param placedFlow
      *   the placed flow to receive values from.
@@ -154,12 +124,12 @@ object PlacedFlow:
         ps: PeerScope[Local],
         net: Network,
     )(remotePeerRepr: PeerRepr)(placedFlow: Flow[Value] on Remote): Flow[Value]
-    
+
     /**
-     * Given a placed flow on multiple remote peers tied with the local peer, create a flow that emits values from all instances of the
-     * remote flows. Each emitted value is paired with the ID of the remote peer that produced it. This method can only be called if the
-     * local peer is tied to multiple remote peers. Any call to this method on a placed flow that is not on a remote peer or not tied
-     * with the local peer will result in a compile-time error.
+     * Given a placed flow on multiple remote peers tied with the local peer, create a flow that emits values from all instances of the remote flows.
+     * Each emitted value is paired with the ID of the remote peer that produced it. This method can only be called if the local peer is tied to
+     * multiple remote peers. Any call to this method on a placed flow that is not on a remote peer or not tied with the local peer will result in a
+     * compile-time error.
      *
      * @param placedFlow
      *   the placed flow to receive values from.
@@ -170,3 +140,5 @@ object PlacedFlow:
         ps: PeerScope[Local],
         net: Network,
     )(remotePeerRepr: PeerRepr)(placedFlow: Flow[Value] on Remote): Flow[(net.effect.Id, Value)]
+  end Effect
+end PlacedFlow
