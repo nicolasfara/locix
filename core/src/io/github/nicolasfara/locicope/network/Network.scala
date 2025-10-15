@@ -9,6 +9,7 @@ import io.github.nicolasfara.locicope.placement.Peers.peer
 import io.github.nicolasfara.locicope.placement.PlacementType.PeerScope
 import scala.annotation.targetName
 import io.github.nicolasfara.locicope.network.NetworkResource.Reference
+import cats.data.Cont
 
 object Network:
   type Network = Locicope[Network.Effect]
@@ -16,19 +17,19 @@ object Network:
   def localId[P <: Peer](using net: Network): net.effect.Address[P] =
     net.effect.localId[P]
 
-  def register[V: Encoder](ref: Reference, data: V)(using net: Network): Unit =
-    net.effect.register[V](ref, data)
+  def register[Container[_], V: Encoder](ref: Reference, data: Container[V])(using net: Network): Unit =
+    net.effect.register[Container, V](ref, data)
 
-  def send[V: Encoder, To <: Peer, From <: TiedWith[To]](using
+  def send[Container[_], V: Encoder, To <: Peer, From <: TiedWith[To]](using
       net: Network,
-  )(address: net.effect.Address[To], ref: Reference, data: V): Either[net.effect.NetworkError, Unit] =
-    net.effect.send[V, To, From](address, ref, data)
+  )(address: net.effect.Address[To], ref: Reference, data: Container[V]): Either[net.effect.NetworkError, Unit] =
+    net.effect.send[Container, V, To, From](address, ref, data)
 
-  def receive[V: Decoder, From <: Peer, To <: TiedWith[From]](using
+  def receive[Container[_], V: Decoder, From <: Peer, To <: TiedWith[From]](using
       scope: PeerScope[To],
       net: Network,
-  )(address: net.effect.Address[From], ref: Reference): Either[net.effect.NetworkError, V] =
-    net.effect.receive[V, From, To](address, ref)
+  )(address: net.effect.Address[From], ref: Reference): Either[net.effect.NetworkError, Container[V]] =
+    net.effect.receive[Container, V, From, To](address, ref)
 
   inline def reachablePeersOf[P <: Peer](using net: Network): Set[net.effect.Address[P]] =
     net.effect.reachablePeersOf[P](peer[P])
@@ -45,11 +46,11 @@ object Network:
 
     def localId[P <: Peer]: Address[P]
 
-    def register[V: Encoder](ref: Reference, data: V): Unit
+    def register[Container[_], V: Encoder](ref: Reference, data: Container[V]): Unit
 
-    def send[V: Encoder, To <: Peer, From <: TiedWith[To]](address: Address[To], ref: Reference, data: V): Either[NetworkError, Unit]
+    def send[Container[_], V: Encoder, To <: Peer, From <: TiedWith[To]](address: Address[To], ref: Reference, data: Container[V]): Either[NetworkError, Unit]
 
-    def receive[V: Decoder, From <: Peer, To <: TiedWith[From]](address: Address[From], ref: Reference): Either[NetworkError, V]
+    def receive[Container[_], V: Decoder, From <: Peer, To <: TiedWith[From]](address: Address[From], ref: Reference): Either[NetworkError, Container[V]]
 
     def reachablePeersOf[P <: Peer](peerRepr: PeerRepr): Set[Address[P]]
 

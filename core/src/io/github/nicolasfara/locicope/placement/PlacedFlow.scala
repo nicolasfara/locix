@@ -39,111 +39,67 @@ object PlacedFlow:
       pf.effect.asLocalAll[Remote, Local, Value](peer[Remote])(placedFlow)
   end extension
 
-  // inline def run[P <: Peer](using net: Network)[V: Codec](program: (PlacedFlow, PeerScope[P]) ?=> V): V =
-  //   given handler: Locicope.Handler[PlacedFlow.Effect, V, V] = new HandlerImpl(peer[P])
-  //   given PeerScope[P] = PlacedFlowPeerScope[P]
-  //   Locicope.handle(program)(using handler)
+  inline def run[P <: Peer](using net: Network)[V: Codec](program: (PlacedFlow, PeerScope[P]) ?=> V): V =
+    given handler: Locicope.Handler[PlacedFlow.Effect, V, V] = new HandlerImpl(peer[P])
+    given PeerScope[P] = PlacedFlowPeerScope[P]
+    Locicope.handle(program)(using handler)
 
-  // class HandlerImpl[Value: Codec](executionPeerRepr: PeerRepr) extends Locicope.Handler[PlacedFlow.Effect, Value, Value]:
-  //   override def handle(program: Locicope[Effect] ?=> Value): Value = program(using new Locicope(EffectImpl(executionPeerRepr)))
+  class HandlerImpl[Value: Codec](executionPeerRepr: PeerRepr) extends Locicope.Handler[PlacedFlow.Effect, Value, Value]:
+    override def handle(program: Locicope[Effect] ?=> Value): Value = program(using new Locicope(EffectImpl(executionPeerRepr)))
 
-  // private class EffectImpl(executionPeerRepr: PeerRepr) extends Effect:
-    
-  //   // Custom lift implementation for flows since Flow objects cannot be serialized
-  //   private def liftFlow[P <: Peer, Value: Codec](using Network)(
-  //       executingPeer: PeerRepr
-  //   )(flowOption: Option[Flow[Value]], ref: Reference): Flow[Value] on P =
-  //     flowOption
-  //       .map: flow =>
-  //         // For flows, we don't register the flow object itself, but set up streaming infrastructure
-  //         // This would register flow metadata and prepare the streaming endpoint
-  //         val peers = reachablePeers[P](executingPeer) 
-  //         // Set up flow streaming to peers (implementation details would go here)
-  //         PlacementType.Placed.Local(flow, ref)
-  //       .getOrElse:
-  //         PlacementType.Placed.Remote(ref)
+  private class EffectImpl(executionPeerRepr: PeerRepr) extends Effect:
+    override def flowOn[P <: Peer, Value: Codec](using
+        Network,
+    )(peerRepr: PeerRepr)(expression: PeerScope[P] ?=> Flow[Value]): Flow[Value] on P =
+      given PeerScope[P] = new PlacedFlowPeerScope[P]
+      val resourceReference = Reference(hashBody(expression), peerRepr, ValueType.Flow)
+      val placedFlow = if executionPeerRepr <:< peerRepr then
+        val result = expression
+        Some(result)
+      else None
+      liftF(executionPeerRepr)(placedFlow, resourceReference)
 
-  //   override def flowOn[P <: Peer, Value: Codec](using
-  //       Network,
-  //   )(peerRepr: PeerRepr)(expression: PeerScope[P] ?=> Flow[Value]): Flow[Value] on P =
-  //     given PeerScope[P] = new PlacedFlowPeerScope[P]
-  //     val resourceReference = Reference(hashBody(expression), peerRepr, ValueType.Flow)
-  //     val placedFlow = if executionPeerRepr <:< peerRepr then
-  //       val result = expression
-  //       Some(result)
-  //     else None
-  //     liftFlow(executionPeerRepr)(placedFlow, resourceReference)
+    override def unwrap[Local <: Peer, Value: Codec](using PeerScope[Local])(placedFlow: Flow[Value] on Local): Flow[Value] =
+      // https://dotty.epfl.ch/docs/reference/other-new-features/runtimeChecked.html#example
+      placedFlow.runtimeChecked match
+        case PlacementType.Placed.Local[Flow[Value] @unchecked, Local @unchecked](flow, _) => flow
 
-  //   override def unwrap[Local <: Peer, Value: Codec](using PeerScope[Local])(placedFlow: Flow[Value] on Local): Flow[Value] =
-  //     // https://dotty.epfl.ch/docs/reference/other-new-features/runtimeChecked.html#example
-  //     val PlacementType.Placed.Local(flow, _) = placedFlow.runtimeChecked
-  //     flow.asInstanceOf[Flow[Value]]
+    override def locally[Remote <: Peer, Local <: TiedWith[Remote], Value: Codec](using
+        ps: PeerScope[Local],
+        net: Network
+    )(remotePeerRepr: PeerRepr)(placedFlow: Flow[Value] on Remote): Flow[(net.effect.Id, Value)] =
+      val PlacementType.Placed.Remote(reference) = placedFlow.runtimeChecked
+      val peers = reachablePeers[Remote](remotePeerRepr)
+      peers.map: peerAddress =>
+        receive[Flow, Value, Remote, Local](peerAddress, reference).fold(
+          err => throw err,
+          flow => flow.map(value => (net.effect.getId(peerAddress), value)),
+        )
+      .foldLeft(Flow.empty[(net.effect.Id, Value)])(_.merge(_))
 
-  //   override def locally[Remote <: Peer, Local <: TiedWith[Remote], Value: Codec](using
-  //       scope: PeerScope[Local],
-  //       net: Network,
-  //   )(remotePeerRepr: PeerRepr)(placedFlow: Flow[Value] on Remote): Flow[(net.effect.Id, Value)] =
-  //     val PlacementType.Placed.Remote(reference) = placedFlow.runtimeChecked
-  //     val peers = reachablePeers[Remote](remotePeerRepr)
-      
-  //     // Create a flow that emits values from all remote peers
-  //     Flow.fromCallback { (onNext, onError, onComplete) =>
-  //       // For placed flows, we need to create a subscription that listens for values 
-  //       // from remote flows and forwards them with peer IDs
-  //       // This is a simplified implementation - in reality you'd need to coordinate
-  //       // with the network layer to stream values as they become available
-  //       var subscriptionActive = true
-  //       val subscription = new Subscription:
-  //         def cancel(): Unit = subscriptionActive = false
-  //         def isActive: Boolean = subscriptionActive
-        
-  //       // In a real implementation, this would set up network listeners
-  //       // For now, we'll just return an empty subscription
-  //       subscription
-  //     }
+    override def asLocal[Remote <: Peer, Local <: TiedToSingle[Remote], Value: Codec](using
+        ps: PeerScope[Local],
+        net: Network
+    )(remotePeerRepr: PeerRepr)(placedFlow: Flow[Value] on Remote): Flow[Value] =
+      val peers = reachablePeers[Remote](remotePeerRepr)
+      if peers.size != 1 then throw IllegalStateException(s"Expected exactly one remote peer, found ${peers.size}.")
+      val address = peers.head
+      val PlacementType.Placed.Remote(reference) = placedFlow.runtimeChecked
+      receive[Flow, Value, Remote, Local](address, reference).fold(error => throw error, identity)
 
-  //   override def asLocal[Remote <: Peer, Local <: TiedToSingle[Remote], Value: Codec](using
-  //       PeerScope[Local],
-  //       Network,
-  //   )(remotePeerRepr: PeerRepr)(placedFlow: Flow[Value] on Remote): Flow[Value] =
-  //     val peers = reachablePeers[Remote](remotePeerRepr)
-  //     if peers.size != 1 then throw IllegalStateException(s"Expected exactly one remote peer, found ${peers.size}.")
-  //     val PlacementType.Placed.Remote(reference) = placedFlow.runtimeChecked
-      
-  //     // Create a flow that receives values from the single remote peer
-  //     Flow.fromCallback { (onNext, onError, onComplete) =>
-  //       // For placed flows, we create a subscription that listens for values from the remote flow
-  //       // This is a simplified implementation - in reality you'd coordinate with the network layer
-  //       var subscriptionActive = true
-  //       val subscription = new Subscription:
-  //         def cancel(): Unit = subscriptionActive = false
-  //         def isActive: Boolean = subscriptionActive
-        
-  //       // In a real implementation, this would set up network listeners for the specific peer
-  //       subscription
-  //     }
-
-  //   override def asLocalAll[Remote <: Peer, Local <: TiedToMultiple[Remote], Value: Codec](using
-  //       ps: PeerScope[Local],
-  //       net: Network,
-  //   )(remotePeerRepr: PeerRepr)(placedFlow: Flow[Value] on Remote): Flow[(net.effect.Id, Value)] =
-  //     val PlacementType.Placed.Remote(reference) = placedFlow.runtimeChecked
-  //     val peers = reachablePeers[Remote](remotePeerRepr)
-      
-  //     // Create a flow that emits values from all remote peers with their IDs
-  //     Flow.fromCallback { (onNext, onError, onComplete) =>
-  //       // For placed flows, we create subscriptions that listen for values from all remote flows
-  //       // This is a simplified implementation
-  //       var subscriptionActive = true
-  //       val subscription = new Subscription:
-  //         def cancel(): Unit = subscriptionActive = false
-  //         def isActive: Boolean = subscriptionActive
-        
-  //       // In a real implementation, this would set up network listeners for all peers
-  //       subscription
-  //     }
-
-  // end EffectImpl
+    override def asLocalAll[Remote <: Peer, Local <: TiedToMultiple[Remote], Value: Codec](using
+        ps: PeerScope[Local],
+        net: Network
+    )(remotePeerRepr: PeerRepr)(placedFlow: Flow[Value] on Remote): Flow[(net.effect.Id, Value)] =
+      val PlacementType.Placed.Remote(reference) = placedFlow.runtimeChecked
+      val peers = reachablePeers[Remote](remotePeerRepr)
+      peers.map: peerAddress =>
+        receive[Flow, Value, Remote, Local](peerAddress, reference).fold(
+          err => throw err,
+          flow => flow.map(value => (net.effect.getId(peerAddress), value)),
+        )
+      .foldLeft(Flow.empty[(net.effect.Id, Value)])(_.merge(_))
+  end EffectImpl
 
   trait Effect extends Placement:
     /**

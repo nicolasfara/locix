@@ -43,6 +43,127 @@ class FlowTest extends AsyncFlatSpec with Matchers:
     val concatenated = flow1.concat(flow2)
     concatenated.runToList().map(_ shouldBe List(1, 2, 3, 4, 5, 6))
 
+  it should "support merge operations with iterables" in:
+    val flow1 = Flow.fromIterable(List(1, 2, 3))
+    val flow2 = Flow.fromIterable(List(4, 5, 6))
+    val merged = flow1.merge(flow2)
+    merged.runToList().map { result =>
+      // Since merge emits values concurrently, we can't guarantee order
+      // but all elements should be present
+      result.sorted shouldBe List(1, 2, 3, 4, 5, 6)
+      result.size shouldBe 6
+    }
+
+  it should "merge multiple flows" in:
+    val flow1 = Flow.fromIterable(List(1, 2))
+    val flow2 = Flow.fromIterable(List(3, 4))
+    val flow3 = Flow.fromIterable(List(5, 6))
+    val merged = flow1.merge(flow2).merge(flow3)
+    merged.runToList().map { result =>
+      result.sorted shouldBe List(1, 2, 3, 4, 5, 6)
+      result.size shouldBe 6
+    }
+
+  it should "support merge with empty flows" in:
+    val flow1 = Flow.fromIterable(List(1, 2, 3))
+    val flow2 = Flow.empty[Int]
+    val merged = flow1.merge(flow2)
+    merged.runToList().map { result =>
+      result.sorted shouldBe List(1, 2, 3)
+    }
+
+  it should "support merge with single values" in:
+    val flow1 = Flow.single(1)
+    val flow2 = Flow.single(2)
+    val merged = flow1.merge(flow2)
+    merged.runToList().map { result =>
+      result.sorted shouldBe List(1, 2)
+    }
+
+  it should "support merge with futures" in:
+    import scala.concurrent.Future
+    val flow1 = Flow.fromFuture(Future.successful(1))
+    val flow2 = Flow.fromFuture(Future.successful(2))
+    val merged = flow1.merge(flow2)
+    merged.runToList().map { result =>
+      result.sorted shouldBe List(1, 2)
+    }
+
+  it should "support merge with transformations" in:
+    val flow1 = Flow.fromIterable(List(1, 2, 3))
+    val flow2 = Flow.fromIterable(List(4, 5, 6))
+    val merged = flow1.merge(flow2).map(_ * 10).filter(_ > 25)
+    merged.runToList().map { result =>
+      result.sorted shouldBe List(30, 40, 50, 60)
+    }
+
+  it should "support take on merged flows" in:
+    val flow1 = Flow.fromIterable(List(1, 2, 3, 4, 5))
+    val flow2 = Flow.fromIterable(List(6, 7, 8, 9, 10))
+    val merged = flow1.merge(flow2).take(3)
+    merged.runToList().map { result =>
+      result.size shouldBe 3
+      // All values should be from the original flows
+      result.forall(x => x >= 1 && x <= 10) shouldBe true
+    }
+
+  it should "support drop on merged flows" in:
+    val flow1 = Flow.fromIterable(List(1, 2, 3))
+    val flow2 = Flow.fromIterable(List(4, 5, 6))
+    val merged = flow1.merge(flow2).drop(2)
+    merged.runToList().map { result =>
+      result.size shouldBe 4
+      result.sorted.containsSlice(List(3, 4, 5, 6).sorted) shouldBe true
+    }
+
+  it should "support fold on merged flows" in:
+    val flow1 = Flow.fromIterable(List(1, 2, 3))
+    val flow2 = Flow.fromIterable(List(4, 5, 6))
+    val merged = flow1.merge(flow2)
+    merged.fold(0)(_ + _).map(_ shouldBe 21)
+
+  it should "support reduce on merged flows" in:
+    val flow1 = Flow.fromIterable(List(1, 2, 3))
+    val flow2 = Flow.fromIterable(List(4, 5, 6))
+    val merged = flow1.merge(flow2)
+    merged.reduce(_ + _).map(_ shouldBe 21)
+
+  it should "support subscription on merged flows" in:
+    val flow1 = Flow.fromIterable(List(1, 2, 3))
+    val flow2 = Flow.fromIterable(List(4, 5, 6))
+    val merged = flow1.merge(flow2)
+    val results = collection.mutable.Set[Int]()
+    val promise = Promise[Unit]()
+    
+    val subscription = merged.subscribe(
+      onNext = results += _,
+      onComplete = () => promise.success(())
+    )
+    
+    promise.future.map { _ =>
+      subscription.cancel()
+      results shouldBe Set(1, 2, 3, 4, 5, 6)
+    }
+
+  it should "complete merged flow when all sources complete" in:
+    val flow1 = Flow.fromIterable(List(1, 2))
+    val flow2 = Flow.fromIterable(List(3, 4))
+    val merged = flow1.merge(flow2)
+    val completedCount = new AtomicInteger(0)
+    val promise = Promise[Unit]()
+    
+    merged.subscribe(
+      onNext = _ => (),
+      onComplete = () => {
+        completedCount.incrementAndGet()
+        promise.success(())
+      }
+    )
+    
+    promise.future.map { _ =>
+      completedCount.get() shouldBe 1
+    }
+
   it should "support fold operations" in:
     val flow = Flow.fromIterable(List(1, 2, 3, 4, 5))
     flow.fold(0)(_ + _).map(_ shouldBe 15)

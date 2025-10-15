@@ -19,15 +19,21 @@ object PlacementType:
 
   trait PeerScope[P <: Peer]
 
+  type Id[V] = V
+
+  type Apply[Container[_], Value] = Container[?] match
+    case Flow[_] => Flow[Value]            // Flow wrapper
+    case Value => Value                    // plain value
+
   trait Placement:
-    def lift[P <: Peer](using Network)[Value: Codec](peerRepr: PeerRepr)(value: Option[Value], ref: Reference): Value on P =
-      value
-        .map: value =>
-          register(ref, value)
-          val peers = reachablePeers[P](peerRepr)
-          peers.foreach: address =>
-            send(address, ref, value)
-          PlacementType.Placed.Local(value, ref)
-        .getOrElse:
-          PlacementType.Placed.Remote(ref)
+    def liftF[P <: Peer](using Network)[Container[_], Value: Codec](peerRepr: PeerRepr)(value: Option[Container[Value]], ref: Reference): Container[Value] on P =
+      value.map: value =>
+        register(ref, value)
+        val peers = reachablePeers[P](peerRepr)
+        peers.foreach: address =>
+          send(address, ref, value)
+        PlacementType.Placed.Local(value, ref)
+      .getOrElse:
+        PlacementType.Placed.Remote(ref)
+
 end PlacementType

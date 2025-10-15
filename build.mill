@@ -19,7 +19,7 @@ trait CommonScala extends ScalaModule with ScalafixModule {
     "-Xcheck-macros",
 //    "-source:3.8",
 //    "-Xprint:cc",
-   "-Ycheck:all",
+  //  "-Ycheck:all",
 //    "-Ycc-debug",
     "-experimental",
     "-feature",
