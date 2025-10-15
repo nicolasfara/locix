@@ -48,11 +48,19 @@ object Network:
 
     def register[Container[_], V: Encoder](ref: Reference, data: Container[V]): Unit
 
-    def send[Container[_], V: Encoder, To <: Peer, From <: TiedWith[To]](address: Address[To], ref: Reference, data: Container[V]): Either[NetworkError, Unit]
+    def send[Container[_], V: Encoder, To <: Peer, From <: TiedWith[To]](
+        address: Address[To],
+        ref: Reference,
+        data: Container[V],
+    ): Either[NetworkError, Unit]
 
-    def receive[Container[_], V: Decoder, From <: Peer, To <: TiedWith[From]](address: Address[From], ref: Reference): Either[NetworkError, Container[V]]
+    def receive[Container[_], V: Decoder, From <: Peer, To <: TiedWith[From]](
+        address: Address[From],
+        ref: Reference,
+    ): Either[NetworkError, Container[V]]
 
     def reachablePeersOf[P <: Peer](peerRepr: PeerRepr): Set[Address[P]]
 
     def getId[P <: Peer](address: Address[P]): Id
+  end Effect
 end Network
