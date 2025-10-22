@@ -35,9 +35,8 @@ object Choreography:
       scope: PeerScope[Local],
   )(value: V on Local): V = choreo.effect.take(value)
 
-  @nowarn inline def choreography[P <: Peer](using Network)[V](expression: (PeerScope[P], Choreography) ?=> V): V =
+  @nowarn inline def run[P <: Peer](using Network)[V](expression: Choreography ?=> V): V =
     val localPeerRepr = peer[P]
-    given PeerScope[P]() { }
     val handler = new Locicope.Handler[Choreography.Effect, V, V]:
       override def handle(program: (Locicope[Effect]) ?=> V): V = program(using Locicope(EffectImpl(localPeerRepr)))
     Locicope.handle(expression)(using handler)
