@@ -1,63 +1,82 @@
-// package io.github.nicolasfara.locicope
+package io.github.nicolasfara.locicope
 
-// import io.github.nicolasfara.locicope.Net.{ setValue, Net }
-// import io.github.nicolasfara.locicope.PlacementType.{ getLocalValue, on, PeerScope }
-// import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
-// import io.github.nicolasfara.locicope.network.NetworkResource.Reference
-// import io.github.nicolasfara.locicope.network.NetworkResource.ValueType.Value
-// import io.github.nicolasfara.locicope.placement.Peers.{ peer, Peer, PeerRepr, TiedWith }
-// import io.github.nicolasfara.locicope.serialization.{ Codec, Encoder }
+import io.github.nicolasfara.locicope.placement.Peers.Peer
+import io.github.nicolasfara.locicope.placement.Peers.TiedToSingle
+import io.github.nicolasfara.locicope.placement.PlacementType.on
+import io.github.nicolasfara.locicope.placement.PlacementType.PeerScope
+import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
+import io.github.nicolasfara.locicope.network.Network.Network
+import io.github.nicolasfara.locicope.serialization.Codec
+import io.github.nicolasfara.locicope.serialization.Decoder
+import io.github.nicolasfara.locicope.placement.PlacementType.getReference
+import io.github.nicolasfara.locicope.placement.Peers.peer
+import io.github.nicolasfara.locicope.network.Network.receive
+import io.github.nicolasfara.locicope.placement.PlacementType.Placed
+import io.github.nicolasfara.locicope.network.Network.reachablePeersOf
+import io.github.nicolasfara.locicope.network.Network.send
+import io.github.nicolasfara.locicope.placement.PlacementType
+import io.github.nicolasfara.locicope.placement.PlacedValue.PlacedValue
+import io.github.nicolasfara.locicope.network.NetworkResource.Reference
+import scala.annotation.nowarn
 
-// import scala.util.NotGiven
+object Choreography:
+  type Choreography = Locicope[Choreography.Effect]
 
-// object Choreography:
-//   type Choreography = Locicope[Choreography.Effect]
+  inline def comm[V: Codec, Sender <: Peer, Receiver <: TiedToSingle[Sender]](using
+      net: Network,
+      placed: PlacedValue,
+      choreo: Choreography,
+      scope: PeerScope[Receiver],
+  )(value: V on Sender): V on Receiver = choreo.effect.comm(peer[Sender], value)
 
-//   inline def at[P <: Peer](using Net, Choreography, NotGiven[ChoreoPeerScope[P]])[V: Encoder](body: PeerScope[P] ?=> V): V on P =
-//     summon[Choreography].effect.at[V, P](body)(peer[P])
+  def take[V: Decoder, Local <: Peer](using
+      net: Network,
+      choreo: Choreography,
+      scope: PeerScope[Local],
+  )(value: V on Local): V = choreo.effect.take(value)
 
-//   inline def comm[V: Codec, Sender <: Peer, Receiver <: TiedWith[Sender]](using
-//       Net,
-//       Choreography,
-//   )(value: V on Sender): V on Receiver =
-//     summon[Choreography].effect.comm[V, Sender, Receiver](value)(peer[Sender])
+  @nowarn inline def choreography[P <: Peer](using Network)[V](expression: (PeerScope[P], Choreography) ?=> V): V =
+    val localPeerRepr = peer[P]
+    given PeerScope[P]() { }
+    val handler = new Locicope.Handler[Choreography.Effect, V, V]:
+      override def handle(program: (Locicope[Effect]) ?=> V): V = program(using Locicope(EffectImpl(localPeerRepr)))
+    Locicope.handle(expression)(using handler)
 
-//   inline def run[P <: Peer](using Net)[V](program: Choreography ?=> V): Unit =
-//     val handler = ChoreoHandler[V](peer[P])
-//     Locicope.handle(program)(using handler)
+  private class EffectImpl(val localPeerRepr: PeerRepr) extends Effect:
+    private type Id[V] = V
+    override def comm[V: Codec, Remote <: Peer, Local <: TiedToSingle[Remote]](using
+        Network,
+        PlacedValue,
+        PeerScope[Local],
+    )(senderPeerRepr: PeerRepr, value: V on Remote): V on Local =
+      val peer = reachablePeersOf[Remote]
+      assume(peer.size != 1, s"Only 1 peer should be connected to this local peer, but found ${peer}")
+      val (ref, placedValue): (Reference, Option[Id[V]]) =
+        if senderPeerRepr <:< localPeerRepr then
+          val Placed.Local[V @unchecked, Local @unchecked](localValue, reference) = value.runtimeChecked
+          send[Id, V, Remote, Local](peer.head, reference, localValue).fold(throw _, identity)
+          (reference, None)
+        else
+          val Placed.Remote[V @unchecked, Local @unchecked](reference) = value.runtimeChecked
+          val receivedValue = receive[Id, V, Remote, Local](peer.head, reference).fold(throw _, identity)
+          (reference, Some(receivedValue))
+      summon[PlacedValue].effect.liftF(senderPeerRepr)(placedValue, ref)
 
-//   class ChoreoPeerScope[P <: Peer](val peerRepr: PeerRepr) extends PeerScope[P]
+    override def take[V, Local <: Peer](using
+        Network,
+        PeerScope[Local],
+    )(value: V on Local): V =
+      val Placed.Local[V @unchecked, Local @unchecked](localValue, _) = value.runtimeChecked
+      localValue
+  end EffectImpl
 
-//   class ChoreoHandler[V](peerRepr: PeerRepr) extends Locicope.Handler[Choreography.Effect, V, Unit]:
-//     override def handle(program: Locicope[Effect] ?=> V): Unit = program(using new Locicope(EffectImpl(peerRepr)))
+  trait Effect:
+    protected[locicope] val localPeerRepr: PeerRepr
 
-//   private class EffectImpl(val localPeerRepr: PeerRepr) extends Effect:
-//     override def at[V: Encoder, P <: Peer](body: ChoreoPeerScope[P] ?=> V)(peerRepr: PeerRepr)(using Net, NotGiven[ChoreoPeerScope[P]]): V on P =
-//       given ChoreoPeerScope[P](peerRepr)
-//       val resourceReference = Reference(hashBody(body), localPeerRepr, Value)
-//       val placementValue = if peerRepr <:< localPeerRepr then
-//         val result = body
-//         Some(result)
-//       else None
-//       PlacementType.lift(placementValue, resourceReference)
-
-//     override def comm[V: Codec, Sender <: Peer, Receiver <: TiedWith[Sender]](value: V on Sender)(senderPeerRepr: PeerRepr)(using
-//         Net,
-//     ): V on Receiver =
-//       val ref = PlacementType.getRef(value)
-//       val placedValue = if senderPeerRepr <:< localPeerRepr then
-//         val localValue = getLocalValue(value) match
-//           case Some(value) => value
-//           case None => throw IllegalStateException("Please fill a bug report, something went wrong during `comm`.")
-//         setValue(localValue, ref)
-//         Some(localValue)
-//       else None
-//       PlacementType.lift(placedValue, ref)
-//   end EffectImpl
-
-//   trait Effect:
-//     protected[locicope] val localPeerRepr: PeerRepr
-
-//     def at[V: Encoder, P <: Peer](body: ChoreoPeerScope[P] ?=> V)(peerRepr: PeerRepr)(using Net, NotGiven[ChoreoPeerScope[P]]): V on P
-//     def comm[V: Codec, Sender <: Peer, Receiver <: TiedWith[Sender]](value: V on Sender)(senderPeerRepr: PeerRepr)(using Net): V on Receiver
-// end Choreography
+    def comm[V: Codec, Sender <: Peer, Receiver <: TiedToSingle[Sender]](using
+        Network,
+        PlacedValue,
+        PeerScope[Receiver],
+    )(senderPeerRepr: PeerRepr, value: V on Sender): V on Receiver
+    def take[V, Local <: Peer](using Network, PeerScope[Local])(value: V on Local): V
+end Choreography
