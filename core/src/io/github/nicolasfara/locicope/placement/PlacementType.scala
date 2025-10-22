@@ -17,6 +17,10 @@ object PlacementType:
     case Local(value: V, ref: Reference)
     case Remote(ref: Reference)
 
+  inline def getReference[V, P <: Peer](value: V on P): Reference = value match
+    case Placed.Local(_, ref) => ref
+    case Placed.Remote(ref) => ref
+
   trait PeerScope[P <: Peer]
 
   trait Placement:

@@ -14,8 +14,11 @@ import cats.data.Cont
 object Network:
   type Network = Locicope[Network.Effect]
 
-  def localId[P <: Peer](using net: Network): net.effect.Address[P] =
-    net.effect.localId[P]
+  def localAddress[P <: Peer](using net: Network): net.effect.Address[P] =
+    net.effect.localAddress[P]
+
+  def getId[P <: Peer](using net: Network)(address: net.effect.Address[P]): net.effect.Id =
+    net.effect.getId[P](address)
 
   def register[Container[_], V: Encoder](ref: Reference, data: Container[V])(using net: Network): Unit =
     net.effect.register[Container, V](ref, data)
@@ -44,9 +47,13 @@ object Network:
     type NetworkError <: Throwable
     type Id
 
-    def localId[P <: Peer]: Address[P]
+    def localAddress[P <: Peer]: Address[P]
+
+    def getId[P <: Peer](address: Address[P]): Id
 
     def register[Container[_], V: Encoder](ref: Reference, data: Container[V]): Unit
+
+    def reachablePeersOf[P <: Peer](peerRepr: PeerRepr): Set[Address[P]]
 
     def send[Container[_], V: Encoder, To <: Peer, From <: TiedWith[To]](
         address: Address[To],
@@ -58,9 +65,5 @@ object Network:
         address: Address[From],
         ref: Reference,
     ): Either[NetworkError, Container[V]]
-
-    def reachablePeersOf[P <: Peer](peerRepr: PeerRepr): Set[Address[P]]
-
-    def getId[P <: Peer](address: Address[P]): Id
   end Effect
 end Network
