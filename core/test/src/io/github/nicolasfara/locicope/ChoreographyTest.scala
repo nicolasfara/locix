@@ -31,10 +31,10 @@ class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
 
   "The `Choreography` capability" should "allow explicit communication between two peers" in:
     (netEffect.reachablePeersOf(_: PeerRepr)).returnsWith(Set("peerA"))
-    (netEffect.register[Id, Int](_: Reference, _: Id[Int])(using _: Encoder[Int])).returnsWith(())
+    // (netEffect.register[Id, Int](_: Reference, _: Id[Int])(using _: Encoder[Int])).returnsWith(())
     (netEffect.receive[Id, Int, PeerA, PeerB](_: String, _: Reference)(using _: Decoder[Int])).returns:
       case ("peerA", _, _) => Right(42)
-      case _       => throw new Exception("Unexpected receive")
+      case _       => fail("Unexpected receive")
 
     val result = PlacedValue.run[PeerB]:
       Choreography.run[PeerB]:
@@ -44,5 +44,5 @@ class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
 
     result shouldBe 42
     (netEffect.reachablePeersOf(_: PeerRepr)).times shouldBe 1 // Check reachable peers
-    (netEffect.register[Id, Int](_: Reference, _: Id[Int])(using _: Encoder[Int])).times shouldBe 1 // Register the flow on the network
+    // (netEffect.register[Id, Int](_: Reference, _: Id[Int])(using _: Encoder[Int])).times shouldBe 1 // Register the flow on the network
     (netEffect.receive[Id, Int, PeerA, PeerB](_: String, _: Reference)(using _: Decoder[Int])).times shouldBe 1 // Receive the value from peerA

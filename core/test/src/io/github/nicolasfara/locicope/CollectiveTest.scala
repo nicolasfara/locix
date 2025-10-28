@@ -1,27 +1,46 @@
-// package io.github.nicolasfara.locicope
+package io.github.nicolasfara.locicope
 
-// import io.github.nicolasfara.locicope.Collective.{ collective, neighbors, repeat, Collective, OutboundMessage }
-// import io.github.nicolasfara.locicope.Net.Net
+import io.github.nicolasfara.locicope.Collective.{ collective, neighbors, repeat, take, Collective, OutboundMessage }
+import io.github.nicolasfara.locicope.network.Network
+import io.github.nicolasfara.locicope.network.Network.Network
 // import io.github.nicolasfara.locicope.PlacementType.{ on, unwrap }
 // import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 // import io.github.nicolasfara.locicope.serialization.{ Decoder, Encoder }
 // import io.github.nicolasfara.locicope.utils.CpsArch.Smartphone
-// import org.scalamock.stubs.Stubs
-// import org.scalatest.BeforeAndAfter
-// import org.scalatest.flatspec.AnyFlatSpecLike
-// import org.scalatest.matchers.should.Matchers
-// import io.github.nicolasfara.locicope.utils.TestCodec.given
+import org.scalamock.stubs.Stubs
+import org.scalatest.BeforeAndAfter
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
+import io.github.nicolasfara.stub.IntNetwork
+import ox.flow.Flow
+import io.github.nicolasfara.locicope.placement.PlacementType.on
+import io.github.nicolasfara.locicope.placement.PlacedFlow
+import io.github.nicolasfara.locicope.utils.CpsArch.*
+import io.github.nicolasfara.locicope.placement.PlacedFlow.PlacedFlow
+import io.github.nicolasfara.locicope.utils.TestCodec.given
 // import ox.flow.Flow
 
-// import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.DurationInt
+import io.github.nicolasfara.locicope.network.NetworkResource.Reference
+import io.github.nicolasfara.locicope.serialization.Encoder
 
-// class CollectiveTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
+class CollectiveTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
 
-//   private val netEffect = stub[Net.Effect]
-//   given net: Locicope[Net.Effect](netEffect)
+  private val netEffect = stub[IntNetwork]
+  given net: Locicope[Network.Effect](netEffect)
 
-//   before:
-//     resetStubs()
+  before:
+    resetStubs()
+
+  "The `Collective` capability" should "return an empty export when no spatial operator are used" in:
+    def temporalEvolution(using Network, Collective, PlacedFlow): Flow[Int] on Smartphone = collective(1.second):
+      repeat(0)(_ + 1)
+    // (netEffect.register[Flow, Int](_: Reference, _: Flow[Int])(using _: Encoder[Int])).returnsWith(())
+
+    val result = PlacedFlow.run:
+      Collective.run[Smartphone]:
+        val res = take(temporalEvolution)
+        res.take(5).runToList() shouldBe List(1, 2, 3, 4, 5)
 
 //   "A collective program" should "return an empty export when no spatial operator are used" in:
 //     def temporalEvolution(using Net, Collective): Flow[Int] on Smartphone = collective(1.second):
