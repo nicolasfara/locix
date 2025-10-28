@@ -17,6 +17,8 @@ import io.github.nicolasfara.locicope.network.Network.{ getId, reachablePeersOf,
 import io.github.nicolasfara.locicope.network.Network.localAddress
 import io.github.nicolasfara.locicope.network.Network.send
 import io.github.nicolasfara.locicope.placement.PlacedFlow.PlacedFlow
+import io.github.nicolasfara.locicope.placement.Peers.Peer
+import io.github.nicolasfara.locicope.placement.PlacementType
 
 
 object Collective:
@@ -34,6 +36,10 @@ object Collective:
     coll.effect.branch(using vm)(condition)(ifTrue)(ifFalse)
   def mux[Value](condition: Boolean)(ifTrue: Value)(ifFalse: Value)(using coll: Collective, vm: coll.effect.VM): Value =
     coll.effect.mux(using vm)(condition)(ifTrue)(ifFalse)
+  def localId(using coll: Collective, vm: coll.effect.VM): vm.DeviceId =
+    coll.effect.localId(using vm)
+  def take[P <: Peer](using coll: Collective, net: Network, scope: PeerScope[P])[V](value: Flow[V] on P): Flow[V] =
+    coll.effect.take(using net, scope)(value)
 
   inline def collective[V: Codec, P <: TiedToMultiple[P]](using
       coll: Collective,
@@ -134,6 +140,11 @@ object Collective:
     override def createState: Map[String, Any] = currentState.toMap
 
   private class EffectImpl(peerRepr: PeerRepr) extends Effect:
+
+    override def take[P <: Peer](using Network, PeerScope[P])[V](value: Flow[V] on P): Flow[V] =
+      val PlacementType.Placed.Local[Flow[V] @unchecked, P @unchecked](flow, _) = value.runtimeChecked
+      flow
+
     override protected[locicope] val localPeerRepr: PeerRepr = peerRepr
 
     override def repeat[Value](using vm: VM)(initial: Value)(f: Value => Value): Value =
@@ -180,5 +191,6 @@ object Collective:
     def branch[Value](using VM)(condition: Boolean)(ifTrue: => Value)(ifFalse: => Value): Value
     def mux[Value](using VM)(condition: Boolean)(ifTrue: Value)(ifFalse: Value): Value
     def localId(using vm: VM): vm.DeviceId
+    def take[P <: Peer](using Network, PeerScope[P])[V](value: Flow[V] on P): Flow[V]
   end Effect
 end Collective
