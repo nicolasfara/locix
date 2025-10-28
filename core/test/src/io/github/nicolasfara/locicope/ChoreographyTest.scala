@@ -1,37 +1,48 @@
-// package io.github.nicolasfara.locicope
+package io.github.nicolasfara.locicope
 
-// import io.github.nicolasfara.locicope.Choreography.Choreography
-// import io.github.nicolasfara.locicope.Net.Net
-// import io.github.nicolasfara.locicope.PlacementType.{ on, unwrap }
-// import io.github.nicolasfara.locicope.network.NetworkResource.Reference
-// import io.github.nicolasfara.locicope.serialization.{ Decoder, Encoder }
-// import io.github.nicolasfara.locicope.utils.ClientServerArch.{ Client, Server }
-// import org.scalamock.stubs.Stubs
-// import org.scalatest.BeforeAndAfter
-// import org.scalatest.flatspec.AnyFlatSpecLike
-// import org.scalatest.matchers.should.Matchers
-// import io.github.nicolasfara.locicope.utils.TestCodec.given
+import io.github.nicolasfara.locicope.Choreography.Choreography
+import io.github.nicolasfara.locicope.Choreography.{comm, take}
+import io.github.nicolasfara.locicope.network.Network
+import io.github.nicolasfara.locicope.network.Network.Network
+import org.scalamock.stubs.Stubs
+import org.scalatest.BeforeAndAfter
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
+import io.github.nicolasfara.locicope.utils.TestCodec.given
+import io.github.nicolasfara.locicope.placement.PlacedValue.PlacedValue
+import io.github.nicolasfara.locicope.placement.PlacedValue
+import io.github.nicolasfara.locicope.placement.PlacedValue.on
+import io.github.nicolasfara.locicope.placement.PlacementType.on
+import io.github.nicolasfara.locicope.utils.TwoPeersArch.*
+import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
+import io.github.nicolasfara.stub.IntNetwork
+import io.github.nicolasfara.locicope.network.NetworkResource.Reference
+import io.github.nicolasfara.locicope.serialization.Decoder
+import io.github.nicolasfara.locicope.serialization.Encoder
+import ox.flow.Flow
 
-// class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
-//   private val netEffect = stub[Net.Effect]
-//   given net: Locicope[Net.Effect](netEffect)
+class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
+  private val netEffect = stub[IntNetwork]
+  given net: Locicope[Network.Effect](netEffect)
+  type Id[V] = V
 
-//   before:
-//     resetStubs()
+  before:
+    resetStubs()
 
-//   "A choreography program" should "allow retrieving through the network a remote value after communication" in:
-//     (netEffect.setValue(_: Int, _: Reference)(using _: Encoder[Int])).returnsWith(())
-//     // Simulate two clients sending the value [0, 1]
-//     (netEffect.getValues(_: Reference)(using _: Decoder[Int])).returnsWith(Right(Map(0 -> 10, 1 -> 11)))
-//     def choreographyProgram(using Net, Choreography): Unit =
-//       val foo: Int on Client = Choreography.at[Client](10)
-//       val fooOnServer: Int on Server = Choreography.comm(foo)
-//       Choreography.at[Server]:
-//         val localValue: Map[Int, Int] = fooOnServer.unwrapAll
-//         localValue shouldBe Map(0 -> 10, 1 -> 11) // Multiple clients send the value
-//         localValue
-//     // Run the choreography program from the server side
-//     Choreography.run[Server](choreographyProgram)
-//     (netEffect.setValue(_: Int, _: Reference)(using _: Encoder[Int])).times shouldBe 1 // Register value on `at[Server]`
-//     (netEffect.getValues(_: Reference)(using _: Decoder[Int])).times shouldBe 1 // Retrieve value on `comm`
-// end ChoreographyTest
+  "The `Choreography` capability" should "allow explicit communication between two peers" in:
+    (netEffect.reachablePeersOf(_: PeerRepr)).returnsWith(Set("peerA"))
+    (netEffect.register[Id, Int](_: Reference, _: Id[Int])(using _: Encoder[Int])).returnsWith(())
+    (netEffect.receive[Id, Int, PeerA, PeerB](_: String, _: Reference)(using _: Decoder[Int])).returns:
+      case ("peerA", _, _) => Right(42)
+      case _       => throw new Exception("Unexpected receive")
+
+    val result = PlacedValue.run[PeerB]:
+      Choreography.run[PeerB]:
+        val valueOnPeerA: Int on PeerA = on[PeerA](42)
+        val receivedValue: Int on PeerB = comm[PeerA, PeerB](valueOnPeerA)
+        take(receivedValue)
+
+    result shouldBe 42
+    (netEffect.reachablePeersOf(_: PeerRepr)).times shouldBe 1 // Check reachable peers
+    (netEffect.register[Id, Int](_: Reference, _: Id[Int])(using _: Encoder[Int])).times shouldBe 1 // Register the flow on the network
+    (netEffect.receive[Id, Int, PeerA, PeerB](_: String, _: Reference)(using _: Decoder[Int])).times shouldBe 1 // Receive the value from peerA
