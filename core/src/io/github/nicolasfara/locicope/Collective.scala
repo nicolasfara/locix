@@ -17,7 +17,7 @@ import io.github.nicolasfara.locicope.network.Network.{ getId, reachablePeersOf,
 import io.github.nicolasfara.locicope.network.Network.localAddress
 import io.github.nicolasfara.locicope.network.Network.send
 import io.github.nicolasfara.locicope.placement.PlacedFlow.PlacedFlow
-import java.sql.Ref
+
 
 object Collective:
   type Collective = Locicope[Collective.Effect]

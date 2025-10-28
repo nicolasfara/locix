@@ -10,3 +10,7 @@ object ClientServerArch:
 object CpsArch:
   type Smartphone <: { type Tie <: Multiple[Smartphone] & Single[Server] }
   type Server <: { type Tie <: Multiple[Smartphone] }
+
+object TwoPeersArch:
+  type PeerA <: { type Tie <: Single[PeerB] }
+  type PeerB <: { type Tie <: Single[PeerA] }
