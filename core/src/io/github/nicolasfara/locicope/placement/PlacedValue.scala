@@ -16,13 +16,14 @@ import io.github.nicolasfara.locicope.placement.Peers.peer
 import io.github.nicolasfara.locicope.placement.PlacementType.{ on, PeerScope }
 import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
 import io.github.nicolasfara.locicope.network.NetworkResource.ValueType
+import scala.util.NotGiven
 
 object PlacedValue:
   type PlacedValue = Locicope[PlacedValue.Effect]
 
   class PlacedValuePeerScope[P <: Peer] extends PeerScope[P]
 
-  inline def on[P <: Peer](using pv: PlacedValue, net: Network)[Value: Codec](expression: PeerScope[P] ?=> Value): Value on P =
+  inline def on[P <: Peer](using pv: PlacedValue, net: Network, ng: NotGiven[PeerScope[P]])[Value: Codec](expression: PeerScope[P] ?=> Value): Value on P =
     pv.effect.on[P, Value](peer[P])(expression)
 
   def take[P <: Peer](using pv: PlacedValue, net: Network, scope: PeerScope[P])[V](value: V on P): V =
@@ -50,6 +51,7 @@ object PlacedValue:
     type Id[V] = V
     override def on[P <: Peer, Value: Codec](using
         Network,
+        NotGiven[PeerScope[P]],
     )(peerRepr: PeerRepr)(expression: PeerScope[P] ?=> Value): Value on P =
       given PeerScope[P] = new PlacedValuePeerScope[P]
       val resourceReference = Reference(hashBody(expression), peerRepr, ValueType.Value)
@@ -106,7 +108,7 @@ object PlacedValue:
      * @return
      *   a placed value representing the value on the specified peer.
      */
-    def on[P <: Peer, Value: Codec](using Network)(peerRepr: PeerRepr)(expression: PeerScope[P] ?=> Value): Value on P
+    def on[P <: Peer, Value: Codec](using Network, NotGiven[PeerScope[P]])(peerRepr: PeerRepr)(expression: PeerScope[P] ?=> Value): Value on P
 
     def take[P <: Peer](using PeerScope[P])[V](value: V on P): V
 

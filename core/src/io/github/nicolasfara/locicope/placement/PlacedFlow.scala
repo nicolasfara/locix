@@ -17,13 +17,18 @@ import io.github.nicolasfara.locicope.placement.PlacementType.{ on, PeerScope, P
 import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
 import io.github.nicolasfara.locicope.network.NetworkResource.ValueType
 import ox.flow.Flow
+import scala.util.NotGiven
 
 object PlacedFlow:
   type PlacedFlow = Locicope[PlacedFlow.Effect]
 
   class PlacedFlowPeerScope[P <: Peer] extends PeerScope[P]
 
-  inline def flowOn[P <: Peer](using pf: PlacedFlow, net: Network)[Value: Codec](expression: PeerScope[P] ?=> Flow[Value]): Flow[Value] on P =
+  inline def flowOn[P <: Peer](using
+      pf: PlacedFlow,
+      net: Network,
+      ng: NotGiven[PeerScope[P]]
+  )[Value: Codec](expression: PeerScope[P] ?=> Flow[Value]): Flow[Value] on P =
     pf.effect.flowOn[P, Value](peer[P])(expression)
 
   // extension [Remote <: Peer, Value: Codec](using pf: PlacedFlow)(placedFlow: Flow[Value] on Remote)
@@ -47,6 +52,7 @@ object PlacedFlow:
   private class EffectImpl(executionPeerRepr: PeerRepr) extends Effect:
     override def flowOn[P <: Peer, Value: Codec](using
         Network,
+        NotGiven[PeerScope[P]],
     )(peerRepr: PeerRepr)(expression: PeerScope[P] ?=> Flow[Value]): Flow[Value] on P =
       given PeerScope[P] = new PlacedFlowPeerScope[P]
       val resourceReference = Reference(hashBody(expression), peerRepr, ValueType.Flow)
@@ -97,7 +103,7 @@ object PlacedFlow:
      * @return
      *   a placed flow that can be accessed from other peers
      */
-    def flowOn[P <: Peer, Value: Codec](using Network)(peerRepr: PeerRepr)(expression: PeerScope[P] ?=> Flow[Value]): Flow[Value] on P
+    def flowOn[P <: Peer, Value: Codec](using Network, NotGiven[PeerScope[P]])(peerRepr: PeerRepr)(expression: PeerScope[P] ?=> Flow[Value]): Flow[Value] on P
 
   //   /**
   //    * Extract the placed flow. This method can only be called by the peer that owns the flow. Any attempt to call this method on a placed flow on a
