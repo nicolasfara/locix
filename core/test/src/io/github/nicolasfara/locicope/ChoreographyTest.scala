@@ -1,7 +1,7 @@
 package io.github.nicolasfara.locicope
 
 import io.github.nicolasfara.locicope.Choreography.Choreography
-import io.github.nicolasfara.locicope.Choreography.{comm, take}
+import io.github.nicolasfara.locicope.Choreography.comm
 import io.github.nicolasfara.locicope.network.Network
 import io.github.nicolasfara.locicope.network.Network.Network
 import org.scalamock.stubs.Stubs
@@ -11,7 +11,7 @@ import org.scalatest.matchers.should.Matchers
 import io.github.nicolasfara.locicope.utils.TestCodec.given
 import io.github.nicolasfara.locicope.placement.PlacedValue.PlacedValue
 import io.github.nicolasfara.locicope.placement.PlacedValue
-import io.github.nicolasfara.locicope.placement.PlacedValue.on
+import io.github.nicolasfara.locicope.placement.PlacedValue.{on, take}
 import io.github.nicolasfara.locicope.placement.PlacementType.on
 import io.github.nicolasfara.locicope.utils.TwoPeersArch.*
 import io.github.nicolasfara.locicope.placement.Peers.PeerRepr

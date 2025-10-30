@@ -29,11 +29,11 @@ object Choreography:
       scope: PeerScope[Receiver],
   )[V: Codec](value: V on Sender): V on Receiver = choreo.effect.comm(peer[Sender], value)
 
-  def take[V: Decoder, Local <: Peer](using
-      net: Network,
-      choreo: Choreography,
-      scope: PeerScope[Local],
-  )(value: V on Local): V = choreo.effect.take(value)
+  // def take[V: Decoder, Local <: Peer](using
+  //     net: Network,
+  //     choreo: Choreography,
+  //     scope: PeerScope[Local],
+  // )(value: V on Local): V = choreo.effect.take(value)
 
   @nowarn inline def run[P <: Peer](using Network)[V](expression: Choreography ?=> V): V =
     val localPeerRepr = peer[P]
@@ -61,12 +61,12 @@ object Choreography:
           (reference, Some(receivedValue))
       summon[PlacedValue].effect.liftF(senderPeerRepr)(placedValue, ref)
 
-    override def take[V, Local <: Peer](using
-        Network,
-        PeerScope[Local],
-    )(value: V on Local): V =
-      val Placed.Local[V @unchecked, Local @unchecked](localValue, _) = value.runtimeChecked
-      localValue
+    // override def take[V, Local <: Peer](using
+    //     Network,
+    //     PeerScope[Local],
+    // )(value: V on Local): V =
+    //   val Placed.Local[V @unchecked, Local @unchecked](localValue, _) = value.runtimeChecked
+    //   localValue
   end EffectImpl
 
   trait Effect:
@@ -78,5 +78,5 @@ object Choreography:
         PeerScope[Receiver],
     )(senderPeerRepr: PeerRepr, value: V on Sender): V on Receiver
 
-    def take[V, Local <: Peer](using Network, PeerScope[Local])(value: V on Local): V
+    // def take[V, Local <: Peer](using Network, PeerScope[Local])(value: V on Local): V
 end Choreography
