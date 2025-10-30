@@ -27,7 +27,7 @@ object PlacedFlow:
   inline def flowOn[P <: Peer](using
       pf: PlacedFlow,
       net: Network,
-      ng: NotGiven[PeerScope[P]]
+      ng: NotGiven[PeerScope[P]],
   )[Value: Codec](expression: PeerScope[P] ?=> Flow[Value]): Flow[Value] on P =
     pf.effect.flowOn[P, Value](peer[P])(expression)
 
@@ -103,7 +103,10 @@ object PlacedFlow:
      * @return
      *   a placed flow that can be accessed from other peers
      */
-    def flowOn[P <: Peer, Value: Codec](using Network, NotGiven[PeerScope[P]])(peerRepr: PeerRepr)(expression: PeerScope[P] ?=> Flow[Value]): Flow[Value] on P
+    def flowOn[P <: Peer, Value: Codec](using
+        Network,
+        NotGiven[PeerScope[P]],
+    )(peerRepr: PeerRepr)(expression: PeerScope[P] ?=> Flow[Value]): Flow[Value] on P
 
   //   /**
   //    * Extract the placed flow. This method can only be called by the peer that owns the flow. Any attempt to call this method on a placed flow on a

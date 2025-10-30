@@ -11,7 +11,7 @@ import org.scalatest.matchers.should.Matchers
 import io.github.nicolasfara.locicope.utils.TestCodec.given
 import io.github.nicolasfara.locicope.placement.PlacedValue.PlacedValue
 import io.github.nicolasfara.locicope.placement.PlacedValue
-import io.github.nicolasfara.locicope.placement.PlacedValue.{on, take}
+import io.github.nicolasfara.locicope.placement.PlacedValue.{ on, take }
 import io.github.nicolasfara.locicope.placement.PlacementType.on
 import io.github.nicolasfara.locicope.utils.TwoPeersArch.*
 import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
@@ -32,9 +32,11 @@ class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
   "The `Choreography` capability" should "allow explicit communication between two peers" in:
     (netEffect.reachablePeersOf(_: PeerRepr)).returnsWith(Set("peerA"))
     // (netEffect.register[Id, Int](_: Reference, _: Id[Int])(using _: Encoder[Int])).returnsWith(())
-    (netEffect.receive[Id, Int, PeerA, PeerB](_: String, _: Reference)(using _: Decoder[Int])).returns:
-      case ("peerA", _, _) => Right(42)
-      case _       => fail("Unexpected receive")
+    (netEffect
+      .receive[Id, Int, PeerA, PeerB](_: String, _: Reference)(using _: Decoder[Int]))
+      .returns:
+        case ("peerA", _, _) => Right(42)
+        case _ => fail("Unexpected receive")
 
     val result = PlacedValue.run[PeerB]:
       Choreography.run[PeerB]:
@@ -46,3 +48,4 @@ class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
     (netEffect.reachablePeersOf(_: PeerRepr)).times shouldBe 1 // Check reachable peers
     // (netEffect.register[Id, Int](_: Reference, _: Id[Int])(using _: Encoder[Int])).times shouldBe 1 // Register the flow on the network
     (netEffect.receive[Id, Int, PeerA, PeerB](_: String, _: Reference)(using _: Decoder[Int])).times shouldBe 1 // Receive the value from peerA
+end ChoreographyTest

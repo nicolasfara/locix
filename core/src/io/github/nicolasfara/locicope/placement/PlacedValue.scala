@@ -23,7 +23,11 @@ object PlacedValue:
 
   class PlacedValuePeerScope[P <: Peer] extends PeerScope[P]
 
-  inline def on[P <: Peer](using pv: PlacedValue, net: Network, ng: NotGiven[PeerScope[P]])[Value: Codec](expression: PeerScope[P] ?=> Value): Value on P =
+  inline def on[P <: Peer](using
+      pv: PlacedValue,
+      net: Network,
+      ng: NotGiven[PeerScope[P]],
+  )[Value: Codec](expression: PeerScope[P] ?=> Value): Value on P =
     pv.effect.on[P, Value](peer[P])(expression)
 
   def take[P <: Peer](using pv: PlacedValue, net: Network, scope: PeerScope[P])[V](value: V on P): V =
