@@ -1,12 +1,8 @@
 package io.github.nicolasfara.locicope
 
-import io.github.nicolasfara.locicope.Collective.{ collective, neighbors, repeat, take, Collective, OutboundMessage }
+import io.github.nicolasfara.locicope.Collective.{ collective, neighbors, repeat, take, branch, Collective, OutboundMessage }
 import io.github.nicolasfara.locicope.network.Network
 import io.github.nicolasfara.locicope.network.Network.Network
-// import io.github.nicolasfara.locicope.PlacementType.{ on, unwrap }
-// import io.github.nicolasfara.locicope.network.NetworkResource.Reference
-// import io.github.nicolasfara.locicope.serialization.{ Decoder, Encoder }
-// import io.github.nicolasfara.locicope.utils.CpsArch.Smartphone
 import org.scalamock.stubs.Stubs
 import org.scalatest.BeforeAndAfter
 import org.scalatest.flatspec.AnyFlatSpecLike
@@ -18,11 +14,12 @@ import io.github.nicolasfara.locicope.placement.PlacedFlow
 import io.github.nicolasfara.locicope.utils.CpsArch.*
 import io.github.nicolasfara.locicope.placement.PlacedFlow.PlacedFlow
 import io.github.nicolasfara.locicope.utils.TestCodec.given
-// import ox.flow.Flow
+import io.github.nicolasfara.locicope.FieldOps.sum
 
 import scala.concurrent.duration.DurationInt
 import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 import io.github.nicolasfara.locicope.serialization.Encoder
+import io.github.nicolasfara.locicope.Collective.localId
 
 class CollectiveTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
 
@@ -42,21 +39,32 @@ class CollectiveTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
         val res = take(temporalEvolution)
         res.take(5).runToList() shouldBe List(1, 2, 3, 4, 5)
 
-//   "A collective program" should "return an empty export when no spatial operator are used" in:
-//     def temporalEvolution(using Net, Collective): Flow[Int] on Smartphone = collective(1.second):
-//       repeat(0)(_ + 1)
-//     // Setup stubs
-//     var lastExport: OutboundMessage = null
-//     (() => netEffect.id).returnsWith(1)
-//     (netEffect.getValues(_: Reference)(using _: Decoder[OutboundMessage])).returnsWith(Right(Map.empty))
-//     (netEffect.setValue(_: OutboundMessage, _: Reference)(using _: Encoder[OutboundMessage])).returns(outbound => lastExport = outbound._1)
-//     (netEffect.setFlow(_: Flow[Int], _: Reference)(using _: Encoder[Int])).returnsWith(())
+  it should "return an export with the value tree produced by spatial operators" in:
+    def spatialComputation(using Network, Collective, PlacedFlow): Flow[Int] on Smartphone = collective(1.second):
+      neighbors(1).local
+    
+    val result = PlacedFlow.run:
+      Collective.run[Smartphone]:
+        val res = take(spatialComputation)
+        res.take(5).runToList() shouldBe List(1, 1, 1, 1, 1)
 
-//     Collective.run[Smartphone](using net):
-//       val res = temporalEvolution(using net, summon)
-//       res.unwrap.take(5).runToList() shouldBe List(1, 2, 3, 4, 5)
-
-//     lastExport shouldBe Map.empty // No export since no spatial operator is used
+  it should "build a field with neighbors values aligned to the operator" in:
+    def spatialComputation(using Network, Collective, PlacedFlow): Flow[Int] on Smartphone = collective(1.second):
+      neighbors(1).local
+    
+    val result = PlacedFlow.run:
+      Collective.run[Smartphone]:
+        val res = take(spatialComputation)
+        res.take(5).runToList() shouldBe List(1, 1, 1, 1, 1)
+  
+  it should "partition the network with device aligned to the branch condition" in:
+    def spatialComputation(using Network, Collective, PlacedFlow): Flow[Int] on Smartphone = collective(1.second):
+      branch(localId.asInstanceOf[Int] % 2 == 0) { neighbors(1).sum } { neighbors(2).sum }
+    
+    val result = PlacedFlow.run:
+      Collective.run[Smartphone]:
+        val res = take(spatialComputation)
+        res.take(1).runToList() shouldBe List(2)
 
 //   it should "return an export with the value tree produced by spatial operators" in:
 //     def spatialComputation(using Net, Collective): Flow[Int] on Smartphone = collective(1.second):

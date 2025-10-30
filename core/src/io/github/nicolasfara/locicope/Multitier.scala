@@ -1,4 +1,14 @@
-// package io.github.nicolasfara.locicope
+package io.github.nicolasfara.locicope
+
+import io.github.nicolasfara.locicope.placement.Peers.TiedToSingle
+import io.github.nicolasfara.locicope.network.Network
+import io.github.nicolasfara.locicope.network.Network.Network
+import io.github.nicolasfara.locicope.placement.Peers.TiedToMultiple
+import io.github.nicolasfara.locicope.placement.Peers.Peer
+import io.github.nicolasfara.locicope.placement.PlacementType.PeerScope
+import io.github.nicolasfara.locicope.placement.PlacementType.on
+import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
+import io.github.nicolasfara.locicope.serialization.Codec
 
 // import io.github.nicolasfara.locicope.serialization.Encoder
 // import io.github.nicolasfara.locicope.placement.Peers.Peer
@@ -17,8 +27,8 @@
 // import io.github.nicolasfara.locicope.Net.invokeFunction
 // import io.github.nicolasfara.locicope.macros.PlacedFunctionFinder.findPlacedFunctions
 
-// object Multitier:
-//   type Multitier = Locicope[Multitier.Effect]
+object Multitier:
+  type Multitier = Locicope[Multitier.Effect]
 //   opaque type MultitierPeerScope[P <: Peer] = MultitierPeerScopeImpl[P]
 
 //   inline def placed[P <: Peer](using Net, Multitier, NotGiven[MultitierPeerScope[P]])[V: Encoder](body: PeerScope[P] ?=> V): V on P =
@@ -86,8 +96,18 @@
 //       PlacedFunctionImpl[In, Out, P](peerRepr, resourceReference)(body)
 //   end EffectImpl
 
-//   trait Effect:
-//     protected[locicope] val localPeerRepr: PeerRepr
+  trait Effect:
+    protected[locicope] val localPeerRepr: PeerRepr
+
+    def asLocal[Remote <: Peer, Local <: TiedToSingle[Remote]](using
+        Network,
+        PeerScope[Local]
+    )[V: Codec](placedValue: V on Remote): V
+
+    def asLocalAll[Remote <: Peer, Local <: TiedToMultiple[Remote]](using
+        net: Network,
+        scope: PeerScope[Local]
+    )[V: Codec](placedValue: V on Remote): Map[net.effect.Id, V]
 
 //     trait PlacedFunction[-In <: Product: Codec, Out: Encoder, Local <: Peer]:
 //       val funcPeerRepr: PeerRepr

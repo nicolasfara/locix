@@ -25,6 +25,9 @@ object PlacedValue:
   inline def on[P <: Peer](using pv: PlacedValue, net: Network)[Value: Codec](expression: PeerScope[P] ?=> Value): Value on P =
     pv.effect.on[P, Value](peer[P])(expression)
 
+  def take[P <: Peer](using pv: PlacedValue, net: Network, scope: PeerScope[P])[V](value: V on P): V =
+    pv.effect.take(value)
+
   // extension [Remote <: Peer, Value: Codec](using pl: PlacedValue)(placedValue: Value on Remote)
   //   def unwrap(using PeerScope[Remote]): Value =
   //     pl.effect.unwrap(placedValue)
@@ -55,6 +58,10 @@ object PlacedValue:
         Some(result)
       else None
       liftF(executionPeerRepr)(placedValue, resourceReference)
+
+    override def take[P <: Peer](using PeerScope[P])[V](value: V on P): V =
+      val PlacementType.Placed.Local[V @unchecked, P @unchecked](localValue, _) = value.runtimeChecked
+      localValue
 
     // override def unwrap[Local <: Peer, Value: Codec](using PeerScope[Local])(placedValue: Value on Local): Value =
     //   // https://dotty.epfl.ch/docs/reference/other-new-features/runtimeChecked.html#example
@@ -100,6 +107,8 @@ object PlacedValue:
      *   a placed value representing the value on the specified peer.
      */
     def on[P <: Peer, Value: Codec](using Network)(peerRepr: PeerRepr)(expression: PeerScope[P] ?=> Value): Value on P
+
+    def take[P <: Peer](using PeerScope[P])[V](value: V on P): V
 
     // /**
     //  * Extract the placed value. This method can only be called by the peer that owns the value. Any other try to call this method on a placed value
