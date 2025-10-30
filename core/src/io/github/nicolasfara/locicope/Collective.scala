@@ -20,7 +20,6 @@ import io.github.nicolasfara.locicope.placement.PlacedFlow.PlacedFlow
 import io.github.nicolasfara.locicope.placement.Peers.Peer
 import io.github.nicolasfara.locicope.placement.PlacementType
 
-
 object Collective:
   type Collective = Locicope[Collective.Effect]
 

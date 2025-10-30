@@ -1,6 +1,6 @@
 package io.github.nicolasfara.locicope
 
-import io.github.nicolasfara.locicope.Collective.{ collective, neighbors, repeat, take, branch, Collective, OutboundMessage }
+import io.github.nicolasfara.locicope.Collective.{ branch, collective, neighbors, repeat, take, Collective, OutboundMessage }
 import io.github.nicolasfara.locicope.network.Network
 import io.github.nicolasfara.locicope.network.Network.Network
 import org.scalamock.stubs.Stubs
@@ -42,7 +42,7 @@ class CollectiveTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
   it should "return an export with the value tree produced by spatial operators" in:
     def spatialComputation(using Network, Collective, PlacedFlow): Flow[Int] on Smartphone = collective(1.second):
       neighbors(1).local
-    
+
     val result = PlacedFlow.run:
       Collective.run[Smartphone]:
         val res = take(spatialComputation)
@@ -51,20 +51,21 @@ class CollectiveTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
   it should "build a field with neighbors values aligned to the operator" in:
     def spatialComputation(using Network, Collective, PlacedFlow): Flow[Int] on Smartphone = collective(1.second):
       neighbors(1).local
-    
+
     val result = PlacedFlow.run:
       Collective.run[Smartphone]:
         val res = take(spatialComputation)
         res.take(5).runToList() shouldBe List(1, 1, 1, 1, 1)
-  
+
   it should "partition the network with device aligned to the branch condition" in:
     def spatialComputation(using Network, Collective, PlacedFlow): Flow[Int] on Smartphone = collective(1.second):
       branch(localId.asInstanceOf[Int] % 2 == 0) { neighbors(1).sum } { neighbors(2).sum }
-    
+
     val result = PlacedFlow.run:
       Collective.run[Smartphone]:
         val res = take(spatialComputation)
         res.take(1).runToList() shouldBe List(2)
+end CollectiveTest
 
 //   it should "return an export with the value tree produced by spatial operators" in:
 //     def spatialComputation(using Net, Collective): Flow[Int] on Smartphone = collective(1.second):

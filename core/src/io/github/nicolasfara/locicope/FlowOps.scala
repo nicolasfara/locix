@@ -8,9 +8,9 @@ import ox.forever
 import scala.annotation.nowarn
 
 object FlowOps:
-  @nowarn private inline def usingEmitInline[T](inline withEmit: FlowEmit[T] => Unit): Flow[T] = Flow(
+  @nowarn inline private def usingEmitInline[T](inline withEmit: FlowEmit[T] => Unit): Flow[T] = Flow(
     new FlowStage:
-      override def run(emit: FlowEmit[T]): Unit = withEmit(emit)
+      override def run(emit: FlowEmit[T]): Unit = withEmit(emit),
   )
 
   def onEvery[T](interval: FiniteDuration)(value: => T): Flow[T] = usingEmitInline: emit =>
