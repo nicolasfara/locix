@@ -2,99 +2,93 @@ package io.github.nicolasfara.locicope
 
 import io.github.nicolasfara.locicope.placement.Peers.TiedToSingle
 import io.github.nicolasfara.locicope.network.Network
-import io.github.nicolasfara.locicope.network.Network.Network
+import io.github.nicolasfara.locicope.network.Network.{Network, reachablePeersOf, getId}
 import io.github.nicolasfara.locicope.placement.Peers.TiedToMultiple
 import io.github.nicolasfara.locicope.placement.Peers.Peer
 import io.github.nicolasfara.locicope.placement.PlacementType.PeerScope
 import io.github.nicolasfara.locicope.placement.PlacementType.on
 import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
 import io.github.nicolasfara.locicope.serialization.Codec
-
-// import io.github.nicolasfara.locicope.serialization.Encoder
-// import io.github.nicolasfara.locicope.placement.Peers.Peer
-// import io.github.nicolasfara.locicope.Net.Net
-// import io.github.nicolasfara.locicope.PlacementType.on
-// import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
-// import io.github.nicolasfara.locicope.PlacementType.PeerScope
-// import ox.flow.Flow
-// import io.github.nicolasfara.locicope.serialization.Codec
-// import io.github.nicolasfara.locicope.network.NetworkResource.Reference
-// import scala.util.NotGiven
-// import io.github.nicolasfara.locicope.placement.Peers.peer
-// import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
-// import io.github.nicolasfara.locicope.network.NetworkResource.ValueType
-// import io.github.nicolasfara.locicope.Net.registerFunction
-// import io.github.nicolasfara.locicope.Net.invokeFunction
-// import io.github.nicolasfara.locicope.macros.PlacedFunctionFinder.findPlacedFunctions
+import io.github.nicolasfara.locicope.placement.Peers.peer
+import scala.annotation.nowarn
+import io.github.nicolasfara.locicope.placement.PlacementType
+import io.github.nicolasfara.locicope.network.Network.receive
+import io.github.nicolasfara.locicope.network.Network.localAddress
+import ox.flow.Flow
+import io.github.nicolasfara.locicope.placement.PlacedValue.PlacedValue
 
 object Multitier:
   type Multitier = Locicope[Multitier.Effect]
-//   opaque type MultitierPeerScope[P <: Peer] = MultitierPeerScopeImpl[P]
 
-//   inline def placed[P <: Peer](using Net, Multitier, NotGiven[MultitierPeerScope[P]])[V: Encoder](body: PeerScope[P] ?=> V): V on P =
-//     summon[Multitier].effect.placed[V, P](body)(peer[P])
+  def asLocal[Remote <: Peer, Local <: TiedToSingle[Remote], V: Codec](using
+      mt: Multitier,
+      net: Network,
+      scope: PeerScope[Local]
+  )(placedValue: V on Remote): V =
+    mt.effect.asLocal(placedValue)
 
-//   inline def placedFlow[P <: Peer](using Net, Multitier, NotGiven[MultitierPeerScope[P]])[V: Encoder](body: PeerScope[P] ?=> Flow[V]): Flow[V] on P =
-//     summon[Multitier].effect.placedFlow[V, P](body)(peer[P])
+  def asLocalAll[Remote <: Peer, Local <: TiedToMultiple[Remote], V: Codec](using
+      mt: Multitier,
+      net: Network,
+      scope: PeerScope[Local]
+  )(placedValue: V on Remote): Map[net.effect.Id, V] =
+    mt.effect.asLocalAll(placedValue)
+  
+  @nowarn inline def run[P <: Peer](using Network)[V](program: Multitier ?=> V): V =
+    val localPeerRepr = peer[P]
+    val handler = new Locicope.Handler[Multitier.Effect, V, V]:
+      override def handle(program: (Locicope[Effect]) ?=> V): V = program(using Locicope(MultitierHandlerImpl[V](localPeerRepr)))
+    Locicope.handle(program)(using handler)
+      
+  class MultitierHandlerImpl[V](val localPeerRepr: PeerRepr) extends Effect:
+    override def asLocal[Remote <: Peer, Local <: TiedToSingle[Remote]](using
+        Network,
+        PeerScope[Local]
+    )[V: Codec](placedValue: V on Remote): V = placedValue match
+      case PlacementType.Placed.Local[V @unchecked, Remote @unchecked](localValue, _) => localValue
+      case PlacementType.Placed.Remote[V @unchecked, Remote @unchecked](reference) =>
+        val reachablePeer = reachablePeersOf[Remote]
+        require(reachablePeer.size == 1, s"Only 1 peer should be connected to this local peer, but found ${reachablePeer}")
+        receive[[X] =>> X, V, Remote, Local](reachablePeer.head, reference).fold(throw _, identity)
 
-//   inline def function[P <: Peer](using
-//       net: Net,
-//       mt: Multitier,
-//       ng: NotGiven[MultitierPeerScope[P]],
-//   )[In <: Product: Codec, Out: Codec](body: PeerScope[P] ?=> (In => Out)): mt.effect.PlacedFunction[In, Out, P] =
-//     summon[Multitier].effect.function[In, Out, P](body)(peer[P])
+    override def asLocalAll[Remote <: Peer, Local <: TiedToMultiple[Remote]](using
+        net: Network,
+        scope: PeerScope[Local]
+    )[V: Codec](placedValue: V on Remote): Map[net.effect.Id, V] = placedValue match
+      case PlacementType.Placed.Local[V @unchecked, Remote @unchecked](localValue, _) =>
+        Map(getId(localAddress) -> localValue)
+      case PlacementType.Placed.Remote[V @unchecked, Remote @unchecked](reference) =>
+        val reachablePeers = reachablePeersOf[Remote]
+        reachablePeers
+          .map: peerAddress =>
+            val receivedValue = receive[[X] =>> X, V, Remote, Local](peerAddress, reference).fold(throw _, identity)
+            (getId(peerAddress), receivedValue)
+          .toMap
 
-//   inline def run[P <: Peer](using Net)[V](program: Multitier ?=> V): Unit =
-//     val handler = MultitierHandlerImpl[V](peer[P])
-//     Locicope.handle(program)(using handler)
+    override def collectAsLocal[Remote <: Peer, Local <: TiedToSingle[Remote]](using
+        Network,
+        PeerScope[Local]
+    )[V: Codec](placedFlow: Flow[V] on Remote): Flow[V] = placedFlow match
+      case PlacementType.Placed.Local[Flow[V] @unchecked, Remote @unchecked](flow, _) => flow
+      case PlacementType.Placed.Remote[Flow[V] @unchecked, Remote @unchecked](reference) =>
+        val reachablePeer = reachablePeersOf[Remote]
+        require(reachablePeer.size == 1, s"Only 1 peer should be connected to this local peer, but found ${reachablePeer}")
+        receive[Flow, V, Remote, Local](reachablePeer.head, reference).fold(throw _, identity)
 
-//   private class MultitierPeerScopeImpl[P <: Peer](val peerRepr: PeerRepr) extends PlacementType.PeerScope[P]
-
-//   class MultitierHandlerImpl[V](peerRepr: PeerRepr) extends Locicope.Handler[Multitier.Effect, V, Unit]:
-//     override def handle(program: Locicope[Effect] ?=> V): Unit = program(using new Locicope(EffectImpl(peerRepr)))
-
-//   private class EffectImpl(override val localPeerRepr: PeerRepr) extends Effect:
-//     private class PlacedFunctionImpl[In <: Product: Codec, Out: Codec, Local <: Peer](
-//         override val funcPeerRepr: PeerRepr,
-//         override val resourceReference: Reference,
-//     )(override val body: In => Out)(using Net)
-//         extends PlacedFunction[In, Out, Local]:
-//       override def toString: String = s"λ@${funcPeerRepr.baseTypeRepr}"
-//       override def apply(inputs: In): Out on Local =
-//         val result =
-//           if localPeerRepr <:< funcPeerRepr then body(inputs)
-//           else invokeFunction[In, Out](inputs, resourceReference)
-//         PlacementType.lift(Some(result), resourceReference)
-
-//     override def placed[V: Encoder, P <: Peer](body: MultitierPeerScope[P] ?=> V)(peerRepr: PeerRepr)(using Net): V on P =
-//       given MultitierPeerScope[P] = new MultitierPeerScopeImpl[P](peerRepr)
-//       val resourceReference = Reference(hashBody(body), localPeerRepr, ValueType.Value)
-//       val placedValue = if localPeerRepr <:< peerRepr then
-//         val result = body
-//         Some(result)
-//       else
-//         findPlacedFunctions(body, summon)
-//         None
-//       PlacementType.lift(placedValue, resourceReference)
-
-//     override def placedFlow[V: Encoder, P <: Peer](body: MultitierPeerScope[P] ?=> Flow[V])(peerRepr: PeerRepr)(using Net): Flow[V] on P =
-//       given MultitierPeerScope[P] = new MultitierPeerScopeImpl[P](peerRepr)
-//       val resourceReference = Reference(hashBody(body), localPeerRepr, ValueType.Flow)
-//       val placedValue = if localPeerRepr <:< peerRepr then
-//         val result = body
-//         Some(result)
-//       else
-//         findPlacedFunctions(body, summon)
-//         None
-//       PlacementType.liftFlow(placedValue, resourceReference)
-
-//     override def function[In <: Product: Codec, Out: Codec, P <: Peer](body: MultitierPeerScope[P] ?=> In => Out)(peerRepr: PeerRepr)(using
-//         Net,
-//     ): PlacedFunction[In, Out, P] =
-//       given MultitierPeerScope[P] = new MultitierPeerScopeImpl[P](peerRepr)
-//       val resourceReference = Reference(hashBody(body), localPeerRepr, ValueType.Value)
-//       PlacedFunctionImpl[In, Out, P](peerRepr, resourceReference)(body)
-//   end EffectImpl
+    override def collectAsLocalAll[Remote <: Peer, Local <: TiedToMultiple[Remote]](using
+        net: Network,
+        scope: PeerScope[Local]
+    )[V: Codec](placedValue: Flow[V] on Remote): Flow[(net.effect.Id, V)] =
+      placedValue match
+        case PlacementType.Placed.Local[Flow[V] @unchecked, Remote @unchecked](flow, _) =>
+          flow.map(value => (getId(localAddress), value))
+        case PlacementType.Placed.Remote[Flow[V] @unchecked, Remote @unchecked](reference) =>
+          val reachablePeers = reachablePeersOf[Remote]
+          val flows = reachablePeers
+            .map: peerAddress =>
+              receive[Flow, V, Remote, Local](peerAddress, reference).fold(throw _, identity)
+                .map((net.effect.getId(peerAddress), _))
+          flows.fold(Flow.empty)(_.merge(_))
 
   trait Effect:
     protected[locicope] val localPeerRepr: PeerRepr
@@ -109,15 +103,12 @@ object Multitier:
         scope: PeerScope[Local]
     )[V: Codec](placedValue: V on Remote): Map[net.effect.Id, V]
 
-//     trait PlacedFunction[-In <: Product: Codec, Out: Encoder, Local <: Peer]:
-//       val funcPeerRepr: PeerRepr
-//       val resourceReference: Reference
-//       val body: In => Out
-//       def apply(inputs: In): Out on Local
+    def collectAsLocal[Remote <: Peer, Local <: TiedToSingle[Remote]](using
+        Network,
+        PeerScope[Local]
+    )[V: Codec](placedValue: Flow[V] on Remote): Flow[V]
 
-//     def placed[V: Encoder, P <: Peer](body: MultitierPeerScope[P] ?=> V)(peerRepr: PeerRepr)(using Net): V on P
-//     def placedFlow[V: Encoder, P <: Peer](body: MultitierPeerScope[P] ?=> Flow[V])(peerRepr: PeerRepr)(using Net): Flow[V] on P
-//     def function[In <: Product: Codec, Out: Codec, P <: Peer](body: MultitierPeerScope[P] ?=> (In => Out))(peerRepr: PeerRepr)(using
-//         Net,
-//     ): PlacedFunction[In, Out, P]
-// end Multitier
+    def collectAsLocalAll[Remote <: Peer, Local <: TiedToMultiple[Remote]](using
+        net: Network,
+        scope: PeerScope[Local]
+    )[V: Codec](placedValue: Flow[V] on Remote): Flow[(net.effect.Id, V)]
