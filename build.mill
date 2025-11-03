@@ -6,6 +6,7 @@ package build
 import mill._
 import scalalib._
 import com.goyeau.mill.scalafix.ScalafixModule
+import mill.api.Task.Simple
 
 trait CommonScala extends ScalaModule with ScalafixModule {
   def scalaVersion = "3.7.3"
@@ -56,5 +57,9 @@ object core extends CommonScala {
 
 object examples extends CommonScala {
   def moduleDeps = Seq(core)
-  override def mainClass: T[Option[String]] = Some("io.github.locicope.SimpleClientApp") // or "io.github.locicope.SimpleServerApp" for server example
+  override def mvnDeps = Seq(
+      mvn"io.circe::circe-core:0.14.15",
+      mvn"io.circe::circe-generic:0.14.15",
+      mvn"io.circe::circe-parser:0.14.15",
+  )
 }

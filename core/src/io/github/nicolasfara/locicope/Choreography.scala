@@ -1,5 +1,7 @@
 package io.github.nicolasfara.locicope
 
+import scala.annotation.nowarn
+
 import io.github.nicolasfara.locicope.placement.Peers.Peer
 import io.github.nicolasfara.locicope.placement.Peers.TiedToSingle
 import io.github.nicolasfara.locicope.placement.PlacementType.on
@@ -17,7 +19,6 @@ import io.github.nicolasfara.locicope.network.Network.send
 import io.github.nicolasfara.locicope.placement.PlacementType
 import io.github.nicolasfara.locicope.placement.PlacedValue.PlacedValue
 import io.github.nicolasfara.locicope.network.NetworkResource.Reference
-import scala.annotation.nowarn
 
 object Choreography:
   type Choreography = Locicope[Choreography.Effect]
@@ -26,7 +27,7 @@ object Choreography:
       net: Network,
       placed: PlacedValue,
       choreo: Choreography,
-      scope: PeerScope[Receiver],
+      // scope: PeerScope[Receiver],
   )[V: Codec](value: V on Sender): V on Receiver = choreo.effect.comm(peer[Sender], value)
 
   // def take[V: Decoder, Local <: Peer](using
@@ -46,9 +47,10 @@ object Choreography:
     override def comm[V: Codec, Remote <: Peer, Local <: TiedToSingle[Remote]](using
         Network,
         PlacedValue,
-        PeerScope[Local],
+        // PeerScope[Local],
     )(senderPeerRepr: PeerRepr, value: V on Remote): V on Local =
       val peer = reachablePeersOf[Remote]
+      given PeerScope[Local] {}
       assume(peer.size == 1, s"Only 1 peer should be connected to this local peer, but found ${peer}")
       val (ref, placedValue): (Reference, Option[Id[V]]) =
         if senderPeerRepr <:< localPeerRepr then
@@ -75,7 +77,7 @@ object Choreography:
     def comm[V: Codec, Sender <: Peer, Receiver <: TiedToSingle[Sender]](using
         Network,
         PlacedValue,
-        PeerScope[Receiver],
+        // PeerScope[Receiver],
     )(senderPeerRepr: PeerRepr, value: V on Sender): V on Receiver
 
     // def take[V, Local <: Peer](using Network, PeerScope[Local])(value: V on Local): V

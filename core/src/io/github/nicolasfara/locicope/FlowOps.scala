@@ -1,11 +1,12 @@
 package io.github.nicolasfara.locicope
 
-import ox.flow.Flow
 import scala.concurrent.duration.FiniteDuration
+import scala.annotation.nowarn
+
+import ox.flow.Flow
 import ox.flow.FlowEmit
 import ox.flow.FlowStage
 import ox.forever
-import scala.annotation.nowarn
 
 object FlowOps:
   @nowarn inline private def usingEmitInline[T](inline withEmit: FlowEmit[T] => Unit): Flow[T] = Flow(
