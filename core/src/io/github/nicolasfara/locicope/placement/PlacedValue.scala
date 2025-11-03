@@ -1,5 +1,7 @@
 package io.github.nicolasfara.locicope.placement
 
+import scala.util.NotGiven
+
 import io.github.nicolasfara.locicope.Locicope
 import io.github.nicolasfara.locicope.placement.Peers.Peer
 import io.github.nicolasfara.locicope.network.NetworkResource.Reference
@@ -16,7 +18,6 @@ import io.github.nicolasfara.locicope.placement.Peers.peer
 import io.github.nicolasfara.locicope.placement.PlacementType.{ on, PeerScope }
 import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
 import io.github.nicolasfara.locicope.network.NetworkResource.ValueType
-import scala.util.NotGiven
 
 object PlacedValue:
   type PlacedValue = Locicope[PlacedValue.Effect]

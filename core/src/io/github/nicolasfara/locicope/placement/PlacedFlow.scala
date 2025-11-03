@@ -1,5 +1,7 @@
 package io.github.nicolasfara.locicope.placement
 
+import scala.util.NotGiven
+
 import io.github.nicolasfara.locicope.Locicope
 import io.github.nicolasfara.locicope.placement.Peers.Peer
 import io.github.nicolasfara.locicope.network.NetworkResource.Reference
@@ -17,7 +19,6 @@ import io.github.nicolasfara.locicope.placement.PlacementType.{ on, PeerScope, P
 import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
 import io.github.nicolasfara.locicope.network.NetworkResource.ValueType
 import ox.flow.Flow
-import scala.util.NotGiven
 
 object PlacedFlow:
   type PlacedFlow = Locicope[PlacedFlow.Effect]

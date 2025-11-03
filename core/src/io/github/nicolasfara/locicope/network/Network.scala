@@ -1,5 +1,7 @@
 package io.github.nicolasfara.locicope.network
 
+import scala.annotation.targetName
+
 import io.github.nicolasfara.locicope.Locicope
 import io.github.nicolasfara.locicope.serialization.{ Decoder, Encoder }
 import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
@@ -7,7 +9,6 @@ import io.github.nicolasfara.locicope.placement.Peers.TiedWith
 import io.github.nicolasfara.locicope.placement.Peers.Peer
 import io.github.nicolasfara.locicope.placement.Peers.peer
 import io.github.nicolasfara.locicope.placement.PlacementType.PeerScope
-import scala.annotation.targetName
 import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 import cats.data.Cont
 

@@ -1,8 +1,8 @@
 package io.github.nicolasfara.locicope.placement
 
-import Peers.Quantifier.{ Multiple, Single }
-
 import scala.quoted.*
+
+import Peers.Quantifier.{ Multiple, Single }
 
 /**
  * Object containing definitions for peers in a network.

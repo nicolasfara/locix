@@ -1,5 +1,7 @@
 package io.github.nicolasfara.locicope
 
+import scala.annotation.nowarn
+
 import io.github.nicolasfara.locicope.placement.Peers.TiedToSingle
 import io.github.nicolasfara.locicope.network.Network
 import io.github.nicolasfara.locicope.network.Network.{ getId, reachablePeersOf, Network }
@@ -10,7 +12,6 @@ import io.github.nicolasfara.locicope.placement.PlacementType.on
 import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
 import io.github.nicolasfara.locicope.serialization.Codec
 import io.github.nicolasfara.locicope.placement.Peers.peer
-import scala.annotation.nowarn
 import io.github.nicolasfara.locicope.placement.PlacementType
 import io.github.nicolasfara.locicope.network.Network.receive
 import io.github.nicolasfara.locicope.network.Network.localAddress

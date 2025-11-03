@@ -1,7 +1,8 @@
 package io.github.nicolasfara.locicope.macros
 
-import scala.quoted.*
 import java.nio.charset.StandardCharsets
+
+import scala.quoted.*
 
 object ASTHashing:
   inline def hashBody(inline body: Any): String = ${ astHashImpl('body) }
