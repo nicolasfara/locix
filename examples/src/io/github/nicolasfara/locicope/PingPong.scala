@@ -1,4 +1,4 @@
-package io.github.nicolasfara
+package io.github.nicolasfara.locicope
 
 import io.github.nicolasfara.locicope.network.Network.Network
 import io.github.nicolasfara.locicope.Choreography.Choreography
