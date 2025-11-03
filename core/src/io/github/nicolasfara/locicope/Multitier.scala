@@ -35,6 +35,13 @@ object Multitier:
   )(placedValue: V on Remote): Map[net.effect.Id, V] =
     mt.effect.asLocalAll(placedValue)
 
+  def collectAsLocal[Remote <: Peer, Local <: TiedToSingle[Remote], V: Codec](using
+      mt: Multitier,
+      net: Network,
+      scope: PeerScope[Local],
+  )(placedFlow: Flow[V] on Remote): Flow[V] =
+    mt.effect.collectAsLocal(placedFlow)
+
   @nowarn inline def run[P <: Peer](using Network)[V](program: Multitier ?=> V): V =
     val localPeerRepr = peer[P]
     val handler = new Locicope.Handler[Multitier.Effect, V, V]:
