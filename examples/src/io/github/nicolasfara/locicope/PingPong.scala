@@ -13,8 +13,8 @@ import io.github.nicolasfara.locicope.placement.PlacedValue.take
 import io.github.nicolasfara.locicope.placement.Peers.Quantifier.Single
 
 object PingPong:
-  type Pinger <: Peer { type Tie <: Single[Ponger] }
-  type Ponger <: Peer { type Tie <: Single[Pinger] }
+  type Pinger <: { type Tie <: Single[Ponger] }
+  type Ponger <: { type Tie <: Single[Pinger] }
 
   def pingPongProgram[P <: Peer](using Network, Choreography, PlacedValue) =
     val ping = on[Pinger]("ping")
