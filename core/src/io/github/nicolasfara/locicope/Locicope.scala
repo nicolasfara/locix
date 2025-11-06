@@ -6,5 +6,5 @@ object Locicope:
   trait Handler[+F, -A, +B]:
     def handle(program: Locicope[F] ?=> A): B
 
-  def handle[F, A, B](program: Locicope[F] ?=> A)(using handler: Handler[F, A, B]): B =
+  inline def handle[F, A, B](program: Locicope[F] ?=> A)(using handler: Handler[F, A, B]): B =
     handler.handle(program)

@@ -43,12 +43,12 @@ object Multitier:
     mt.effect.collectAsLocal(placedFlow)
 
   @nowarn inline def run[P <: Peer](using Network)[V](program: Multitier ?=> V): V =
-    val localPeerRepr = peer[P]
+    val effect = effectImpl[P]()
     val handler = new Locicope.Handler[Multitier.Effect, V, V]:
-      override def handle(program: (Locicope[Effect]) ?=> V): V = program(using Locicope(MultitierHandlerImpl[V](localPeerRepr)))
+      override def handle(program: (Locicope[Effect]) ?=> V): V = program(using Locicope(effect))
     Locicope.handle(program)(using handler)
 
-  class MultitierHandlerImpl[V](val localPeerRepr: PeerRepr) extends Effect:
+  @nowarn inline private def effectImpl[LocalPeer <: Peer]() = new Effect:
     override def asLocal[Remote <: Peer, Local <: TiedToSingle[Remote]](using
         Network,
         PeerScope[Local],
@@ -98,11 +98,8 @@ object Multitier:
                 .fold(throw _, identity)
                 .map((net.effect.getId(peerAddress), _))
           flows.fold(Flow.empty)(_.merge(_))
-  end MultitierHandlerImpl
 
   trait Effect:
-    protected[locicope] val localPeerRepr: PeerRepr
-
     def asLocal[Remote <: Peer, Local <: TiedToSingle[Remote]](using
         Network,
         PeerScope[Local],

@@ -30,7 +30,7 @@ object Network:
     net.effect.send[Container, V, To, From](address, ref, data)
 
   def receive[Container[_], V: Decoder, From <: Peer, To <: TiedWith[From]](using
-      scope: PeerScope[To],
+      // scope: PeerScope[To],
       net: Network,
   )(address: net.effect.Address[From], ref: Reference): Either[net.effect.NetworkError, Container[V]] =
     net.effect.receive[Container, V, From, To](address, ref)
