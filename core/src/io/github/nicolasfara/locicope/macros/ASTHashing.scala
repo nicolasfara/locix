@@ -11,7 +11,7 @@ object ASTHashing:
     import quotes.reflect.*
     val pos = Position.ofMacroExpansion
     val hashed = fletcher16Checksum(
-      s"${pos.sourceFile.name}:${pos.start}:${pos.end}:${body.show}",
+      s"${pos.sourceFile.name}:${body.show}",
     ).toHexString
     Expr(hashed)
 
