@@ -26,7 +26,7 @@ object MasterWorker:
   type Worker <: { type Tie <: Single[Master] }
   type Master <: { type Tie <: Multiple[Worker] }
 
-  class Task(val input: Int):
+  case class Task(val input: Int):
     def exec(): Int = input * input
 
   def selectWorker(using net: MasterWorkerNetwork): Int =
@@ -37,12 +37,12 @@ object MasterWorker:
 
   def masterWorker(using MasterWorkerNetwork, Multitier, PlacedFlow, PlacedValue) =
     val inputsOnMaster = flowOn[Master]:
-      Flow.fromIterable(List(1, 2, 3, 4, 5)).map(input => selectWorker -> input)
+      Flow.fromIterable(List(1, 2, 3, 4, 5)).map(input => selectWorker -> Task(input))
 
     val resultOnWorker = on[Worker]:
       val tasks = collectAsLocal(inputsOnMaster)
         .filter((id, _) => id == getId(localAddress))
-        .map((id, input) => Task(input).exec())
+        .map((id, task) => task.exec())
         .runToList()
       tasks
 
