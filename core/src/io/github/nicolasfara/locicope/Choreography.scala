@@ -21,64 +21,48 @@ import io.github.nicolasfara.locicope.placement.PlacedValue.PlacedValue
 import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 
 object Choreography:
-  type Choreography = Locicope[Choreography.Effect]
+  opaque type Choreography = Locicope[Choreography.Effect]
 
-  inline def comm[Sender <: Peer, Receiver <: TiedToSingle[Sender]](using
+  inline def comm[Sender <: TiedToSingle[Receiver], Receiver <: TiedToSingle[Sender]](using
       net: Network,
       placed: PlacedValue,
       choreo: Choreography,
-      // scope: PeerScope[Receiver],
   )[V: Codec](value: V on Sender): V on Receiver = choreo.effect.comm(peer[Sender], value)
-
-  // def take[V: Decoder, Local <: Peer](using
-  //     net: Network,
-  //     choreo: Choreography,
-  //     scope: PeerScope[Local],
-  // )(value: V on Local): V = choreo.effect.take(value)
 
   @nowarn inline def run[P <: Peer](using Network)[V](expression: Choreography ?=> V): V =
     val localPeerRepr = peer[P]
+    val effect = effectImpl[P]
     val handler = new Locicope.Handler[Choreography.Effect, V, V]:
-      override def handle(program: (Locicope[Effect]) ?=> V): V = program(using Locicope(EffectImpl(localPeerRepr)))
+      override def handle(program: (Locicope[Effect]) ?=> V): V = program(using Locicope(effect))
     Locicope.handle(expression)(using handler)
 
-  class EffectImpl(val localPeerRepr: PeerRepr) extends Effect:
-    private type Id[V] = V
-    override def comm[V: Codec, Remote <: Peer, Local <: TiedToSingle[Remote]](using
+  @nowarn inline private def effectImpl[LocalPeer <: Peer]: Effect = new Effect:
+    opaque type Id[V] = V
+    override def comm[V: Codec, Sender <: TiedToSingle[Receiver], Receiver <: TiedToSingle[Sender]](using
         Network,
         PlacedValue,
-        // PeerScope[Local],
-    )(senderPeerRepr: PeerRepr, value: V on Remote): V on Local =
-      val peer = reachablePeersOf[Remote]
-      given PeerScope[Local] {}
-      assume(peer.size == 1, s"Only 1 peer should be connected to this local peer, but found ${peer}")
+    )(senderPeerRepr: PeerRepr, value: V on Sender): V on Receiver =
+      import scala.compiletime.summonFrom
+      given PeerScope[Sender] {}
       val (ref, placedValue): (Reference, Option[Id[V]]) =
-        if senderPeerRepr <:< localPeerRepr then
-          val Placed.Local[V @unchecked, Local @unchecked](localValue, reference) = value.runtimeChecked
-          send[Id, V, Remote, Local](peer.head, reference, localValue).fold(throw _, identity)
+        if peer[LocalPeer] <:< senderPeerRepr then
+          val peer = reachablePeersOf[Receiver]
+          require(peer.size == 1, s"Only 1 peer should be connected to this local peer, but found ${peer}")
+          val Placed.Local[V @unchecked, Sender @unchecked](localValue, reference) = value.runtimeChecked
+          send[Id, V, Receiver, Sender](peer.head, reference, localValue).fold(throw _, identity)
           (reference, None)
         else
-          val Placed.Remote[V @unchecked, Local @unchecked](reference) = value.runtimeChecked
-          val receivedValue = receive[Id, V, Remote, Local](peer.head, reference).fold(throw _, identity)
+          val peer = reachablePeersOf[Sender]
+          require(peer.size == 1, s"Only 1 peer should be connected to this local peer, but found ${peer}")
+          val Placed.Remote[V @unchecked, Sender @unchecked](reference) = value.runtimeChecked
+          val receivedValue = receive[Id, V, Sender, Receiver](peer.head, reference).fold(throw _, identity)
           (reference, Some(receivedValue))
       summon[PlacedValue].effect.liftF(senderPeerRepr)(placedValue, ref)
-
-    // override def take[V, Local <: Peer](using
-    //     Network,
-    //     PeerScope[Local],
-    // )(value: V on Local): V =
-    //   val Placed.Local[V @unchecked, Local @unchecked](localValue, _) = value.runtimeChecked
-    //   localValue
-  end EffectImpl
+    end comm
 
   trait Effect:
-    protected[locicope] val localPeerRepr: PeerRepr
-
-    def comm[V: Codec, Sender <: Peer, Receiver <: TiedToSingle[Sender]](using
+    def comm[V: Codec, Sender <: TiedToSingle[Receiver], Receiver <: TiedToSingle[Sender]](using
         Network,
         PlacedValue,
-        // PeerScope[Receiver],
     )(senderPeerRepr: PeerRepr, value: V on Sender): V on Receiver
-
-    // def take[V, Local <: Peer](using Network, PeerScope[Local])(value: V on Local): V
 end Choreography

@@ -24,7 +24,7 @@ object PlacementType:
   trait PeerScope[P <: Peer]
 
   trait Placement:
-    def liftF[P <: Peer](using
+    inline def liftF[P <: Peer](using
         Network,
     )[Container[_], Value: Codec](peerRepr: PeerRepr)(value: Option[Container[Value]], ref: Reference): Container[Value] on P =
       value

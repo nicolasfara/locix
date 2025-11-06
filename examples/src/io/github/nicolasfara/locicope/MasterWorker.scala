@@ -14,7 +14,7 @@ import io.github.nicolasfara.locicope.placement.PlacedFlow.flowOn
 import ox.flow.Flow
 import io.github.nicolasfara.locicope.network.Network.reachablePeersOf
 import io.github.nicolasfara.locicope.network.Network.getId
-import io.github.nicolasfara.locicope.Multitier.{asLocal, collectAsLocal}
+import io.github.nicolasfara.locicope.Multitier.{ asLocal, collectAsLocal }
 import io.github.nicolasfara.locicope.network.Network.localAddress
 
 trait IntNetwork extends Network.Effect:
@@ -40,11 +40,14 @@ object MasterWorker:
       Flow.fromIterable(List(1, 2, 3, 4, 5)).map(input => selectWorker -> input)
 
     val resultOnWorker = on[Worker]:
-      val tasks = collectAsLocal(inputsOnMaster).filter((id, _) => id == getId(localAddress))
-        .map((id, input) => Task(input).exec()).runToList()
+      val tasks = collectAsLocal(inputsOnMaster)
+        .filter((id, _) => id == getId(localAddress))
+        .map((id, input) => Task(input).exec())
+        .runToList()
       tasks
 
     on[Master]:
       val workerResults = asLocalAll(resultOnWorker)
       val collectedResults = workerResults.values.flatten
       println(s"Final results collected at Master: ${collectedResults.toList}")
+end MasterWorker

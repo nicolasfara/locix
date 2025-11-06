@@ -10,19 +10,20 @@ import io.github.nicolasfara.locicope.Choreography.comm
 import io.github.nicolasfara.locicope.placement.PlacedValue.on
 import io.github.nicolasfara.locicope.CirceCodec.given
 import io.github.nicolasfara.locicope.placement.PlacedValue.take
+import io.github.nicolasfara.locicope.placement.Peers.Quantifier.Single
 
 object PingPong:
-  type Pinger <: Peer { type Tie <: Quantifier.Single[Ponger] }
-  type Ponger <: Peer { type Tie <: Quantifier.Single[Pinger] }
+  type Pinger <: Peer { type Tie <: Single[Ponger] }
+  type Ponger <: Peer { type Tie <: Single[Pinger] }
 
   def pingPongProgram[P <: Peer](using Network, Choreography, PlacedValue) =
     val ping = on[Pinger]("ping")
     val pingReceived = comm[Pinger, Ponger](ping)
     val pong = on[Ponger]:
-      val receivedPing = take(pingReceived)
+      val receivedPing = pingReceived.take
       println(s"Ponger received: $receivedPing")
       s"$receivedPing pong"
     val pongReceived = comm[Ponger, Pinger](pong)
     val finalPing = on[Pinger]:
-      val receivedPong = take(pongReceived)
+      val receivedPong = pongReceived.take
       println(s"Pinger received: $receivedPong")
