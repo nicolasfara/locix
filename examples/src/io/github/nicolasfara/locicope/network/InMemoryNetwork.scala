@@ -13,16 +13,24 @@ import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 import retry.*
 import scala.concurrent.Future
 import scala.concurrent.Await
+import ox.flow.Flow
+import ox.flow.FlowEmit
+import ox.channels.Channel
+import io.github.nicolasfara.locicope.network.NetworkResource.ValueType
 
 enum InMemoryNetworkError extends Throwable:
   case ResourceNotFound(address: String, reference: Reference) extends InMemoryNetworkError
+  case PeerNotReachable(address: String) extends InMemoryNetworkError
 
 class InMemoryNetwork(val peerRepr: PeerRepr, address: String, id: Int) extends Network.Effect:
   private val localStorage = mutable.Map[Reference, Any]()
   private val receivedStorage = mutable.Map[(String, Reference), Any]()
+  private val flowReceivedStorage = mutable.Map[(String, Reference), Channel[Any]]()
   private val reachablePeers = mutable.Set[InMemoryNetwork]()
 
   given eitherSuccess[E]: Success[Either[E, ?]] = Success[Either[E, ?]](_.isRight)
+
+  case class Terminate()
 
   override type Id = Int
   override type Address[_ <: Peer] = String
@@ -32,7 +40,7 @@ class InMemoryNetwork(val peerRepr: PeerRepr, address: String, id: Int) extends 
   override def register[Container[_], V: Encoder](ref: Reference, data: Container[V]): Unit =
     localStorage(ref) = data
   override def reachablePeersOf[P <: Peer](peerRepr: PeerRepr): Set[String] =
-    reachablePeers.filter(_.peerRepr <:< peerRepr).map(_.localAddress).toSet
+    reachablePeers/*.filter(_.peerRepr <:< peerRepr)*/.map(_.localAddress).toSet
   override def send[Container[_], V: Encoder, To <: Peer, From <: TiedWith[To]](
       address: String,
       ref: Reference,
@@ -42,7 +50,22 @@ class InMemoryNetwork(val peerRepr: PeerRepr, address: String, id: Int) extends 
       case Some(peer) =>
         peer.deliverMessageFrom[Container, V](this.address, ref, data)
         Right(())
-      case None => Left(InMemoryNetworkError.ResourceNotFound(address, ref))
+      case None => Left(InMemoryNetworkError.PeerNotReachable(address))
+    
+    // reachablePeers.find(_.localAddress == address) match
+    //   case Some(peer) =>
+    //     // peer.deliverMessageFrom[Container, V](this.address, ref, data)
+    //     data match
+    //       case flow: Flow[?] =>
+    //         import ox.{fork, supervised}
+    //         supervised:
+    //           fork:
+    //             flow.runForeach(value => peer.deliverMessageFrom[[X] =>> X, V](this.address, ref, value.asInstanceOf[V]))
+    //             peer.deliverMessageFrom[[X] =>> X, Terminate](this.address, ref, Terminate())
+    //       case _ => peer.deliverMessageFrom[Container, V](this.address, ref, data)
+        
+    //     Right(())
+    //   case None => Left(InMemoryNetworkError.PeerNotReachable(address))
 
   override def receive[Container[_], V: Decoder, From <: Peer, To <: TiedWith[From]](
       address: String,
@@ -52,14 +75,28 @@ class InMemoryNetwork(val peerRepr: PeerRepr, address: String, id: Int) extends 
       Future:
         localStorage
           .get(ref)
-          .orElse(receivedStorage.find { case ((fromAddress, r), _) => r.resourceId == ref.resourceId }.map(_._2))
+          .orElse(receivedStorage.get((address, ref)))
+          .orElse(flowReceivedStorage.get((address, ref)))
           .toRight(InMemoryNetworkError.ResourceNotFound(address, ref))
-          .map(_.asInstanceOf[Container[V]])
+          .map:
+            case data: Channel[?] => Flow.fromSource(data).asInstanceOf[Container[V]]
+            case elem => elem.asInstanceOf[Container[V]]
     }
     Await.result(result, scala.concurrent.duration.Duration.Inf)
 
   def deliverMessageFrom[Container[_], V](fromAddress: String, ref: Reference, data: Container[V]): Unit =
-    receivedStorage((fromAddress, ref)) = data
+    ref.valueType match
+      case ValueType.Flow =>
+        val channel = flowReceivedStorage
+          .getOrElseUpdate((fromAddress, ref), Channel.unlimited[Any])
+        if (data.isInstanceOf[Terminate])
+          println("Terminating flow reception...")
+          channel.done()
+        else
+          println("Receiving flow value: " + data)
+          channel.send(data)
+      case ValueType.Value =>
+        receivedStorage((fromAddress, ref)) = data
 
   def addReachablePeer(peer: InMemoryNetwork): Unit =
     reachablePeers += peer
