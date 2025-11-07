@@ -28,7 +28,7 @@ object PingPong:
     val pong = on[Ponger]:
       val receivedPing = pingReceived.take
       println(s"Ponger received: $receivedPing")
-      s"$receivedPing pong"
+      "pong"
     val pongReceived = comm[Ponger, Pinger](pong)
     val finalPing = on[Pinger]:
       val receivedPong = pongReceived.take

@@ -9,6 +9,8 @@ import io.github.nicolasfara.locicope.placement.PlacementType.on
 import io.github.nicolasfara.locicope.network.Network.reachablePeers
 import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
 import io.github.nicolasfara.locicope.network.Network.send
+import ox.flow.Flow
+import ox.{supervised, fork}
 
 object PlacementType:
   opaque infix type on[+V, -P <: Peer] = Placed[V, P]
