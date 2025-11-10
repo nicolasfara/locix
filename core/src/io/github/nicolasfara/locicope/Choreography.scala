@@ -43,7 +43,6 @@ object Choreography:
         Network,
         PlacedValue,
     )(senderPeerRepr: PeerRepr, receiverPeerRepr: PeerRepr, value: V on Sender): V on Receiver =
-      import scala.compiletime.summonFrom
       given PeerScope[Sender] {}
       val (ref, placedValue): (Reference, Option[Id[V]]) =
         if peer[LocalPeer] <:< senderPeerRepr then

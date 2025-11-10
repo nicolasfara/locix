@@ -45,7 +45,7 @@ object Collective:
       pf: PlacedFlow,
       net: Network,
       outboundCodec: Codec[OutboundMessage],
-  )(every: FiniteDuration = 1.second)(
+  )(every: FiniteDuration)(
       block: (coll.effect.VM, PeerScope[P]) ?=> V,
   ): Flow[V] on P =
     val localPeerRepr = peer[P]
