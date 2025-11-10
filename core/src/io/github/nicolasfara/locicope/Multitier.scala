@@ -4,7 +4,7 @@ import scala.annotation.nowarn
 
 import io.github.nicolasfara.locicope.placement.Peers.TiedToSingle
 import io.github.nicolasfara.locicope.network.Network
-import io.github.nicolasfara.locicope.network.Network.{ getId, reachablePeers, reachablePeersOf, Network }
+import io.github.nicolasfara.locicope.network.Network.*
 import io.github.nicolasfara.locicope.placement.Peers.TiedToMultiple
 import io.github.nicolasfara.locicope.placement.Peers.Peer
 import io.github.nicolasfara.locicope.placement.PlacementType.PeerScope
