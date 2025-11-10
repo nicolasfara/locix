@@ -39,7 +39,7 @@ trait CommonScala extends ScalaModule with ScalafixModule {
     // mvn"com.softwaremill.sttp.tapir::tapir-json-circe:1.11.29",
     // mvn"com.softwaremill.sttp.tapir::tapir-netty-server-sync:1.11.29",
     mvn"com.outr::scribe:3.16.1",
-    mvn"org.scalamock::scalamock:7.5.0",
+    mvn"org.scalamock::scalamock:7.5.2",
     mvn"io.circe::circe-core:0.14.15",
   )
 }

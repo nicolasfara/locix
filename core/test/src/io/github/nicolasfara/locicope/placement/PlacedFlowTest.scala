@@ -31,9 +31,9 @@ class PlacedFlowTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
 
   // Commented due to a bug in Scalamock: https://github.com/scalamock/scalamock/issues/696
   // "A `PlacedFlow`" should "allow lifting a flow produced in a peer scope into a placed flow" in:
-  //   (netEffect.register(_: Reference, _: Flow[Int])(using _: Encoder[Flow[Int]])).returnsWith(())
+  //   (netEffect.register(_: Reference, _: Flow[Int])(using _: Encoder[Int])).returnsWith(())
   //   (netEffect.reachablePeersOf(_: PeerRepr)).returnsWith(Set("server"))
-  //   (netEffect.send[Flow, Int, Server, Client](_: String, _: Reference, _: Flow[Int])(using _: Encoder[Flow[Int]])).returnsWith(Right(()))
+  //   (netEffect.send[Server, Client, Int](_: String, _: Reference, _: Int)(using _: Encoder[Int])).returnsWith(Right(()))
 
   //   def placedFlowProgram(using Network, PlacedFlow) = flowOn[Client](Flow.fromIterable(Seq(1, 2, 3)))
   //   val result = PlacedFlow.run[Client]:

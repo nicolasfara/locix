@@ -20,6 +20,8 @@ import scala.concurrent.duration.DurationInt
 import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 import io.github.nicolasfara.locicope.serialization.Encoder
 import io.github.nicolasfara.locicope.Collective.localId
+import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
+import io.github.nicolasfara.locicope.serialization.Decoder
 
 class CollectiveTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
 
@@ -29,12 +31,16 @@ class CollectiveTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
   before:
     resetStubs()
 
-  "The `Collective` capability" should "return an empty export when no spatial operator are used" in:
+  "The `Collective` capability" should "return an empty export when no spatial operators are used" in:
+    (netEffect.register[Flow, Int](_: Reference, _: Flow[Int])(using _: Encoder[Int])).returnsWith(())
+    (netEffect.reachablePeersOf(_: PeerRepr)).returnsWith(Set("n1", "n2"))
+    (netEffect.receive[Smartphone, Smartphone, Flow, Int](_: String, _: Reference)(using _: Decoder[Int]))
+      .returnsWith(Right(Flow.fromIterable(List(1, 2, 3, 4, 5))))
+
     def temporalEvolution(using Network, Collective, PlacedFlow): Flow[Int] on Smartphone = collective(1.second):
       repeat(0)(_ + 1)
-    // (netEffect.register[Flow, Int](_: Reference, _: Flow[Int])(using _: Encoder[Int])).returnsWith(())
 
-    val result = PlacedFlow.run:
+    val result = PlacedFlow.run[Smartphone]:
       Collective.run[Smartphone]:
         val res = take(temporalEvolution)
         res.take(5).runToList() shouldBe List(1, 2, 3, 4, 5)
