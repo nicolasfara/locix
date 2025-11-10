@@ -37,10 +37,10 @@ object MasterWorker:
 
   def masterWorker(using MasterWorkerNetwork, Multitier, PlacedFlow, PlacedValue) =
     val inputsOnMaster = flowOn[Master]:
-      Flow.fromIterable(List(1, 2, 3, 4, 5)).map(input => selectWorker -> Task(input))
+      Flow.fromIterable(List(1, 2, 3, 4, 5)).map(selectWorker -> Task(_))
 
     val resultOnWorker = on[Worker]:
-      println(s"Worker ${getId(localAddress)} started processing tasks.")
+      println(s"Worker started processing tasks.")
       val tasks = collectAsLocal(inputsOnMaster)
         .filter((addr, _) => addr == localAddress)
         .tap((idTask => println(s"Worker ${getId(localAddress)} received task: ${idTask._2}")))
