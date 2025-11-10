@@ -9,6 +9,9 @@ import io.github.nicolasfara.locicope.placement.Peers.TiedWith
 import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
 import io.github.nicolasfara.locicope.serialization.Encoder
 import io.github.nicolasfara.locicope.serialization.Decoder
+import io.github.nicolasfara.locicope.serialization.Codec
+import io.github.nicolasfara.locicope.network.Network.FlowTermination
+import io.github.nicolasfara.locicope.utils.TestCodec.given
 
 type Id = [A] =>> A
 
@@ -17,20 +20,22 @@ trait IntNetwork extends Network.Effect:
   type NetworkError = Throwable
   type Address[P <: Peer] = String
 
+  override given flowTerminatorCodec: Codec[FlowTermination] = summon
+
 class NoOpIntNetwork extends IntNetwork:
   val setValues = mutable.Set.empty[Any]
   override def localAddress[P <: Peer]: Address[P] = "local"
   override def getId[P <: Peer](address: Address[P]): Id = address.hashCode
   override def register[Container[_], V: Encoder](ref: Reference, data: Container[V]): Unit = ()
   override def reachablePeersOf[P <: Peer](peerRepr: PeerRepr): Set[Address[P]] = Set("remote")
-  override def send[Container[_], V: Encoder, To <: Peer, From <: TiedWith[To]](
+  override def send[To <: Peer, From <: TiedWith[To], V: Encoder](
       address: Address[To],
       ref: Reference,
-      data: Container[V],
+      data: V,
   ): Either[NetworkError, Unit] =
     setValues.add(data)
     Right(())
-  override def receive[Container[_], V: Decoder, From <: Peer, To <: TiedWith[From]](
+  override def receive[From <: Peer, To <: TiedWith[From], F[_], V: Decoder](
       address: Address[From],
       ref: Reference,
-  ): Either[NetworkError, Container[V]] = Right(42.asInstanceOf[Container[V]])
+  ): Either[NetworkError, F[V]] = Right(42.asInstanceOf[F[V]])

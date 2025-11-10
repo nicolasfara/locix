@@ -58,11 +58,11 @@ object Collective:
       val resultFlow = FlowOps.onEvery(every):
         val neighborMessages = reachablePeersOf[P]
           .map: peerAddress =>
-            val neighborMessage = receive[[X] =>> X, OutboundMessage, P, P](peerAddress, referenceOutbound).fold(throw _, identity)
+            val neighborMessage = receive[P, P, [X] =>> X, OutboundMessage](peerAddress, referenceOutbound).fold(throw _, identity)
             getId(peerAddress) -> neighborMessage
           .toMap
         val (newValue, newState, exported) = executeRound(using coll)(getId(localAddress), neighborMessages, lastState)(block)
-        send[[X] =>> X, OutboundMessage, P, P](localAddress, referenceOutbound, exported).fold(throw _, identity)
+        send[P, P, OutboundMessage](localAddress, referenceOutbound, exported).fold(throw _, identity)
         lastState = newState
         newValue
       Some(resultFlow)

@@ -51,9 +51,9 @@ object MasterWorker:
 
     on[Master]:
       val workerResults = asLocalAll(resultOnWorker)
-      println(s"Master ${getId(localAddress)} collected results from workers: ${workerResults}")
+      println(s"Master collected results from workers: ${workerResults}")
       val collectedResults = workerResults.values.flatten
-      println(s"Final results collected at Master: ${collectedResults.toList}")
+      println(s"Final results collected at Master: ${collectedResults.toList.sorted}")
 
   def main(args: Array[String]): Unit =
     import scala.concurrent.ExecutionContext.Implicits.global
@@ -99,8 +99,9 @@ object MasterWorker:
       PlacedValue.run[Worker]:
         PlacedFlow.run[Worker]:
           Multitier.run[Worker](masterWorker)
-          () 
-    
+          ()
+
     val complete = scala.concurrent.Future.sequence(List(masterFuture, worker1Future, worker2Future, worker3Future))
     scala.concurrent.Await.result(complete, scala.concurrent.duration.Duration.Inf)
+  end main
 end MasterWorker

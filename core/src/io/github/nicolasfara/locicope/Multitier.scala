@@ -4,7 +4,7 @@ import scala.annotation.nowarn
 
 import io.github.nicolasfara.locicope.placement.Peers.TiedToSingle
 import io.github.nicolasfara.locicope.network.Network
-import io.github.nicolasfara.locicope.network.Network.{ getId, reachablePeersOf, reachablePeers, Network }
+import io.github.nicolasfara.locicope.network.Network.{ getId, reachablePeers, reachablePeersOf, Network }
 import io.github.nicolasfara.locicope.placement.Peers.TiedToMultiple
 import io.github.nicolasfara.locicope.placement.Peers.Peer
 import io.github.nicolasfara.locicope.placement.PlacementType.PeerScope
@@ -64,7 +64,7 @@ object Multitier:
       case PlacementType.Placed.Remote[V @unchecked, Remote @unchecked](reference) =>
         val reachablePeer = reachablePeers[Remote](remotePeerRepr)
         require(reachablePeer.size == 1, s"Only 1 peer should be connected to this local peer, but found ${reachablePeer}")
-        receive[[X] =>> X, V, Remote, Local](reachablePeer.head, reference).fold(throw _, identity)
+        receive[Remote, Local, [X] =>> X, V](reachablePeer.head, reference).fold(throw _, identity)
 
     override def asLocalAll[Remote <: Peer, Local <: TiedToMultiple[Remote]](using
         net: Network,
@@ -76,7 +76,7 @@ object Multitier:
         val remoteReachablePeers = reachablePeers[Remote](remotePeerRepr)
         remoteReachablePeers
           .map: peerAddress =>
-            val receivedValue = receive[[X] =>> X, V, Remote, Local](peerAddress, reference).fold(throw _, identity)
+            val receivedValue = receive[Remote, Local, [X] =>> X, V](peerAddress, reference).fold(throw _, identity)
             (getId(peerAddress), receivedValue)
           .toMap
 
@@ -88,7 +88,7 @@ object Multitier:
       case PlacementType.Placed.Remote[Flow[V] @unchecked, Remote @unchecked](reference) =>
         val reachablePeer = reachablePeers[Remote](remotePeerRepr)
         require(reachablePeer.size == 1, s"Only 1 peer should be connected to this local peer, but found ${reachablePeer}")
-        receive[Flow, V, Remote, Local](reachablePeer.head, reference).fold(throw _, identity)
+        receive[Remote, Local, Flow, V](reachablePeer.head, reference).fold(throw _, identity)
 
     override def collectAsLocalAll[Remote <: Peer, Local <: TiedToMultiple[Remote]](using
         net: Network,
@@ -101,7 +101,7 @@ object Multitier:
           val remoteReachablePeers = reachablePeers[Remote](remotePeerRepr)
           val flows = remoteReachablePeers
             .map: peerAddress =>
-              receive[Flow, V, Remote, Local](peerAddress, reference)
+              receive[Remote, Local, Flow, V](peerAddress, reference)
                 .fold(throw _, identity)
                 .map((net.effect.getId(peerAddress), _))
           flows.fold(Flow.empty)(_.merge(_))

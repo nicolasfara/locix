@@ -50,13 +50,13 @@ object Choreography:
           val peer = reachablePeers[Receiver](receiverPeerRepr)
           require(peer.size == 1, s"Only 1 peer should be connected to this local peer, but found ${peer}")
           val Placed.Local[V @unchecked, Sender @unchecked](localValue, reference) = value.runtimeChecked
-          send[Id, V, Receiver, Sender](peer.head, reference, localValue).fold(throw _, identity)
+          send[Receiver, Sender, V](peer.head, reference, localValue).fold(throw _, identity)
           (reference, None)
         else
           val peer = reachablePeers[Sender](senderPeerRepr)
           require(peer.size == 1, s"Only 1 peer should be connected to this local peer, but found ${peer}")
           val Placed.Remote[V @unchecked, Sender @unchecked](reference) = value.runtimeChecked
-          val receivedValue = receive[Id, V, Sender, Receiver](peer.head, reference).fold(throw _, identity)
+          val receivedValue = receive[Sender, Receiver, Id, V](peer.head, reference).fold(throw _, identity)
           (reference, Some(receivedValue))
       summon[PlacedValue].effect.liftF(senderPeerRepr)(placedValue, ref)
     end comm
