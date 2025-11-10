@@ -17,6 +17,9 @@ import ox.flow.Flow
 import ox.flow.FlowEmit
 import ox.channels.Channel
 import io.github.nicolasfara.locicope.network.NetworkResource.ValueType
+import io.github.nicolasfara.locicope.serialization.Codec
+import io.github.nicolasfara.locicope.network.Network.FlowTermination
+import io.github.nicolasfara.locicope.CirceCodec.given
 
 enum InMemoryNetworkError extends Throwable:
   case ResourceNotFound(address: String, reference: Reference) extends InMemoryNetworkError
@@ -30,47 +33,36 @@ class InMemoryNetwork(val peerRepr: PeerRepr, address: String, id: Int) extends 
 
   given eitherSuccess[E]: Success[Either[E, ?]] = Success[Either[E, ?]](_.isRight)
 
-  case class Terminate()
+  override given flowTerminatorCodec: Codec[FlowTermination] = summon
 
   override type Id = Int
   override type Address[_ <: Peer] = String
   override type NetworkError = InMemoryNetworkError
   override def localAddress[P <: Peer]: Address[P] = address
-  override def getId[P <: Peer](address: String): Id = id
+  override def getId[P <: Peer](address: String): Id =
+    if address == localAddress then id
+    else
+      val peer = reachablePeers.find(_.localAddress == address).get
+      peer.getId(peer.localAddress)
   override def register[Container[_], V: Encoder](ref: Reference, data: Container[V]): Unit =
     localStorage(ref) = data
   override def reachablePeersOf[P <: Peer](peerRepr: PeerRepr): Set[String] =
-    reachablePeers/*.filter(_.peerRepr <:< peerRepr)*/.map(_.localAddress).toSet
-  override def send[Container[_], V: Encoder, To <: Peer, From <: TiedWith[To]](
+    reachablePeers /*.filter(_.peerRepr <:< peerRepr)*/ .map(_.localAddress).toSet
+  override def send[To <: Peer, From <: TiedWith[To], V: Encoder](
       address: String,
       ref: Reference,
-      data: Container[V],
+      data: V,
   ): Either[NetworkError, Unit] =
     reachablePeers.find(_.localAddress == address) match
       case Some(peer) =>
-        peer.deliverMessageFrom[Container, V](this.address, ref, data)
+        peer.deliverMessageFrom[V](this.address, ref, data)
         Right(())
       case None => Left(InMemoryNetworkError.PeerNotReachable(address))
-    
-    // reachablePeers.find(_.localAddress == address) match
-    //   case Some(peer) =>
-    //     // peer.deliverMessageFrom[Container, V](this.address, ref, data)
-    //     data match
-    //       case flow: Flow[?] =>
-    //         import ox.{fork, supervised}
-    //         supervised:
-    //           fork:
-    //             flow.runForeach(value => peer.deliverMessageFrom[[X] =>> X, V](this.address, ref, value.asInstanceOf[V]))
-    //             peer.deliverMessageFrom[[X] =>> X, Terminate](this.address, ref, Terminate())
-    //       case _ => peer.deliverMessageFrom[Container, V](this.address, ref, data)
-        
-    //     Right(())
-    //   case None => Left(InMemoryNetworkError.PeerNotReachable(address))
 
-  override def receive[Container[_], V: Decoder, From <: Peer, To <: TiedWith[From]](
+  override def receive[From <: Peer, To <: TiedWith[From], F[_], V: Decoder](
       address: String,
       ref: Reference,
-  ): Either[NetworkError, Container[V]] =
+  ): Either[NetworkError, F[V]] =
     val result = retry.Backoff(4, 10.milliseconds).apply { () =>
       Future:
         localStorage
@@ -79,22 +71,19 @@ class InMemoryNetwork(val peerRepr: PeerRepr, address: String, id: Int) extends 
           .orElse(flowReceivedStorage.get((address, ref)))
           .toRight(InMemoryNetworkError.ResourceNotFound(address, ref))
           .map:
-            case data: Channel[?] => Flow.fromSource(data).asInstanceOf[Container[V]]
-            case elem => elem.asInstanceOf[Container[V]]
+            case data: Channel[?] => Flow.fromSource(data).asInstanceOf[F[V]]
+            case elem => elem.asInstanceOf[F[V]]
     }
     Await.result(result, scala.concurrent.duration.Duration.Inf)
 
-  def deliverMessageFrom[Container[_], V](fromAddress: String, ref: Reference, data: Container[V]): Unit =
+  def deliverMessageFrom[V](fromAddress: String, ref: Reference, data: V): Unit =
     ref.valueType match
       case ValueType.Flow =>
         val channel = flowReceivedStorage
           .getOrElseUpdate((fromAddress, ref), Channel.unlimited[Any])
-        if (data.isInstanceOf[Terminate])
-          println("Terminating flow reception...")
-          channel.done()
-        else
-          println("Receiving flow value: " + data)
-          channel.send(data)
+        data match
+          case _: FlowTermination => channel.done()
+          case _ => channel.send(data)
       case ValueType.Value =>
         receivedStorage((fromAddress, ref)) = data
 
