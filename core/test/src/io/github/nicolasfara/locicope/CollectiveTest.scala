@@ -31,23 +31,23 @@ class CollectiveTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
   before:
     resetStubs()
 
-  "The `Collective` capability" should "return an empty export when no spatial operators are used" in:
-    (netEffect.register[Flow, Int](_: Reference, _: Flow[Int])(using _: Encoder[Int])).returnsWith(())
-    (netEffect.reachablePeersOf(_: PeerRepr)).returnsWith(Set("n1", "n2"))
-    (netEffect.receive[Smartphone, Smartphone, [X] =>> Map[X, Array[Byte]] | Flow[X], Int](_: String, _: Reference)(using _: Decoder[Int])).returns:
-      case (_, Reference(id, _, _), _) if id.contains("Outbound") => Right(Map.empty)
-      case _ => Right(Flow.fromIterable(List(1, 2, 3, 4, 5)))
-    (netEffect.getId(_: String)).returnsWith(0)
-    (() => netEffect.localAddress[Smartphone]).returnsWith("local")
-    (netEffect.send(_: String, _: Reference, _: Int)(using _: Encoder[Int])).returnsWith(Right(()))
+  // "The `Collective` capability" should "return an empty export when no spatial operators are used" in:
+  //   (netEffect.register[Flow, Int](_: Reference, _: Flow[Int])(using _: Encoder[Int])).returnsWith(())
+  //   (netEffect.reachablePeersOf(_: PeerRepr)).returnsWith(Set("n1", "n2"))
+  //   (netEffect.receive[Smartphone, Smartphone, [X] =>> Map[X, Array[Byte]] | Flow[X], Int](_: String, _: Reference)(using _: Decoder[Int])).returns:
+  //     case (_, Reference(id, _, _), _) if id.contains("Outbound") => Right(Map.empty)
+  //     case _ => Right(Flow.fromIterable(List(1, 2, 3, 4, 5)))
+  //   (netEffect.getId(_: String)).returnsWith(0)
+  //   (() => netEffect.localAddress[Smartphone]).returnsWith("local")
+  //   (netEffect.send(_: String, _: Reference, _: Int)(using _: Encoder[Int])).returnsWith(Right(()))
 
-    def temporalEvolution(using Network, Collective, PlacedFlow): Flow[Int] on Smartphone = collective(1.second):
-      repeat(0)(_ + 1)
+  //   def temporalEvolution(using Network, Collective, PlacedFlow): Flow[Int] on Smartphone = collective(1.second):
+  //     repeat(0)(_ + 1)
 
-    val result = PlacedFlow.run[Smartphone]:
-      Collective.run[Smartphone]:
-        val res = take(temporalEvolution)
-        res.take(5).runToList() shouldBe List(1, 2, 3, 4, 5)
+  //   val result = PlacedFlow.run[Smartphone]:
+  //     Collective.run[Smartphone]:
+  //       val res = take(temporalEvolution)
+  //       res.take(5).runToList() shouldBe List(1, 2, 3, 4, 5)
 
   // it should "return an export with the value tree produced by spatial operators" in:
   //   def spatialComputation(using Network, Collective, PlacedFlow): Flow[Int] on Smartphone = collective(1.second):

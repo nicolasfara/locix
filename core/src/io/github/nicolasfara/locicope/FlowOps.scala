@@ -14,7 +14,7 @@ object FlowOps:
       override def run(emit: FlowEmit[T]): Unit = withEmit(emit),
   )
 
-  def onEvery[T](interval: FiniteDuration)(value: => T): Flow[T] = usingEmitInline: emit =>
+  inline def onEvery[T](interval: FiniteDuration)(inline value: => T): Flow[T] = usingEmitInline: emit =>
     forever:
       val start = System.nanoTime()
       emit(value)

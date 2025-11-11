@@ -5,7 +5,7 @@ import java.nio.charset.StandardCharsets
 import scala.quoted.*
 
 object ASTHashing:
-  inline def hashBody(inline body: Any): String = ${ astHashImpl('body) }
+  inline def hashBody(inline body: => Any): String = ${ astHashImpl('body) }
 
   private def astHashImpl(body: Expr[Any])(using Quotes): Expr[String] =
     import quotes.reflect.*
