@@ -35,7 +35,7 @@ trait CommonScala extends ScalaModule with ScalafixModule {
 
   def mvnDeps = Seq(
     // mvn"org.scala-lang::scala2-library-cc-tasty-experimental:${scalaVersion()}",
-    mvn"com.softwaremill.ox::core:0.5.13",
+    mvn"com.softwaremill.ox::core:1.0.1",
     mvn"com.softwaremill.retry::retry:0.3.6",
     // mvn"com.softwaremill.sttp.client4::ox:4.0.7",
     // mvn"com.softwaremill.sttp.client4::circe:4.0.7",

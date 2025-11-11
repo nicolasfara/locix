@@ -55,7 +55,7 @@ object Collective:
     val reference = Reference(resourceId, localPeerRepr, NetworkResource.ValueType.Value)
     val flowResult = if coll.effect.localPeerRepr <:< localPeerRepr then
       var lastState: State = Map.empty
-      val resultFlow = FlowOps.onEvery(every):
+      val resultFlow = Flow.repeatEval: //FlowOps.onEvery(every):
         println(s"Collective round started on ${coll.effect.localPeerRepr} ${System.currentTimeMillis()}")
         val neighborMessages = reachablePeersOf[P]
           .map: peerAddress =>
@@ -65,6 +65,7 @@ object Collective:
         val (newValue, newState, exported) = executeRound(using coll)(getId(localAddress), neighborMessages, lastState)(block)
         send[P, P, OutboundMessage](localAddress, referenceOutbound, exported).fold(throw _, identity)
         lastState = newState
+        println(s"New state: $newState")
         newValue
       Some(resultFlow)
     else None
