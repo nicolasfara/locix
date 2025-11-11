@@ -11,6 +11,10 @@ import mill.api.Task.Simple
 trait CommonScala extends ScalaModule with ScalafixModule {
   def scalaVersion = "3.7.3"
 //  def scoverageVersion = "2.1.0"
+
+  // def jvmId = "temurin:23.0.1"
+  // def jvmIndexVersion = "latest.release"
+
   def scalacOptions = Seq(
     "-Werror",
     "-rewrite",
