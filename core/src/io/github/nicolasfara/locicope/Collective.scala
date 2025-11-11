@@ -56,6 +56,7 @@ object Collective:
     val flowResult = if coll.effect.localPeerRepr <:< localPeerRepr then
       var lastState: State = Map.empty
       val resultFlow = FlowOps.onEvery(every):
+        println(s"Collective round started on ${coll.effect.localPeerRepr} ${System.currentTimeMillis()}")
         val neighborMessages = reachablePeersOf[P]
           .map: peerAddress =>
             val neighborMessage = receive[P, P, [X] =>> X, OutboundMessage](peerAddress, referenceOutbound).fold(throw _, identity)
