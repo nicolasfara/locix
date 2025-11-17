@@ -3,6 +3,8 @@ package io.github.nicolasfara.locicope.network
 import scala.concurrent.duration.DurationInt
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.concurrent.Await
 
 import io.github.nicolasfara.locicope.placement.Peers.Peer
 import io.github.nicolasfara.locicope.placement.Peers.TiedWith
@@ -11,10 +13,7 @@ import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
 import io.github.nicolasfara.locicope.serialization.Encoder
 import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 import retry.*
-import scala.concurrent.Future
-import scala.concurrent.Await
 import ox.flow.Flow
-import ox.flow.FlowEmit
 import ox.channels.Channel
 import io.github.nicolasfara.locicope.network.NetworkResource.ValueType
 import io.github.nicolasfara.locicope.serialization.Codec

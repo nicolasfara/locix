@@ -3,7 +3,6 @@ package io.github.nicolasfara.locicope
 import scala.annotation.nowarn
 
 import io.github.nicolasfara.locicope.placement.Peers.TiedToSingle
-import io.github.nicolasfara.locicope.network.Network
 import io.github.nicolasfara.locicope.network.Network.*
 import io.github.nicolasfara.locicope.placement.Peers.TiedToMultiple
 import io.github.nicolasfara.locicope.placement.Peers.Peer
@@ -16,7 +15,6 @@ import io.github.nicolasfara.locicope.placement.PlacementType
 import io.github.nicolasfara.locicope.network.Network.receive
 import io.github.nicolasfara.locicope.network.Network.localAddress
 import ox.flow.Flow
-import io.github.nicolasfara.locicope.placement.PlacedValue.PlacedValue
 
 object Multitier:
   type Multitier = Locicope[Multitier.Effect]

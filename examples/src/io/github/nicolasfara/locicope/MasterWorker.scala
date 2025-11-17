@@ -1,7 +1,6 @@
 package io.github.nicolasfara.locicope
 
 import io.github.nicolasfara.locicope.placement.Peers.Quantifier.*
-import io.github.nicolasfara.locicope.network.Network.Network
 import io.github.nicolasfara.locicope.network.Network
 import io.github.nicolasfara.locicope.Multitier.Multitier
 import io.github.nicolasfara.locicope.placement.PlacedValue.PlacedValue
@@ -15,7 +14,7 @@ import io.github.nicolasfara.locicope.placement.PlacedFlow.flowOn
 import ox.flow.Flow
 import io.github.nicolasfara.locicope.network.Network.reachablePeersOf
 import io.github.nicolasfara.locicope.network.Network.getId
-import io.github.nicolasfara.locicope.Multitier.{ asLocal, collectAsLocal }
+import io.github.nicolasfara.locicope.Multitier.collectAsLocal
 import io.github.nicolasfara.locicope.network.Network.localAddress
 import io.github.nicolasfara.locicope.network.InMemoryNetwork
 import io.github.nicolasfara.locicope.placement.Peers.peer
@@ -40,7 +39,7 @@ object MasterWorker:
       Flow.fromIterable(List(1, 2, 3, 4, 5)).map(selectWorker -> Task(_))
 
     val resultOnWorker = on[Worker]:
-      println(s"Worker started processing tasks.")
+      println("Worker started processing tasks.")
       val tasks = collectAsLocal(inputsOnMaster)
         .filter((addr, _) => addr == localAddress)
         .tap((idTask => println(s"Worker ${getId(localAddress)} received task: ${idTask._2}")))

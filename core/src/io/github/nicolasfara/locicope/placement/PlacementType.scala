@@ -5,7 +5,6 @@ import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 import io.github.nicolasfara.locicope.network.Network.Network
 import io.github.nicolasfara.locicope.network.Network.register
 import io.github.nicolasfara.locicope.serialization.Codec
-import io.github.nicolasfara.locicope.placement.PlacementType.on
 import io.github.nicolasfara.locicope.network.Network.reachablePeers
 import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
 import io.github.nicolasfara.locicope.network.Network.{ send, terminateFlow }

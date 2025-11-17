@@ -9,12 +9,9 @@ import io.github.nicolasfara.locicope.placement.PlacementType.PeerScope
 import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
 import io.github.nicolasfara.locicope.network.Network.Network
 import io.github.nicolasfara.locicope.serialization.Codec
-import io.github.nicolasfara.locicope.serialization.Decoder
-import io.github.nicolasfara.locicope.placement.PlacementType.getReference
 import io.github.nicolasfara.locicope.placement.Peers.peer
 import io.github.nicolasfara.locicope.network.Network.receive
 import io.github.nicolasfara.locicope.placement.PlacementType.Placed
-import io.github.nicolasfara.locicope.network.Network.reachablePeersOf
 import io.github.nicolasfara.locicope.network.Network.send
 import io.github.nicolasfara.locicope.placement.PlacementType
 import io.github.nicolasfara.locicope.placement.PlacedValue.PlacedValue

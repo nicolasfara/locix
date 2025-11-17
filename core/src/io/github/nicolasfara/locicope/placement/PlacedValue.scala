@@ -6,14 +6,8 @@ import scala.annotation.nowarn
 import io.github.nicolasfara.locicope.Locicope
 import io.github.nicolasfara.locicope.placement.Peers.Peer
 import io.github.nicolasfara.locicope.network.NetworkResource.Reference
-import io.github.nicolasfara.locicope.placement.Peers.TiedToSingle
-import io.github.nicolasfara.locicope.placement.Peers.TiedToMultiple
 import io.github.nicolasfara.locicope.network.Network.Network
-import io.github.nicolasfara.locicope.placement.Peers.TiedWith
-import io.github.nicolasfara.locicope.serialization.Encoder
 import io.github.nicolasfara.locicope.serialization.Codec
-import io.github.nicolasfara.locicope.serialization.Decoder
-import io.github.nicolasfara.locicope.network.Network.{ reachablePeers, receive, register }
 import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
 import io.github.nicolasfara.locicope.placement.Peers.peer
 import io.github.nicolasfara.locicope.placement.PlacementType.{ on, PeerScope }

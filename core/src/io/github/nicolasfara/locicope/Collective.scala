@@ -1,7 +1,7 @@
 package io.github.nicolasfara.locicope
 
 import scala.collection.mutable
-import scala.concurrent.duration.{ DurationInt, FiniteDuration }
+import scala.concurrent.duration.FiniteDuration
 
 import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
 import io.github.nicolasfara.locicope.network.NetworkResource
@@ -9,7 +9,6 @@ import io.github.nicolasfara.locicope.network.NetworkResource.Reference
 import io.github.nicolasfara.locicope.placement.Peers.{ peer, PeerRepr, TiedToMultiple }
 import io.github.nicolasfara.locicope.serialization.{ Codec, Decoder, Encoder }
 import ox.flow.Flow
-import ox.sleep
 import io.github.nicolasfara.locicope.network.Network.Network
 import io.github.nicolasfara.locicope.placement.PlacementType.on
 import io.github.nicolasfara.locicope.placement.PlacementType.PeerScope

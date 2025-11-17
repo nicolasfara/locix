@@ -1,5 +1,10 @@
 package io.github.nicolasfara.locicope
 
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.Future
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
+
 import io.github.nicolasfara.locicope.placement.Peers.Quantifier.*
 import io.github.nicolasfara.locicope.network.Network
 import io.github.nicolasfara.locicope.network.Network.Network
@@ -7,18 +12,13 @@ import io.github.nicolasfara.locicope.placement.PlacedFlow
 import io.github.nicolasfara.locicope.placement.PlacedFlow.{ take, PlacedFlow }
 import io.github.nicolasfara.locicope.Collective.{ collective, Collective }
 import io.github.nicolasfara.locicope.CirceCodec.given
-import scala.concurrent.duration.DurationInt
 import io.github.nicolasfara.locicope.Collective.repeat
 import io.github.nicolasfara.locicope.network.InMemoryNetwork
 import io.github.nicolasfara.locicope.placement.Peers.peer
-import scala.concurrent.Future
 import io.github.nicolasfara.locicope.placement.PlacedValue
 import io.github.nicolasfara.locicope.placement.PlacedValue.PlacedValue
-import io.github.nicolasfara.locicope.Multitier.collectAsLocalAll
 import io.github.nicolasfara.locicope.placement.PlacedValue.on
 import io.github.nicolasfara.locicope.network.Network.localAddress
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
 import io.github.nicolasfara.locicope.Collective.neighbors
 import io.github.nicolasfara.locicope.FieldOps.sum
 
