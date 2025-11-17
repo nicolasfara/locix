@@ -88,6 +88,7 @@ class MultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
     (netEffect.register[Id, Int](_: Reference, _: Id[Int])(using _: Encoder[Int])).times shouldBe 2
     (netEffect.reachablePeersOf[Server](_: PeerRepr)).times shouldBe 2
     (netEffect.send(_: String, _: Reference, _: Int)(using _: Encoder[Int])).times shouldBe 2
+end MultitierTest
 //   it should "access a local flow without network calls" in:
 //     (netEffect
 //       .setValue(_: Int, _: Reference)(using _: Encoder[Int]))
