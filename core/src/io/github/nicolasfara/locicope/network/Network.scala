@@ -1,13 +1,9 @@
 package io.github.nicolasfara.locicope.network
 
 import io.github.nicolasfara.locicope.Locicope
-import io.github.nicolasfara.locicope.serialization.{ Decoder, Encoder }
-import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
-import io.github.nicolasfara.locicope.placement.Peers.TiedWith
-import io.github.nicolasfara.locicope.placement.Peers.Peer
-import io.github.nicolasfara.locicope.placement.Peers.peer
 import io.github.nicolasfara.locicope.network.NetworkResource.Reference
-import io.github.nicolasfara.locicope.serialization.Codec
+import io.github.nicolasfara.locicope.placement.Peers.*
+import io.github.nicolasfara.locicope.serialization.*
 
 object Network:
   type Network = Locicope[Network.Effect]

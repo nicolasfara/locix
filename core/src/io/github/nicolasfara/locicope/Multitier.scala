@@ -2,18 +2,11 @@ package io.github.nicolasfara.locicope
 
 import scala.annotation.nowarn
 
-import io.github.nicolasfara.locicope.placement.Peers.TiedToSingle
 import io.github.nicolasfara.locicope.network.Network.*
-import io.github.nicolasfara.locicope.placement.Peers.TiedToMultiple
-import io.github.nicolasfara.locicope.placement.Peers.Peer
-import io.github.nicolasfara.locicope.placement.PlacementType.PeerScope
-import io.github.nicolasfara.locicope.placement.PlacementType.on
-import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
-import io.github.nicolasfara.locicope.serialization.Codec
-import io.github.nicolasfara.locicope.placement.Peers.peer
+import io.github.nicolasfara.locicope.placement.Peers.*
 import io.github.nicolasfara.locicope.placement.PlacementType
-import io.github.nicolasfara.locicope.network.Network.receive
-import io.github.nicolasfara.locicope.network.Network.localAddress
+import io.github.nicolasfara.locicope.placement.PlacementType.*
+import io.github.nicolasfara.locicope.serialization.Codec
 import ox.flow.Flow
 
 object Multitier:

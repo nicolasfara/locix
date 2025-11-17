@@ -1,11 +1,9 @@
 package io.github.nicolasfara.locicope
 
-import scala.concurrent.duration.FiniteDuration
 import scala.annotation.nowarn
+import scala.concurrent.duration.FiniteDuration
 
-import ox.flow.Flow
-import ox.flow.FlowEmit
-import ox.flow.FlowStage
+import ox.flow.*
 import ox.forever
 
 object FlowOps:

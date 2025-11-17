@@ -2,21 +2,12 @@ package io.github.nicolasfara.locicope
 
 import scala.annotation.nowarn
 
-import io.github.nicolasfara.locicope.placement.Peers.Peer
-import io.github.nicolasfara.locicope.placement.Peers.TiedToSingle
-import io.github.nicolasfara.locicope.placement.PlacementType.on
-import io.github.nicolasfara.locicope.placement.PlacementType.PeerScope
-import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
-import io.github.nicolasfara.locicope.network.Network.Network
-import io.github.nicolasfara.locicope.serialization.Codec
-import io.github.nicolasfara.locicope.placement.Peers.peer
-import io.github.nicolasfara.locicope.network.Network.receive
-import io.github.nicolasfara.locicope.placement.PlacementType.Placed
-import io.github.nicolasfara.locicope.network.Network.send
-import io.github.nicolasfara.locicope.placement.PlacementType
-import io.github.nicolasfara.locicope.placement.PlacedValue.PlacedValue
+import io.github.nicolasfara.locicope.network.Network.*
 import io.github.nicolasfara.locicope.network.NetworkResource.Reference
-import io.github.nicolasfara.locicope.network.Network.reachablePeers
+import io.github.nicolasfara.locicope.placement.Peers.*
+import io.github.nicolasfara.locicope.placement.PlacedValue.PlacedValue
+import io.github.nicolasfara.locicope.placement.PlacementType.*
+import io.github.nicolasfara.locicope.serialization.Codec
 
 object Choreography:
   opaque type Choreography = Locicope[Choreography.Effect]

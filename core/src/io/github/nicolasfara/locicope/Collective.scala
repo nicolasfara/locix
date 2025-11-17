@@ -4,20 +4,15 @@ import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
 
 import io.github.nicolasfara.locicope.macros.ASTHashing.hashBody
+import io.github.nicolasfara.locicope.network.Network.*
 import io.github.nicolasfara.locicope.network.NetworkResource
-import io.github.nicolasfara.locicope.network.NetworkResource.Reference
-import io.github.nicolasfara.locicope.placement.Peers.{ peer, PeerRepr, TiedToMultiple }
-import io.github.nicolasfara.locicope.serialization.{ Codec, Decoder, Encoder }
-import ox.flow.Flow
-import io.github.nicolasfara.locicope.network.Network.Network
-import io.github.nicolasfara.locicope.placement.PlacementType.on
-import io.github.nicolasfara.locicope.placement.PlacementType.PeerScope
-import io.github.nicolasfara.locicope.network.Network.{ getId, reachablePeersOf, receive }
-import io.github.nicolasfara.locicope.network.Network.localAddress
-import io.github.nicolasfara.locicope.network.Network.send
+import io.github.nicolasfara.locicope.network.NetworkResource.*
+import io.github.nicolasfara.locicope.placement.Peers.*
 import io.github.nicolasfara.locicope.placement.PlacedFlow.PlacedFlow
-import io.github.nicolasfara.locicope.placement.Peers.Peer
 import io.github.nicolasfara.locicope.placement.PlacementType
+import io.github.nicolasfara.locicope.placement.PlacementType.*
+import io.github.nicolasfara.locicope.serialization.*
+import ox.flow.Flow
 
 object Collective:
   type Collective = Locicope[Collective.Effect]

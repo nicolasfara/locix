@@ -1,22 +1,18 @@
 package io.github.nicolasfara.locicope
 
-import scala.concurrent.Future
 import scala.concurrent.Await
+import scala.concurrent.Future
 
-import io.github.nicolasfara.locicope.network.Network.Network
-import io.github.nicolasfara.locicope.network.Network
-import io.github.nicolasfara.locicope.Choreography.Choreography
-import io.github.nicolasfara.locicope.Choreography
-import io.github.nicolasfara.locicope.placement.PlacedValue.PlacedValue
-import io.github.nicolasfara.locicope.placement.PlacedValue
-import io.github.nicolasfara.locicope.placement.Peers.Peer
-import io.github.nicolasfara.locicope.Choreography.comm
-import io.github.nicolasfara.locicope.placement.PlacedValue.on
+import io.github.nicolasfara.locicope.Choreography.*
 import io.github.nicolasfara.locicope.CirceCodec.given
-import io.github.nicolasfara.locicope.placement.PlacedValue.take
-import io.github.nicolasfara.locicope.placement.Peers.Quantifier.Single
 import io.github.nicolasfara.locicope.network.InMemoryNetwork
+import io.github.nicolasfara.locicope.network.Network
+import io.github.nicolasfara.locicope.network.Network.*
+import io.github.nicolasfara.locicope.placement.Peers.Peer
+import io.github.nicolasfara.locicope.placement.Peers.Quantifier.Single
 import io.github.nicolasfara.locicope.placement.Peers.peer
+import io.github.nicolasfara.locicope.placement.PlacedValue
+import io.github.nicolasfara.locicope.placement.PlacedValue.*
 
 object PingPong:
   type Pinger <: { type Tie <: Single[Ponger] }

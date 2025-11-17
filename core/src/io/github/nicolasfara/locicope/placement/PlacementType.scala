@@ -1,16 +1,11 @@
 package io.github.nicolasfara.locicope.placement
 
-import io.github.nicolasfara.locicope.placement.Peers.Peer
+import io.github.nicolasfara.locicope.network.Network.*
 import io.github.nicolasfara.locicope.network.NetworkResource.Reference
-import io.github.nicolasfara.locicope.network.Network.Network
-import io.github.nicolasfara.locicope.network.Network.register
+import io.github.nicolasfara.locicope.placement.Peers.*
 import io.github.nicolasfara.locicope.serialization.Codec
-import io.github.nicolasfara.locicope.network.Network.reachablePeers
-import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
-import io.github.nicolasfara.locicope.network.Network.{ send, terminateFlow }
 import ox.flow.Flow
 import ox.{ fork, supervised }
-import io.github.nicolasfara.locicope.placement.Peers.TiedWith
 
 object PlacementType:
   opaque infix type on[+V, -P <: Peer] = Placed[V, P]

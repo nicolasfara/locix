@@ -1,24 +1,19 @@
 package io.github.nicolasfara.locicope.network
 
-import scala.concurrent.duration.DurationInt
 import scala.collection.mutable
+import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.concurrent.Await
+import scala.concurrent.duration.DurationInt
 
-import io.github.nicolasfara.locicope.placement.Peers.Peer
-import io.github.nicolasfara.locicope.placement.Peers.TiedWith
-import io.github.nicolasfara.locicope.serialization.Decoder
-import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
-import io.github.nicolasfara.locicope.serialization.Encoder
-import io.github.nicolasfara.locicope.network.NetworkResource.Reference
-import retry.*
-import ox.flow.Flow
-import ox.channels.Channel
-import io.github.nicolasfara.locicope.network.NetworkResource.ValueType
-import io.github.nicolasfara.locicope.serialization.Codec
-import io.github.nicolasfara.locicope.network.Network.FlowTermination
 import io.github.nicolasfara.locicope.CirceCodec.given
+import io.github.nicolasfara.locicope.network.Network.FlowTermination
+import io.github.nicolasfara.locicope.network.NetworkResource.*
+import io.github.nicolasfara.locicope.placement.Peers.*
+import io.github.nicolasfara.locicope.serialization.*
+import ox.channels.Channel
+import ox.flow.Flow
+import retry.*
 
 enum InMemoryNetworkError extends Throwable:
   case ResourceNotFound(address: String, reference: Reference) extends InMemoryNetworkError

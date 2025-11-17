@@ -1,23 +1,16 @@
 package io.github.nicolasfara.locicope
 
-import io.github.nicolasfara.locicope.placement.Peers.Quantifier.*
-import io.github.nicolasfara.locicope.network.Network
-import io.github.nicolasfara.locicope.Multitier.Multitier
-import io.github.nicolasfara.locicope.placement.PlacedValue.PlacedValue
-import io.github.nicolasfara.locicope.placement.PlacedValue
-import io.github.nicolasfara.locicope.placement.PlacedFlow
-import io.github.nicolasfara.locicope.placement.PlacedValue.on
 import io.github.nicolasfara.locicope.CirceCodec.given
-import io.github.nicolasfara.locicope.Multitier.asLocalAll
-import io.github.nicolasfara.locicope.placement.PlacedFlow.PlacedFlow
-import io.github.nicolasfara.locicope.placement.PlacedFlow.flowOn
-import ox.flow.Flow
-import io.github.nicolasfara.locicope.network.Network.reachablePeersOf
-import io.github.nicolasfara.locicope.network.Network.getId
-import io.github.nicolasfara.locicope.Multitier.collectAsLocal
-import io.github.nicolasfara.locicope.network.Network.localAddress
+import io.github.nicolasfara.locicope.Multitier.*
 import io.github.nicolasfara.locicope.network.InMemoryNetwork
+import io.github.nicolasfara.locicope.network.Network.*
+import io.github.nicolasfara.locicope.placement.Peers.Quantifier.*
 import io.github.nicolasfara.locicope.placement.Peers.peer
+import io.github.nicolasfara.locicope.placement.PlacedFlow
+import io.github.nicolasfara.locicope.placement.PlacedFlow.*
+import io.github.nicolasfara.locicope.placement.PlacedValue
+import io.github.nicolasfara.locicope.placement.PlacedValue.*
+import ox.flow.Flow
 
 type MasterWorkerNetwork = Locicope[InMemoryNetwork]
 
