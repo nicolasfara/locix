@@ -33,6 +33,10 @@ object PlacedFlow:
   )[Value: Codec](expression: PeerScope[P] ?=> Flow[Value]): Flow[Value] on P =
     pf.effect.flowOn[P, Value](peer[P])(expression)
 
+  extension [Remote <: Peer, Value: Codec](using pf: PlacedFlow)(placedFlow: Flow[Value] on Remote)
+    def take(using PeerScope[Remote]): Flow[Value] =
+      pf.effect.take(placedFlow)
+
   @nowarn inline def run[P <: Peer](using net: Network)[V: Codec](program: (PlacedFlow, PeerScope[P]) ?=> V): V =
     val effect = effectImpl[P]()
     val handler: Locicope.Handler[PlacedFlow.Effect, V, V] = new Locicope.Handler[PlacedFlow.Effect, V, V]:
@@ -41,6 +45,11 @@ object PlacedFlow:
     Locicope.handle(program)(using handler)
 
   @nowarn inline private def effectImpl[LocalPeer <: Peer]() = new Effect:
+
+    override def take[P <: Peer](using PeerScope[P])[V](value: Flow[V] on P): Flow[V] =
+      val PlacementType.Placed.Local[Flow[V] @unchecked, P @unchecked](localValue, _) = value.runtimeChecked
+      localValue
+
     opaque type Id[V] = V
     override def flowOn[P <: Peer, Value: Codec](using
         Network,
@@ -70,4 +79,6 @@ object PlacedFlow:
         Network,
         NotGiven[PeerScope[P]],
     )(peerRepr: PeerRepr)(expression: PeerScope[P] ?=> Flow[Value]): Flow[Value] on P
+
+    def take[P <: Peer](using PeerScope[P])[V](value: Flow[V] on P): Flow[V]
 end PlacedFlow

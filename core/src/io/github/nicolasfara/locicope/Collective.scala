@@ -40,32 +40,31 @@ object Collective:
   def take[P <: Peer](using coll: Collective, net: Network, scope: PeerScope[P])[V](value: Flow[V] on P): Flow[V] =
     coll.effect.take(using net, scope)(value)
 
-  inline def collective[V: Codec, P <: TiedToMultiple[P]](using
+  inline def collective[P <: TiedToMultiple[P]](using
       coll: Collective,
       pf: PlacedFlow,
       net: Network,
       outboundCodec: Codec[OutboundMessage],
-  )(every: FiniteDuration)(
+  )[V: Codec](every: FiniteDuration)(
       block: (coll.effect.VM, PeerScope[P]) ?=> V,
   ): Flow[V] on P =
     val localPeerRepr = peer[P]
     given CollectivePeerScope[P]()
     val resourceId = hashBody(block(using emptyVm(getId(localAddress)), summon[CollectivePeerScope[P]]))
-    val referenceOutbound = Reference(s"$resourceId-Outbound", localPeerRepr, NetworkResource.ValueType.Flow)
-    val reference = Reference(resourceId, localPeerRepr, NetworkResource.ValueType.Value)
+    val referenceOutbound = Reference(s"$resourceId-Outbound", localPeerRepr, NetworkResource.ValueType.Value)
+    val reference = Reference(resourceId, localPeerRepr, NetworkResource.ValueType.Flow)
     val flowResult = if coll.effect.localPeerRepr <:< localPeerRepr then
       var lastState: State = Map.empty
-      val resultFlow = Flow.repeatEval: //FlowOps.onEvery(every):
-        println(s"Collective round started on ${coll.effect.localPeerRepr} ${System.currentTimeMillis()}")
+      val resultFlow = FlowOps.onEvery(every):
         val neighborMessages = reachablePeersOf[P]
           .map: peerAddress =>
-            val neighborMessage = receive[P, P, [X] =>> X, OutboundMessage](peerAddress, referenceOutbound).fold(throw _, identity)
+            val neighborMessage = receive[P, P, [X] =>> X, OutboundMessage](peerAddress, referenceOutbound).fold(_ => Map.empty, identity)
             getId(peerAddress) -> neighborMessage
           .toMap
         val (newValue, newState, exported) = executeRound(using coll)(getId(localAddress), neighborMessages, lastState)(block)
-        send[P, P, OutboundMessage](localAddress, referenceOutbound, exported).fold(throw _, identity)
+        reachablePeersOf[P].foreach: peerAddress =>
+          send[P, P, OutboundMessage](peerAddress, referenceOutbound, exported).fold(throw _, identity)
         lastState = newState
-        println(s"New state: $newState")
         newValue
       Some(resultFlow)
     else None
