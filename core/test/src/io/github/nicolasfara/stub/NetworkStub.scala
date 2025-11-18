@@ -2,16 +2,16 @@ package io.github.nicolasfara.stub
 
 import scala.collection.mutable
 
-import io.github.nicolasfara.locicope.network.Network
-import io.github.nicolasfara.locicope.placement.Peers.Peer
-import io.github.nicolasfara.locicope.network.NetworkResource.Reference
-import io.github.nicolasfara.locicope.placement.Peers.TiedWith
-import io.github.nicolasfara.locicope.placement.Peers.PeerRepr
-import io.github.nicolasfara.locicope.serialization.Encoder
-import io.github.nicolasfara.locicope.serialization.Decoder
-import io.github.nicolasfara.locicope.serialization.Codec
-import io.github.nicolasfara.locicope.network.Network.FlowTermination
-import io.github.nicolasfara.locicope.utils.TestCodec.given
+import io.github.nicolasfara.locix.network.Network
+import io.github.nicolasfara.locix.placement.Peers.Peer
+import io.github.nicolasfara.locix.network.NetworkResource.Reference
+import io.github.nicolasfara.locix.placement.Peers.TiedWith
+import io.github.nicolasfara.locix.placement.Peers.PeerRepr
+import io.github.nicolasfara.locix.serialization.Encoder
+import io.github.nicolasfara.locix.serialization.Decoder
+import io.github.nicolasfara.locix.serialization.Codec
+import io.github.nicolasfara.locix.network.Network.FlowTermination
+import io.github.nicolasfara.locix.utils.TestCodec.given
 
 type Id = [A] =>> A
 
