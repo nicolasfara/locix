@@ -21,17 +21,17 @@ import io.github.nicolasfara.locicope.placement.PlacedValue.*
 object AggregateCounter:
   type Smartphone <: { type Tie <: Multiple[Smartphone] }
 
-  def counter(using Network, Collective, PlacedFlow, PlacedValue) =
+  def neighborCounter(using Network, Collective, PlacedFlow, PlacedValue) =
     val collectiveCounters = collective[Smartphone](1.seconds):
       repeat(0): _ =>
         neighbors(1).sum
 
     on[Smartphone]:
-      val counters = collectiveCounters.take
-      counters
+      val counter = collectiveCounters.take
+      counter
         .take(10)
         .runForeach: count =>
-          println(s"Smartphone $localAddress counter: $count")
+          println(s"[$localAddress] counter: $count")
 
   def main(args: Array[String]): Unit =
     import scala.concurrent.ExecutionContext.Implicits.global
@@ -50,21 +50,21 @@ object AggregateCounter:
       given Locicope[Network.Effect] = Locicope[Network.Effect](smartphone1)
       PlacedFlow.run[Smartphone]:
         PlacedValue.run[Smartphone]:
-          Collective.run[Smartphone](counter)
+          Collective.run[Smartphone](neighborCounter)
 
     val smartphone2Future = Future:
       println("Starting Smartphone 2")
       given Locicope[Network.Effect] = Locicope[Network.Effect](smartphone2)
       PlacedFlow.run[Smartphone]:
         PlacedValue.run[Smartphone]:
-          Collective.run[Smartphone](counter)
+          Collective.run[Smartphone](neighborCounter)
 
     val smartphone3Future = Future:
       println("Starting Smartphone 3")
       given Locicope[Network.Effect] = Locicope[Network.Effect](smartphone3)
       PlacedFlow.run[Smartphone]:
         PlacedValue.run[Smartphone]:
-          Collective.run[Smartphone](counter)
+          Collective.run[Smartphone](neighborCounter)
 
     val complete = Future.sequence(List(smartphone1Future, smartphone2Future, smartphone3Future))
     Await.result(complete, Duration.Inf)

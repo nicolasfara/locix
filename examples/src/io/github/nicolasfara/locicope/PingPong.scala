@@ -23,12 +23,12 @@ object PingPong:
     val pingReceived = comm[Pinger, Ponger](ping)
     val pong = on[Ponger]:
       val receivedPing = pingReceived.take
-      println(s"Ponger received: $receivedPing")
+      println(s"[$localAddress] received: $receivedPing")
       "pong"
     val pongReceived = comm[Ponger, Pinger](pong)
     val finalPing = on[Pinger]:
       val receivedPong = pongReceived.take
-      println(s"Pinger received: $receivedPong")
+      println(s"[$localAddress] received: $receivedPong")
 
   def main(args: Array[String]): Unit =
     import scala.concurrent.ExecutionContext.Implicits.global

@@ -32,28 +32,28 @@ object MasterWorker:
       Flow.fromIterable(List(1, 2, 3, 4, 5)).map(selectWorker -> Task(_))
 
     val resultOnWorker = on[Worker]:
-      println("Worker started processing tasks.")
+      println(s"[$localAddress] started processing tasks.")
       val tasks = collectAsLocal(inputsOnMaster)
         .filter((addr, _) => addr == localAddress)
-        .tap((idTask => println(s"Worker ${getId(localAddress)} received task: ${idTask._2}")))
+        .tap((idTask => println(s"[$localAddress] received task: ${idTask._2}")))
         .map((id, task) => task.exec())
         .runToList()
-      println(s"Worker ${getId(localAddress)} completed tasks with results: ${tasks}")
+      println(s"[$localAddress] completed tasks with results: ${tasks}")
       tasks
 
     on[Master]:
       val workerResults = asLocalAll(resultOnWorker)
-      println(s"Master collected results from workers: ${workerResults}")
+      println(s"[$localAddress] collected results from workers: ${workerResults}")
       val collectedResults = workerResults.values.flatten
-      println(s"Final results collected at Master: ${collectedResults.toList.sorted}")
+      println(s"[$localAddress] Final results collected: ${collectedResults.toList.sorted}")
 
   def main(args: Array[String]): Unit =
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val masterNetwork = InMemoryNetwork(peer[Master], "master-address", 0)
-    val worker1Network = InMemoryNetwork(peer[Worker], "worker-address1", 1)
-    val worker2Network = InMemoryNetwork(peer[Worker], "worker-address2", 2)
-    val worker3Network = InMemoryNetwork(peer[Worker], "worker-address3", 3)
+    val worker1Network = InMemoryNetwork(peer[Worker], "worker-address-1", 1)
+    val worker2Network = InMemoryNetwork(peer[Worker], "worker-address-2", 2)
+    val worker3Network = InMemoryNetwork(peer[Worker], "worker-address-3", 3)
     masterNetwork.addReachablePeer(worker1Network)
     masterNetwork.addReachablePeer(worker2Network)
     masterNetwork.addReachablePeer(worker3Network)
