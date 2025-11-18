@@ -2,7 +2,7 @@ package io.github.nicolasfara.locix
 
 import io.github.nicolasfara.locix.CirceCodec.given
 import io.github.nicolasfara.locix.network.InMemoryNetwork
-import io.github.nicolasfara.locix.{Locix, Multitier}
+import io.github.nicolasfara.locix.{ Locix, Multitier }
 import ox.flow.Flow
 
 import Multitier.*

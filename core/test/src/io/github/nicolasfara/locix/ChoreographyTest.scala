@@ -17,7 +17,7 @@ import io.github.nicolasfara.locix.network.NetworkResource.Reference
 import io.github.nicolasfara.locix.serialization.Decoder
 import io.github.nicolasfara.locix.serialization.Encoder
 import io.github.nicolasfara.stub.NoOpIntNetwork
-import io.github.nicolasfara.locix.{Choreography, Locix}
+import io.github.nicolasfara.locix.{ Choreography, Locix }
 
 class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
   private val netEffect = stub[IntNetwork]

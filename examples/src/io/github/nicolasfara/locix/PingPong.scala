@@ -5,7 +5,7 @@ import scala.concurrent.Future
 
 import io.github.nicolasfara.locix.CirceCodec.given
 import io.github.nicolasfara.locix.network.InMemoryNetwork
-import io.github.nicolasfara.locix.{Choreography, Locix}
+import io.github.nicolasfara.locix.{ Choreography, Locix }
 
 import Choreography.*
 import network.Network

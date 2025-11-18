@@ -10,7 +10,7 @@ import io.github.nicolasfara.locix.Locix
 import io.github.nicolasfara.locix.placement.Peers.Peer
 import io.github.nicolasfara.locix.network.NetworkResource.Reference
 import io.github.nicolasfara.locix.placement.Peers.TiedWith
-import io.github.nicolasfara.locix.serialization.{ Decoder }
+import io.github.nicolasfara.locix.serialization.Decoder
 import io.github.nicolasfara.locix.serialization.Encoder
 import io.github.nicolasfara.locix.placement.Peers.PeerRepr
 import io.github.nicolasfara.locix.placement.PlacedValue.PlacedValue

@@ -8,7 +8,6 @@ import io.github.nicolasfara.locix.network.Network
 import io.github.nicolasfara.stub.IntNetwork
 import io.github.nicolasfara.locix.Locix
 
-
 class PlacedFlowTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
   private val netEffect = stub[IntNetwork]
   private given net: Locix[Network.Effect](netEffect)

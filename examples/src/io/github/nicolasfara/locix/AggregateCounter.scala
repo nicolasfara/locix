@@ -7,7 +7,7 @@ import scala.concurrent.duration.DurationInt
 
 import io.github.nicolasfara.locix.CirceCodec.given
 import io.github.nicolasfara.locix.network.InMemoryNetwork
-import io.github.nicolasfara.locix.{Collective, Locix}
+import io.github.nicolasfara.locix.{ Collective, Locix }
 
 import Collective.*
 import FieldOps.sum

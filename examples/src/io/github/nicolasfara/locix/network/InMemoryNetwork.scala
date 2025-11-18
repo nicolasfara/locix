@@ -1,6 +1,6 @@
 package io.github.nicolasfara.locix.network
 
-import scala.collection.{concurrent, mutable}
+import scala.collection.{ concurrent, mutable }
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

@@ -20,7 +20,7 @@ import io.github.nicolasfara.locix.Multitier.asLocal
 import io.github.nicolasfara.locix.utils.TestCodec.given
 import io.github.nicolasfara.locix.placement.Peers.PeerRepr
 import io.github.nicolasfara.locix.placement.PlacedValue.take
-import io.github.nicolasfara.locix.{Locix, Multitier}
+import io.github.nicolasfara.locix.{ Locix, Multitier }
 
 class MultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
 
