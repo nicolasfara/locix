@@ -16,11 +16,9 @@ object PlacedValue:
 
   /**
    * Execute the expression in the context of the specified peer, returning a placed value.
-   * 
-   * If the current execution peer is the same as the specified peer,
-   * the value is computed and stored in the network.
-   * If the current execution peer is different from the specified peer,
-   * a placeholder for the value is created.
+   *
+   * If the current execution peer is the same as the specified peer, the value is computed and stored in the network. If the current execution peer
+   * is different from the specified peer, a placeholder for the value is created.
    *
    * @param peerRepr
    *   the peer representation where to place the value.
