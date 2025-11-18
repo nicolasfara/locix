@@ -3,6 +3,7 @@ package io.github.nicolasfara.locix
 import io.circe.parser.decode as circeDecode
 import io.circe.syntax.*
 import io.circe.{ Decoder as CirceDecoder, Encoder as CirceEncoder }
+
 import serialization.Codec
 
 object CirceCodec:

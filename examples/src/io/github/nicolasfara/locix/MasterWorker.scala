@@ -1,8 +1,11 @@
 package io.github.nicolasfara.locix
 
 import io.github.nicolasfara.locix.CirceCodec.given
-import Multitier.*
 import io.github.nicolasfara.locix.network.InMemoryNetwork
+import io.github.nicolasfara.locix.{Locix, Multitier}
+import ox.flow.Flow
+
+import Multitier.*
 import network.Network.*
 import placement.Peers.Quantifier.*
 import placement.Peers.peer
@@ -10,8 +13,6 @@ import placement.PlacedFlow
 import placement.PlacedFlow.*
 import placement.PlacedValue
 import placement.PlacedValue.*
-import ox.flow.Flow
-import io.github.nicolasfara.locix.{Locix, Multitier}
 
 type MasterWorkerNetwork = Locix[InMemoryNetwork]
 

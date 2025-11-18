@@ -6,9 +6,11 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.duration.DurationInt
 
 import io.github.nicolasfara.locix.CirceCodec.given
+import io.github.nicolasfara.locix.network.InMemoryNetwork
+import io.github.nicolasfara.locix.{Collective, Locix}
+
 import Collective.*
 import FieldOps.sum
-import io.github.nicolasfara.locix.network.InMemoryNetwork
 import network.Network
 import network.Network.*
 import placement.Peers.Quantifier.*
@@ -17,7 +19,6 @@ import placement.PlacedFlow
 import placement.PlacedFlow.*
 import placement.PlacedValue
 import placement.PlacedValue.*
-import io.github.nicolasfara.locix.{Collective, Locix}
 
 object AggregateCounter:
   type Smartphone <: { type Tie <: Multiple[Smartphone] }

@@ -7,6 +7,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 
 import io.github.nicolasfara.locix.CirceCodec.given
+import io.github.nicolasfara.locix.network.Network
 import io.github.nicolasfara.locix.network.Network.FlowTermination
 import io.github.nicolasfara.locix.network.NetworkResource.*
 import io.github.nicolasfara.locix.placement.Peers.*
@@ -14,7 +15,6 @@ import io.github.nicolasfara.locix.serialization.*
 import ox.channels.Channel
 import ox.flow.Flow
 import retry.*
-import io.github.nicolasfara.locix.network.Network
 
 enum InMemoryNetworkError extends Throwable:
   case ResourceNotFound(address: String, reference: Reference) extends InMemoryNetworkError

@@ -3,9 +3,11 @@ package io.github.nicolasfara.locix
 import scala.concurrent.Await
 import scala.concurrent.Future
 
-import Choreography.*
 import io.github.nicolasfara.locix.CirceCodec.given
 import io.github.nicolasfara.locix.network.InMemoryNetwork
+import io.github.nicolasfara.locix.{Choreography, Locix}
+
+import Choreography.*
 import network.Network
 import network.Network.*
 import placement.Peers.Peer
@@ -13,7 +15,6 @@ import placement.Peers.Quantifier.Single
 import placement.Peers.peer
 import placement.PlacedValue
 import placement.PlacedValue.*
-import io.github.nicolasfara.locix.{Choreography, Locix}
 
 object PingPong:
   type Pinger <: { type Tie <: Single[Ponger] }
