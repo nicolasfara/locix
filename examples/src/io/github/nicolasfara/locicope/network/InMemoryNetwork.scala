@@ -1,6 +1,6 @@
 package io.github.nicolasfara.locicope.network
 
-import scala.collection.mutable
+import scala.collection.{concurrent, mutable}
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -21,8 +21,8 @@ enum InMemoryNetworkError extends Throwable:
 
 class InMemoryNetwork(val peerRepr: PeerRepr, address: String, id: Int) extends Network.Effect:
   private val localStorage = mutable.Map[Reference, Any]()
-  private val receivedStorage = mutable.Map[(String, Reference), Any]()
-  private val flowReceivedStorage = mutable.Map[(String, Reference), Channel[Any]]()
+  private val receivedStorage = concurrent.TrieMap[(String, Reference), Any]()
+  private val flowReceivedStorage = concurrent.TrieMap[(String, Reference), Channel[Any]]()
   private val reachablePeers = mutable.Set[InMemoryNetwork]()
 
   given eitherSuccess[E]: Success[Either[E, ?]] = Success[Either[E, ?]](_.isRight)
@@ -57,7 +57,7 @@ class InMemoryNetwork(val peerRepr: PeerRepr, address: String, id: Int) extends 
       address: String,
       ref: Reference,
   ): Either[NetworkError, F[V]] =
-    val result = retry.Backoff(4, 10.milliseconds).apply { () =>
+    val result = retry.Backoff(4, 100.milliseconds).apply { () =>
       Future:
         localStorage
           .get(ref)
