@@ -18,7 +18,8 @@ object PlacementType:
     case Placed.Local(_, ref) => ref
     case Placed.Remote(ref) => ref
 
-  trait PeerScope[P <: Peer]
+  final class PeerScope[P <: Peer] extends compiletime.Erased
+  final class PlacedLabel extends compiletime.Erased
 
   trait Placement:
     inline def liftF[P <: Peer, Other <: TiedWith[P]](using
@@ -45,16 +46,6 @@ object PlacementType:
     )(peerRepr: PeerRepr, ref: Reference, value: Value) =
       reachablePeers[P](peerRepr).foreach: address =>
         send[P, Other, Value](address, ref, value)
-
-      // value
-      //   .map: value =>
-      //     register(ref, value)
-      //     val peers = reachablePeers[P](peerRepr)
-      //     peers.foreach: address =>
-      //       send(address, ref, value)
-      //     PlacementType.Placed.Local(value, ref)
-      //   .getOrElse:
-      //     PlacementType.Placed.Remote(ref)
   end Placement
 
 end PlacementType

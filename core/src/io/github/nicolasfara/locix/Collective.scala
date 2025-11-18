@@ -43,8 +43,8 @@ object Collective:
       block: (coll.effect.VM, PeerScope[P]) ?=> V,
   ): Flow[V] on P =
     val localPeerRepr = peer[P]
-    given CollectivePeerScope[P]()
-    val resourceId = hashBody(block(using emptyVm(getId(localAddress)), summon[CollectivePeerScope[P]]))
+    given PeerScope[P] = PeerScope[P]()
+    val resourceId = hashBody(block(using emptyVm(getId(localAddress)), summon[PeerScope[P]]))
     val referenceOutbound = Reference(s"$resourceId-Outbound", localPeerRepr, NetworkResource.ValueType.Value)
     val reference = Reference(resourceId, localPeerRepr, NetworkResource.ValueType.Flow)
     val flowResult = if coll.effect.localPeerRepr <:< localPeerRepr then
@@ -67,10 +67,9 @@ object Collective:
 
   inline def run[P <: TiedToMultiple[P]](using Network)[V](inline block: (Collective, PeerScope[P]) ?=> V): Unit =
     val handler = new HandlerImpl[V](peer[P])
-    given CollectivePeerScope[P]()
+    given PeerScope[P] = PeerScope[P]()
     Locix.handle(block)(using handler)
 
-  class CollectivePeerScope[P <: TiedToMultiple[P]] extends PeerScope[P]
   class HandlerImpl[V](peerRepr: PeerRepr) extends Locix.Handler[Collective.Effect, V, Unit]:
     override def handle(program: Locix[Effect] ?=> V): Unit = program(using new Locix(EffectImpl(peerRepr)))
 

@@ -14,14 +14,26 @@ import io.github.nicolasfara.locix.serialization.Codec
 object PlacedValue:
   type PlacedValue = Locix[PlacedValue.Effect]
 
-  class PlacedValuePeerScope[P <: Peer] extends PeerScope[P]
-  class PlacedLabel
-
+  /**
+   * Execute the expression in the context of the specified peer, returning a placed value.
+   * 
+   * If the current execution peer is the same as the specified peer,
+   * the value is computed and stored in the network.
+   * If the current execution peer is different from the specified peer,
+   * a placeholder for the value is created.
+   *
+   * @param peerRepr
+   *   the peer representation where to place the value.
+   * @param expression
+   *   the expression producing the value to be placed.
+   * @return
+   *   a placed value representing the value on the specified peer.
+   */
   inline def on[P <: Peer](using
       pv: PlacedValue,
       net: Network,
       ng: NotGiven[PlacedLabel],
-  )[Value: Codec](expression: PeerScope[P] ?=> Value): Value on P =
+  )[Value: Codec](expression: (PeerScope[P], PlacedLabel) ?=> Value): Value on P =
     pv.effect.on[P, Value](peer[P])(expression)
 
   def take[P <: Peer](using pv: PlacedValue, net: Network, scope: PeerScope[P])[V](value: V on P): V =
@@ -36,7 +48,7 @@ object PlacedValue:
     val effect = effectImpl[P]()
     val handler = new Locix.Handler[PlacedValue.Effect, V, V]:
       override def handle(program: (Locix[Effect]) ?=> V): V = program(using Locix(effect))
-    given PeerScope[P] = PlacedValuePeerScope[P]
+    given PeerScope[P] = PeerScope[P]()
     Locix.handle(program)(using handler)
 
   @nowarn inline private def effectImpl[LocalPeer <: Peer]() = new Effect:
@@ -44,8 +56,9 @@ object PlacedValue:
     override def on[P <: Peer, Value: Codec](using
         Network,
         NotGiven[PeerScope[P]],
-    )(peerRepr: PeerRepr)(expression: (PeerScope[P]) ?=> Value): Value on P =
-      given PeerScope[P] = new PlacedValuePeerScope[P]
+    )(peerRepr: PeerRepr)(expression: (PeerScope[P], PlacedLabel) ?=> Value): Value on P =
+      given PeerScope[P] = PeerScope[P]()
+      given PlacedLabel = new PlacedLabel
       val resourceReference = Reference(hashBody(expression), peerRepr, ValueType.Value)
       val placedValue: Option[Id[Value]] = if peer[LocalPeer] <:< peerRepr then
         val result = expression
@@ -57,20 +70,10 @@ object PlacedValue:
       localValue
 
   trait Effect extends PlacementType.Placement:
-    /**
-     * Execute the expression in the context of the specified peer, returning a placed value. If the current execution peer is the same as the
-     * specified peer, the value is computed and stored in the network. If the current execution peer is different from the specified peer, a
-     * placeholder for the value is created.
-     *
-     * @param peerRepr
-     *   the peer representation where to place the value.
-     * @param expression
-     *   the expression producing the value to be placed.
-     * @return
-     *   a placed value representing the value on the specified peer.
-     */
-    def on[P <: Peer, Value: Codec](using Network, NotGiven[PeerScope[P]])(peerRepr: PeerRepr)(expression: PeerScope[P] ?=> Value): Value on P
+    def on[P <: Peer, Value: Codec](using
+        Network,
+        NotGiven[PeerScope[P]],
+    )(peerRepr: PeerRepr)(expression: (PeerScope[P], PlacedLabel) ?=> Value): Value on P
 
     def take[P <: Peer](using PeerScope[P])[V](value: V on P): V
-  end Effect
 end PlacedValue

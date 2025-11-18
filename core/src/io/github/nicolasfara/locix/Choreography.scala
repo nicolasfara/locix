@@ -31,7 +31,7 @@ object Choreography:
         Network,
         PlacedValue,
     )(senderPeerRepr: PeerRepr, receiverPeerRepr: PeerRepr, value: V on Sender): V on Receiver =
-      given PeerScope[Sender] {}
+      given PeerScope[Sender] = PeerScope[Sender]()
       val (ref, placedValue): (Reference, Option[Id[V]]) =
         if peer[LocalPeer] <:< senderPeerRepr then
           val peer = reachablePeers[Receiver](receiverPeerRepr)
