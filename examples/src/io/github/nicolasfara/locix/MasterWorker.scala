@@ -1,5 +1,8 @@
 package io.github.nicolasfara.locix
 
+import scala.concurrent.*
+import scala.concurrent.duration.*
+
 import io.github.nicolasfara.locix.CirceCodec.given
 import io.github.nicolasfara.locix.network.InMemoryNetwork
 import io.github.nicolasfara.locix.{ Locix, Multitier }
@@ -23,7 +26,7 @@ object MasterWorker:
   case class Task(val input: Int):
     def exec(): Int = input * input
 
-  def selectWorker(using net: MasterWorkerNetwork): String =
+  def selectWorker(using MasterWorkerNetwork): String =
     import scala.util.Random
     val reachablePeers = reachablePeersOf[Master]
     val candidate = Random.shuffle(reachablePeers).head
@@ -63,7 +66,7 @@ object MasterWorker:
     worker2Network.addReachablePeer(masterNetwork)
     worker3Network.addReachablePeer(masterNetwork)
 
-    val masterFuture = scala.concurrent.Future:
+    val masterFuture = Future:
       println("Starting Master")
       given Locix[InMemoryNetwork] = Locix[InMemoryNetwork](masterNetwork)
       PlacedValue.run[Master]:
@@ -71,7 +74,7 @@ object MasterWorker:
           Multitier.run[Master](masterWorker)
           ()
 
-    val worker1Future = scala.concurrent.Future:
+    val worker1Future = Future:
       println("Starting Worker 1")
       given Locix[InMemoryNetwork] = Locix[InMemoryNetwork](worker1Network)
       PlacedValue.run[Worker]:
@@ -79,7 +82,7 @@ object MasterWorker:
           Multitier.run[Worker](masterWorker)
           ()
 
-    val worker2Future = scala.concurrent.Future:
+    val worker2Future = Future:
       println("Starting Worker 2")
       given Locix[InMemoryNetwork] = Locix[InMemoryNetwork](worker2Network)
       PlacedValue.run[Worker]:
@@ -87,7 +90,7 @@ object MasterWorker:
           Multitier.run[Worker](masterWorker)
           ()
 
-    val worker3Future = scala.concurrent.Future:
+    val worker3Future = Future:
       println("Starting Worker 3")
       given Locix[InMemoryNetwork] = Locix[InMemoryNetwork](worker3Network)
       PlacedValue.run[Worker]:
@@ -95,7 +98,7 @@ object MasterWorker:
           Multitier.run[Worker](masterWorker)
           ()
 
-    val complete = scala.concurrent.Future.sequence(List(masterFuture, worker1Future, worker2Future, worker3Future))
-    scala.concurrent.Await.result(complete, scala.concurrent.duration.Duration.Inf)
+    val complete = Future.sequence(List(masterFuture, worker1Future, worker2Future, worker3Future))
+    Await.result(complete, Duration.Inf)
   end main
 end MasterWorker
