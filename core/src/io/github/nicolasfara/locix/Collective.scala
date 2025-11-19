@@ -62,7 +62,7 @@ object Collective:
         newValue
       Some(resultFlow)
     else None
-    summon[PlacedFlow].effect.liftF(localPeerRepr)(flowResult, reference)
+    pf.effect.liftF(localPeerRepr)(flowResult, reference)
   end collective
 
   inline def run[P <: TiedToMultiple[P]](using Network)[V](inline block: (Collective, PeerScope[P]) ?=> V): Unit =
