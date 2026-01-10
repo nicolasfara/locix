@@ -36,7 +36,6 @@ object PlacedFlow:
       val PlacementType.Placed.Local[Flow[V] @unchecked, P @unchecked](localValue, _) = value.runtimeChecked
       localValue
 
-    opaque type Id[V] = V
     override def flowOn[P <: Peer: PeerRepr, Value](using
         Network,
         NotGiven[PeerScope[P]],
