@@ -1,6 +1,7 @@
 package io.github.nicolasfara.locix.network
 
 import io.github.nicolasfara.locix.placement.Peers.PeerRepr
+import io.github.nicolasfara.locix.placement.Peers.Peer
 
 object NetworkResource:
   /**
@@ -18,5 +19,5 @@ object NetworkResource:
    * @param valueType
    *   description of the value type this resource holds, either a flow or a simple value.
    */
-  final case class Reference(resourceId: String, onPeer: PeerRepr, valueType: ValueType):
+  final case class Reference[-P <: Peer](resourceId: String, onPeer: PeerRepr[P], valueType: ValueType):
     override def toString: String = s"$resourceId@$onPeer:${valueType.toString}"

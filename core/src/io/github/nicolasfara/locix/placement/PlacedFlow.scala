@@ -9,49 +9,48 @@ import io.github.nicolasfara.locix.network.Network.Network
 import io.github.nicolasfara.locix.network.NetworkResource.*
 import io.github.nicolasfara.locix.placement.Peers.*
 import io.github.nicolasfara.locix.placement.PlacementType.*
-import io.github.nicolasfara.locix.serialization.Codec
 import ox.flow.Flow
 
 object PlacedFlow:
   type PlacedFlow = Locix[PlacedFlow.Effect]
 
-  inline def flowOn[P <: Peer](using
+  def flowOn[P <: Peer: PeerRepr](using
       pf: PlacedFlow,
       net: Network,
       ng: NotGiven[PeerScope[P]],
-  )[Value: Codec](expression: (PeerScope[P], PlacedLabel) ?=> Flow[Value]): Flow[Value] on P =
-    pf.effect.flowOn[P, Value](peer[P])(expression)
+  )[Value](expression: (PeerScope[P], PlacedLabel) ?=> Flow[Value]): Flow[Value] on P =
+    pf.effect.flowOn[P, Value](expression)
 
-  extension [Remote <: Peer, Value: Codec](using pf: PlacedFlow)(placedFlow: Flow[Value] on Remote)
-    def take(using PeerScope[Remote]): Flow[Value] =
+  extension [Remote <: Peer, Value](using pf: PlacedFlow)(placedFlow: Flow[Value] on Remote)
+    def takeFlow(using PeerScope[Remote]): Flow[Value] =
       pf.effect.take(placedFlow)
 
-  @nowarn inline def run[P <: Peer](using net: Network)[V: Codec](program: (PlacedFlow, PeerScope[P]) ?=> V): V =
-    val effect = effectImpl[P]()
-    val handler: Locix.Handler[PlacedFlow.Effect, V, V] = new Locix.Handler[PlacedFlow.Effect, V, V]:
-      override def handle(program: (Locix[Effect]) ?=> V): V = program(using new Locix(effect))
+  def run[P <: Peer: PeerRepr](using net: Network)[V](program: (PlacedFlow, PeerScope[P]) ?=> V): V =
+    val handler = new Locix.Handler[PlacedFlow.Effect, V, V]:
+      override def handle(program: (Locix[Effect]) ?=> V): V = program(using Locix(effectImplementation[P]))
     given PeerScope[P] = PeerScope[P]()
     Locix.handle(program)(using handler)
 
-  @nowarn inline private def effectImpl[LocalPeer <: Peer]() = new Effect:
+  private def effectImplementation[LocalPeer <: Peer: PeerRepr] = new Effect:
     override def take[P <: Peer](using PeerScope[P])[V](value: Flow[V] on P): Flow[V] =
       val PlacementType.Placed.Local[Flow[V] @unchecked, P @unchecked](localValue, _) = value.runtimeChecked
       localValue
 
     opaque type Id[V] = V
-    override def flowOn[P <: Peer, Value: Codec](using
+    override def flowOn[P <: Peer: PeerRepr, Value](using
         Network,
         NotGiven[PeerScope[P]],
-    )(peerRepr: PeerRepr)(expression: (PeerScope[P], PlacedLabel) ?=> Flow[Value]): Flow[Value] on P =
+    )(expression: (PeerScope[P], PlacedLabel) ?=> Flow[Value]): Flow[Value] on P =
       given PeerScope[P] = PeerScope[P]()
       given PlacedLabel = new PlacedLabel
+      val peerRepr = summon[PeerRepr[P]]
       val resourceReference = Reference(hashBody(expression), peerRepr, ValueType.Flow)
-      val placedFlow = if peer[LocalPeer] <:< peerRepr then
+      val placedFlow = if summon[PeerRepr[LocalPeer]] <:< peerRepr then
         val result = expression
         Some(result)
       else None
-      liftF(peerRepr)(placedFlow, resourceReference)
-  end effectImpl
+      liftF(placedFlow, resourceReference)
+  end effectImplementation
 
   trait Effect extends Placement:
     /**
@@ -64,10 +63,10 @@ object PlacedFlow:
      * @return
      *   a placed flow that can be accessed from other peers
      */
-    def flowOn[P <: Peer, Value: Codec](using
+    def flowOn[P <: Peer: PeerRepr, Value](using
         Network,
         NotGiven[PeerScope[P]],
-    )(peerRepr: PeerRepr)(expression: (PeerScope[P], PlacedLabel) ?=> Flow[Value]): Flow[Value] on P
+    )(expression: (PeerScope[P], PlacedLabel) ?=> Flow[Value]): Flow[Value] on P
 
     def take[P <: Peer](using PeerScope[P])[V](value: Flow[V] on P): Flow[V]
 end PlacedFlow

@@ -1,5 +1,7 @@
 package io.github.nicolasfara.locix
 
+import scala.caps.Capability
+
 case class Locix[+F](effect: F)
 
 object Locix:

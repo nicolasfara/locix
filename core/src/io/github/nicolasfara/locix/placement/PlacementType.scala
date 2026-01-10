@@ -3,28 +3,28 @@ package io.github.nicolasfara.locix.placement
 import io.github.nicolasfara.locix.network.Network.*
 import io.github.nicolasfara.locix.network.NetworkResource.Reference
 import io.github.nicolasfara.locix.placement.Peers.*
-import io.github.nicolasfara.locix.serialization.Codec
 import ox.flow.Flow
 import ox.{ fork, supervised }
+import scala.caps.Capability
 
 object PlacementType:
   opaque infix type on[+V, -P <: Peer] = Placed[V, P]
 
   protected[locix] enum Placed[+V, -P <: Peer]:
-    case Local(value: V, ref: Reference)
-    case Remote(ref: Reference)
+    case Local(value: V, ref: Reference[P])
+    case Remote(ref: Reference[P])
 
-  inline def getReference[V, P <: Peer](value: V on P): Reference = value match
+  inline def getReference[V, P <: Peer](value: V on P): Reference[P] = value match
     case Placed.Local(_, ref) => ref
     case Placed.Remote(ref) => ref
 
-  final class PeerScope[P <: Peer] extends compiletime.Erased
-  final class PlacedLabel extends compiletime.Erased
+  final class PeerScope[P <: Peer] extends /*compiletime.Erased,*/ Capability
+  final class PlacedLabel extends compiletime.Erased, Capability
 
   trait Placement:
-    inline def liftF[P <: Peer, Other <: TiedWith[P]](using
+    inline def liftF[P <: Peer: PeerRepr, Other <: TiedWith[P]](using
         Network,
-    )[F[_], Value: Codec](peerRepr: PeerRepr)(value: Option[F[Value]], ref: Reference): F[Value] on P =
+    )[F[_], Value](value: Option[F[Value]], ref: Reference[P]): F[Value] on P =
       value
         .map: toSend =>
           register[F, Value](ref, toSend)
@@ -33,18 +33,18 @@ object PlacementType:
               supervised:
                 fork:
                   flowValue.runForeach: toSendFlow =>
-                    sendToPeer(peerRepr, ref, toSendFlow.asInstanceOf[Value])
-                  reachablePeers[P](peerRepr).foreach(terminateFlow(_, ref))
+                    sendToPeer(ref, toSendFlow.asInstanceOf[Value])
+                  reachablePeersOf[P].foreach(terminateFlow(_, ref))
                 Placed.Local(flowValue, ref)
             case plainValue: Value @unchecked =>
-              sendToPeer[P, Other, Value](peerRepr, ref, plainValue)
+              sendToPeer(ref, plainValue)
               Placed.Local(toSend, ref)
         .getOrElse(PlacementType.Placed.Remote(ref))
 
-    private def sendToPeer[P <: Peer, Other <: TiedWith[P], Value: Codec](using
+    private def sendToPeer[P <: Peer: PeerRepr, Other <: TiedWith[P], Value](using
         net: Network,
-    )(peerRepr: PeerRepr, ref: Reference, value: Value) =
-      reachablePeers[P](peerRepr).foreach: address =>
+    )(ref: Reference[Other], value: Value) =
+      reachablePeersOf[P].foreach: address =>
         send[P, Other, Value](address, ref, value)
   end Placement
 

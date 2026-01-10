@@ -3,7 +3,6 @@ package io.github.nicolasfara.locix
 import scala.concurrent.*
 import scala.concurrent.duration.*
 
-import io.github.nicolasfara.locix.CirceCodec.given
 import io.github.nicolasfara.locix.network.InMemoryNetwork
 import io.github.nicolasfara.locix.{ Locix, Multitier }
 import ox.flow.Flow
@@ -55,10 +54,10 @@ object MasterWorker:
   def main(args: Array[String]): Unit =
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    val masterNetwork = InMemoryNetwork(peer[Master], "master-address", 0)
-    val worker1Network = InMemoryNetwork(peer[Worker], "worker-address-1", 1)
-    val worker2Network = InMemoryNetwork(peer[Worker], "worker-address-2", 2)
-    val worker3Network = InMemoryNetwork(peer[Worker], "worker-address-3", 3)
+    val masterNetwork = InMemoryNetwork("master-address", 0)
+    val worker1Network = InMemoryNetwork("worker-address-1", 1)
+    val worker2Network = InMemoryNetwork("worker-address-2", 2)
+    val worker3Network = InMemoryNetwork("worker-address-3", 3)
     masterNetwork.addReachablePeer(worker1Network)
     masterNetwork.addReachablePeer(worker2Network)
     masterNetwork.addReachablePeer(worker3Network)

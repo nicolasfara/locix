@@ -3,7 +3,6 @@ package io.github.nicolasfara.locix
 import scala.concurrent.Await
 import scala.concurrent.Future
 
-import io.github.nicolasfara.locix.CirceCodec.given
 import io.github.nicolasfara.locix.network.InMemoryNetwork
 import io.github.nicolasfara.locix.{ Choreography, Locix }
 
@@ -25,18 +24,18 @@ object PingPong:
     val pingReceived = comm[Pinger, Ponger](ping)
     val pong = on[Ponger]:
       val receivedPing = pingReceived.take
-      println(s"[$localAddress] received: $receivedPing")
       "pong"
     val pongReceived = comm[Ponger, Pinger](pong)
     val finalPing = on[Pinger]:
       val receivedPong = pongReceived.take
       println(s"[$localAddress] received: $receivedPong")
+    ()
 
   def main(args: Array[String]): Unit =
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    val pingerNetwork = InMemoryNetwork(peer[Pinger], "pinger-address", 1)
-    val pongerNetwork = InMemoryNetwork(peer[Ponger], "ponger-address", 2)
+    val pingerNetwork = InMemoryNetwork("pinger-address", 1)
+    val pongerNetwork = InMemoryNetwork("ponger-address", 2)
     pingerNetwork.addReachablePeer(pongerNetwork)
     pongerNetwork.addReachablePeer(pingerNetwork)
 

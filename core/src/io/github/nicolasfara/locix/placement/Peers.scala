@@ -3,6 +3,8 @@ package io.github.nicolasfara.locix.placement
 import scala.quoted.*
 
 import Peers.Quantifier.{ Multiple, Single }
+import io.github.nicolasfara.locix.placement.Peers.Peer
+import io.github.nicolasfara.locix.placement.Peers.PeerRepr
 
 /**
  * Object containing definitions for peers in a network.
@@ -11,19 +13,19 @@ import Peers.Quantifier.{ Multiple, Single }
  */
 object Peers:
 
-  opaque type PeerRepr = PeerReprImpl
+  opaque type PeerRepr[-P] = PeerReprImpl
 
-  extension (peerRepr: PeerRepr)
+  extension [P <: Peer](peerRepr: PeerRepr[P])
     def baseTypeRepr: String = peerRepr.baseTypeRepr
-    infix def <:<(base: PeerRepr): Boolean =
+    infix def <:<[R <: Peer](base: PeerRepr[R]): Boolean =
       peerRepr.baseTypeRepr == base.baseTypeRepr || peerRepr.supertypes.contains(base.baseTypeRepr)
 
   private final case class PeerReprImpl(baseTypeRepr: String, supertypes: List[String]):
     override def toString: String = s"'$baseTypeRepr'${supertypes.mkString(" <: '", ", ", "'")}"
 
-  inline def peer[T <: Peer]: PeerRepr = ${ peerReprImpl[T] }
+  inline given peer[T <: Peer]: PeerRepr[T] = ${ peerReprImpl[T] }
 
-  private def peerReprImpl[T: Type](using Quotes): Expr[PeerRepr] =
+  private def peerReprImpl[T: Type](using Quotes): Expr[PeerRepr[T]] =
     import quotes.reflect.*
 
     def collectBasesOfType(tpe: TypeRepr): List[Symbol] =

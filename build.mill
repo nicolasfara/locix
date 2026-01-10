@@ -9,7 +9,7 @@ import com.goyeau.mill.scalafix.ScalafixModule
 import mill.api.Task.Simple
 
 trait CommonScala extends ScalaModule with ScalafixModule {
-  def scalaVersion = "3.7.3"
+  def scalaVersion = "3.7.4"
 //  def scoverageVersion = "2.1.0"
 
   // def jvmId = "temurin:23.0.1"
@@ -22,7 +22,7 @@ trait CommonScala extends ScalaModule with ScalafixModule {
     "-unchecked",
     "-explain",
     "-Xcheck-macros",
-    "-Wunused:imports",
+    // "-Wunused:imports",
 //    "-source:3.8",
 //    "-Xprint:cc",
   //  "-Ycheck:all",
@@ -30,7 +30,7 @@ trait CommonScala extends ScalaModule with ScalafixModule {
     "-experimental",
     "-feature",
     "-language:implicitConversions",
-//    "-language:experimental.captureChecking",
+   "-language:experimental.captureChecking",
 //    "-language:experimental.pureFunctions",
   )
 
