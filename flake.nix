@@ -15,13 +15,13 @@
         "${system}" = {
           default = pkgs.mkShell {
             buildInputs = with pkgs; [
-              openjdk17
+              openjdk21
               sbt
               git
             ];
 
             shellHook = ''
-              export JAVA_HOME=${pkgs.openjdk17}
+              export JAVA_HOME=${pkgs.openjdk21}
               export PATH=${pkgs.sbt}/bin:$PATH
             '';
           };

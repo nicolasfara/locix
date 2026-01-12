@@ -30,8 +30,8 @@ trait CommonScala extends ScalaModule with ScalafixModule {
     "-experimental",
     "-feature",
     "-language:implicitConversions",
-   "-language:experimental.captureChecking",
-//    "-language:experimental.pureFunctions",
+    "-language:experimental.captureChecking",
+    "-language:experimental.pureFunctions",
   )
 
   def mvnDeps = Seq(
