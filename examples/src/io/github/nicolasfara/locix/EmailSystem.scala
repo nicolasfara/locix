@@ -34,8 +34,7 @@ object EmailSystem:
   case class Email(id: Long, subject: String, body: String, timestamp: Long, attachments: List[Attachment])
   case class Attachment(filename: String, data: Array[Byte])
   
-  object ClientLib:
-    val isOnFlatRate = true
+  case class ClientConfig(userId: UserId, isOnFlatRate: Boolean)
 
   // Mock implementations for demonstration
   def createServerDB(): MainServerDB = new MainServerDB:
@@ -75,12 +74,12 @@ object EmailSystem:
    * This demonstrates a multi-tier choreography where a client synchronizes emails
    * from a server, with context-aware attachment fetching based on network conditions.
    */
-  def emailSyncProtocol(using Network, PlacedValue, Multitier) =
+  def emailSyncProtocol(config: ClientConfig)(using Network, PlacedValue, Multitier) =
     // Get emails from server
     val emailsOnServer: List[Email] on Server = on[Server]:
       val ts = 0L
-      println(s"[Server] Fetching emails for user user1")
-      createServerDB().since("user1", ts)
+      println(s"[Server] Fetching emails for user ${config.userId}")
+      createServerDB().since(config.userId, ts)
     
     // Update emails on client
     on[Client]:
@@ -90,10 +89,10 @@ object EmailSystem:
     
     // Fetch attachments from server if client is on flat rate
     val attachmentsOnServer: List[Attachment] on Server = on[Server]:
-      if ClientLib.isOnFlatRate then
+      if config.isOnFlatRate then
         val emails = emailsOnServer.take
         val emailIds = emails.map(_.id)
-        println(s"[Server] Fetching attachments for ${emailIds.size} emails")
+        println(s"[Server] Fetching attachments for ${emailIds.size} emails (client on flat rate)")
         emailIds.flatMap(createServerDB().getAttachments)
       else
         println(s"[Server] Skipping attachments (client not on flat rate)")
@@ -110,6 +109,14 @@ object EmailSystem:
   def main(args: Array[String]): Unit =
     import scala.concurrent.ExecutionContext.Implicits.global
 
+    // Read configuration from arguments or use defaults
+    val userId = if args.length > 0 then args(0) else "user1"
+    val isOnFlatRate = if args.length > 1 then args(1).toBoolean else true
+    val config = ClientConfig(userId, isOnFlatRate)
+    
+    println(s"Configuration: userId=$userId, isOnFlatRate=$isOnFlatRate")
+    println()
+
     // Create network nodes for each participant
     val clientNetwork = InMemoryNetwork[Client]("client-address", 1)
     val serverNetwork = InMemoryNetwork[Server]("server-address", 2)
@@ -125,13 +132,13 @@ object EmailSystem:
       println("Starting Client")
       given Locix[InMemoryNetwork[Client]] = Locix(clientNetwork)
       PlacedValue.run[Client]:
-        Multitier.run[Client](emailSyncProtocol)
+        Multitier.run[Client](emailSyncProtocol(config))
 
     val serverFuture = Future:
       println("Starting Server")
       given Locix[InMemoryNetwork[Server]] = Locix(serverNetwork)
       PlacedValue.run[Server]:
-        Multitier.run[Server](emailSyncProtocol)
+        Multitier.run[Server](emailSyncProtocol(config))
 
     val complete = Future.sequence(List(clientFuture, serverFuture))
     Await.result(complete, 10.seconds)
