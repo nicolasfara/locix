@@ -21,6 +21,10 @@ class NoOpIntNetwork extends IntNetwork:
   override def getId[P <: Peer](address: Address[P]): Id = address.hashCode
   override def register[Container[_], V](ref: Reference[?], data: Container[V]): Unit = ()
   override def reachablePeersOf[P <: Peer: PeerRepr]: Set[Address[P]] = Set("remote")
+
+  override def broadcast[From <: Peer, V](ref: Reference[From], data: V): Either[Throwable, Unit] =
+    setValues.add(data)
+    Right(())
   override def send[To <: Peer, From <: TiedWith[To], V](
       address: Address[To],
       ref: Reference[?],
@@ -32,3 +36,4 @@ class NoOpIntNetwork extends IntNetwork:
       address: Address[From],
       ref: Reference[?],
   ): Either[NetworkError, F[V]] = Right(42.asInstanceOf[F[V]])
+end NoOpIntNetwork

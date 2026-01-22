@@ -63,7 +63,7 @@ object PlacedValue:
         val result = expression
         Some(result)
       else None
-      liftF(placedValue, resourceReference)
+      liftF[P](placedValue, resourceReference)
   end effectImplementation
 
   trait Effect extends PlacementType.Placement:

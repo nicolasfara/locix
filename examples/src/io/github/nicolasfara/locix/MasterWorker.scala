@@ -16,8 +16,6 @@ import placement.PlacedFlow.*
 import placement.PlacedValue
 import placement.PlacedValue.*
 
-type MasterWorkerNetwork = Locix[InMemoryNetwork]
-
 object MasterWorker:
   type Worker <: { type Tie <: Single[Master] }
   type Master <: { type Tie <: Multiple[Worker] }
@@ -25,14 +23,15 @@ object MasterWorker:
   case class Task(val input: Int):
     def exec(): Int = input * input
 
-  def selectWorker(using MasterWorkerNetwork): String =
+  def selectWorker(using net: Network): net.effect.Address[Worker] =
     import scala.util.Random
-    val reachablePeers = reachablePeersOf[Master]
+    val reachablePeers = reachablePeersOf[Worker].toList
     val candidate = Random.shuffle(reachablePeers).head
     candidate
 
-  def masterWorker(using MasterWorkerNetwork, Multitier, PlacedFlow, PlacedValue) =
+  def masterWorker(using Network, Multitier, PlacedFlow, PlacedValue) =
     val inputsOnMaster = flowOn[Master]:
+      println(s"[$localAddress] generating tasks on Master.")
       Flow.fromIterable(List(1, 2, 3, 4, 5)).map(selectWorker -> Task(_))
 
     val resultOnWorker = on[Worker]:
@@ -50,14 +49,15 @@ object MasterWorker:
       println(s"[$localAddress] collected results from workers: ${workerResults}")
       val collectedResults = workerResults.values.flatten
       println(s"[$localAddress] Final results collected: ${collectedResults.toList.sorted}")
+  end masterWorker
 
   def main(args: Array[String]): Unit =
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    val masterNetwork = InMemoryNetwork("master-address", 0)
-    val worker1Network = InMemoryNetwork("worker-address-1", 1)
-    val worker2Network = InMemoryNetwork("worker-address-2", 2)
-    val worker3Network = InMemoryNetwork("worker-address-3", 3)
+    val masterNetwork = InMemoryNetwork[Master]("master-address", 0)
+    val worker1Network = InMemoryNetwork[Worker]("worker-address-1", 1)
+    val worker2Network = InMemoryNetwork[Worker]("worker-address-2", 2)
+    val worker3Network = InMemoryNetwork[Worker]("worker-address-3", 3)
     masterNetwork.addReachablePeer(worker1Network)
     masterNetwork.addReachablePeer(worker2Network)
     masterNetwork.addReachablePeer(worker3Network)
@@ -67,7 +67,7 @@ object MasterWorker:
 
     val masterFuture = Future:
       println("Starting Master")
-      given Locix[InMemoryNetwork] = Locix[InMemoryNetwork](masterNetwork)
+      given Locix[InMemoryNetwork[Master]] = Locix(masterNetwork)
       PlacedValue.run[Master]:
         PlacedFlow.run[Master]:
           Multitier.run[Master](masterWorker)
@@ -75,7 +75,7 @@ object MasterWorker:
 
     val worker1Future = Future:
       println("Starting Worker 1")
-      given Locix[InMemoryNetwork] = Locix[InMemoryNetwork](worker1Network)
+      given Locix[InMemoryNetwork[Worker]] = Locix(worker1Network)
       PlacedValue.run[Worker]:
         PlacedFlow.run[Worker]:
           Multitier.run[Worker](masterWorker)
@@ -83,7 +83,7 @@ object MasterWorker:
 
     val worker2Future = Future:
       println("Starting Worker 2")
-      given Locix[InMemoryNetwork] = Locix[InMemoryNetwork](worker2Network)
+      given Locix[InMemoryNetwork[Worker]] = Locix(worker2Network)
       PlacedValue.run[Worker]:
         PlacedFlow.run[Worker]:
           Multitier.run[Worker](masterWorker)
@@ -91,7 +91,7 @@ object MasterWorker:
 
     val worker3Future = Future:
       println("Starting Worker 3")
-      given Locix[InMemoryNetwork] = Locix[InMemoryNetwork](worker3Network)
+      given Locix[InMemoryNetwork[Worker]] = Locix(worker3Network)
       PlacedValue.run[Worker]:
         PlacedFlow.run[Worker]:
           Multitier.run[Worker](masterWorker)

@@ -40,9 +40,9 @@ object AggregateCounter:
   def main(args: Array[String]): Unit =
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    val smartphone1 = InMemoryNetwork("smartphone-1", 1)
-    val smartphone2 = InMemoryNetwork("smartphone-2", 2)
-    val smartphone3 = InMemoryNetwork("smartphone-3", 3)
+    val smartphone1 = InMemoryNetwork[Smartphone]("smartphone-1", 1)
+    val smartphone2 = InMemoryNetwork[Smartphone]("smartphone-2", 2)
+    val smartphone3 = InMemoryNetwork[Smartphone]("smartphone-3", 3)
 
     smartphone1.addReachablePeer(smartphone2)
     smartphone1.addReachablePeer(smartphone3)
@@ -51,21 +51,21 @@ object AggregateCounter:
 
     val smartphone1Future = Future:
       println("Starting Smartphone 1")
-      given Locix[Network.Effect] = Locix[Network.Effect](smartphone1)
+      given Locix[InMemoryNetwork[Smartphone]] = Locix(smartphone1)
       PlacedFlow.run[Smartphone]:
         PlacedValue.run[Smartphone]:
           Collective.run[Smartphone](neighborCounter)
 
     val smartphone2Future = Future:
       println("Starting Smartphone 2")
-      given Locix[Network.Effect] = Locix[Network.Effect](smartphone2)
+      given Locix[InMemoryNetwork[Smartphone]] = Locix(smartphone2)
       PlacedFlow.run[Smartphone]:
         PlacedValue.run[Smartphone]:
           Collective.run[Smartphone](neighborCounter)
 
     val smartphone3Future = Future:
       println("Starting Smartphone 3")
-      given Locix[Network.Effect] = Locix[Network.Effect](smartphone3)
+      given Locix[InMemoryNetwork[Smartphone]] = Locix(smartphone3)
       PlacedFlow.run[Smartphone]:
         PlacedValue.run[Smartphone]:
           Collective.run[Smartphone](neighborCounter)

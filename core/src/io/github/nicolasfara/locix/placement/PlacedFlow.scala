@@ -48,7 +48,7 @@ object PlacedFlow:
         val result = expression
         Some(result)
       else None
-      liftF(placedFlow, resourceReference)
+      liftF[P](placedFlow, resourceReference)
   end effectImplementation
 
   trait Effect extends Placement:

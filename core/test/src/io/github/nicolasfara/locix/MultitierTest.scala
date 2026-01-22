@@ -36,6 +36,7 @@ class MultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
     (netEffect.send(_: String, _: Reference[?], _: Int)).returnsWith(Right(()))
     (netEffect.reachablePeersOf[Server](using _: PeerRepr[Server])).returnsWith(Set("server1"))
     (netEffect.register[Id, Int](_: Reference[?], _: Id[Int])).returnsWith(())
+    (netEffect.broadcast[Client, Int](_: Reference[Client], _: Int)).returnsWith(Right(()))
 
     def multitierSingleValue(using Network, PlacedValue, Multitier) =
       val valueOnServer = on[Server](10)
@@ -49,9 +50,8 @@ class MultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
       Multitier.run[Client](multitierSingleValue)
 
     (netEffect.receive[Server, Client, [X] =>> X, Int](_: String, _: Reference[?])).times shouldBe 1
-    (netEffect.send(_: String, _: Reference[?], _: Int)).times shouldBe 1
-    (netEffect.reachablePeersOf[Server](using _: PeerRepr[Server])).times shouldBe 2
     (netEffect.register[Id, Int](_: Reference[?], _: Id[Int])).times shouldBe 1
+    (netEffect.broadcast[Client, Int](_: Reference[Client], _: Int)).times shouldBe 1 // Client broadcasts the received value
 //   it should "access a remote flow" in:
 //     (netEffect.getFlow(_: Reference)(using _: Decoder[Int])).returnsWith(Right(Flow.fromIterable(Seq(1, 2, 3))))
 //     (netEffect.setValue(_: Int, _: Reference)(using _: Encoder[Int])).returnsWith(())
@@ -73,6 +73,7 @@ class MultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
     (netEffect.register[Id, Int](_: Reference[?], _: Id[Int])).returnsWith(())
     (netEffect.send(_: String, _: Reference[?], _: Int)).returnsWith(Right(()))
     (netEffect.reachablePeersOf[Server](using _: PeerRepr[Server])).returnsWith(Set("server1"))
+    (netEffect.broadcast[Client, Int](_: Reference[Client], _: Int)).returnsWith(Right(()))
 
     def multitierLocalValue(using Network, PlacedValue, Multitier) =
       val valueOnClient = on[Client](42)
@@ -86,8 +87,7 @@ class MultitierTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
       Multitier.run[Client](multitierLocalValue)
 
     (netEffect.register[Id, Int](_: Reference[?], _: Id[Int])).times shouldBe 2
-    (netEffect.reachablePeersOf[Server](using _: PeerRepr[Server])).times shouldBe 2
-    (netEffect.send(_: String, _: Reference[?], _: Int)).times shouldBe 2
+    (netEffect.broadcast[Client, Int](_: Reference[Client], _: Int)).times shouldBe 2 // Local peer broadcasts both values
 end MultitierTest
 //   it should "access a local flow without network calls" in:
 //     (netEffect

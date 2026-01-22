@@ -34,20 +34,20 @@ object PingPong:
   def main(args: Array[String]): Unit =
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    val pingerNetwork = InMemoryNetwork("pinger-address", 1)
-    val pongerNetwork = InMemoryNetwork("ponger-address", 2)
+    val pingerNetwork = InMemoryNetwork[Pinger]("pinger-address", 1)
+    val pongerNetwork = InMemoryNetwork[Ponger]("ponger-address", 2)
     pingerNetwork.addReachablePeer(pongerNetwork)
     pongerNetwork.addReachablePeer(pingerNetwork)
 
     val pingerFuture = Future:
       println("Starting Pinger")
-      given Locix[Network.Effect] = Locix[Network.Effect](pingerNetwork)
+      given Locix[InMemoryNetwork[Pinger]] = Locix(pingerNetwork)
       PlacedValue.run[Pinger]:
         Choreography.run[Pinger](pingPongProgram)
 
     val pongerFuture = Future:
       println("Starting Ponger")
-      given Locix[Network.Effect] = Locix[Network.Effect](pongerNetwork)
+      given Locix[InMemoryNetwork[Ponger]] = Locix(pongerNetwork)
       PlacedValue.run[Ponger]:
         Choreography.run[Ponger](pingPongProgram)
 

@@ -9,10 +9,10 @@ object Network:
 
   case class FlowTermination()
 
-  private[locix] def terminateFlow[P <: Peer](using
+  private[locix] def terminateFlow[From <: TiedWith[To], To <: Peer](using
       net: Network,
-  )(address: net.effect.Address[P], ref: Reference[P]): Either[net.effect.NetworkError, Unit] =
-    net.effect.terminateFlow[P](address, ref)
+  )(address: net.effect.Address[To], ref: Reference[From]): Either[net.effect.NetworkError, Unit] =
+    net.effect.terminateFlow[From, To](address, ref)
 
   def localAddress[P <: Peer](using net: Network): net.effect.Address[P] =
     net.effect.localAddress[P]
@@ -27,6 +27,11 @@ object Network:
       net: Network,
   )(address: net.effect.Address[To], ref: Reference[?], data: V): Either[net.effect.NetworkError, Unit] =
     net.effect.send[To, From, V](address, ref, data)
+
+  def broadcast[From <: Peer, V](using
+      net: Network,
+  )(ref: Reference[From], data: V): Either[net.effect.NetworkError, Unit] =
+    net.effect.broadcast[From, V](ref, data)
 
   def receive[From <: Peer, To <: TiedWith[From], F[_], V](using
       net: Network,
@@ -45,7 +50,7 @@ object Network:
 
     // given flowTerminatorCodec: Codec[FlowTermination] = scala.compiletime.deferred
 
-    private[locix] def terminateFlow[P <: Peer](address: Address[P], ref: Reference[P]): Either[NetworkError, Unit] =
+    private[locix] def terminateFlow[From <: TiedWith[To], To <: Peer](address: Address[To], ref: Reference[From]): Either[NetworkError, Unit] =
       send(address, ref, FlowTermination())
 
     def localAddress[P <: Peer]: Address[P]
@@ -55,6 +60,11 @@ object Network:
     def register[F[_], V](ref: Reference[?], data: F[V]): Unit
 
     def reachablePeersOf[P <: Peer: PeerRepr]: Set[Address[P]]
+
+    def broadcast[From <: Peer, V](
+        ref: Reference[From],
+        data: V,
+    ): Either[NetworkError, Unit]
 
     def send[To <: Peer, From <: TiedWith[To], V](
         address: Address[To],

@@ -31,6 +31,7 @@ class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
     (netEffect.reachablePeersOf[PeerA](using _: PeerRepr[PeerA])).returnsWith(Set("peerA"))
     (netEffect.send(_: String, _: Reference[?], _: Int)).returnsWith(Right(()))
     (netEffect.register[Id, Int](_: Reference[?], _: Id[Int])).returnsWith(())
+    (netEffect.broadcast[PeerB, Int](_: Reference[PeerB], _: Int)).returnsWith(Right(()))
     (netEffect
       .receive[PeerA, PeerB, Id, Int](_: String, _: Reference[?]))
       .returns:
@@ -44,9 +45,9 @@ class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
         receivedValue.take
 
     result shouldBe 42
-    (netEffect.reachablePeersOf[PeerA](using _: PeerRepr[PeerA])).times shouldBe 2 // Check reachable peers
     (netEffect.register[Id, Int](_: Reference[?], _: Id[Int])).times shouldBe 1 // Register the flow on the network
     (netEffect.receive[PeerA, PeerB, Id, Int](_: String, _: Reference[?])).times shouldBe 1 // Receive the value from peerA
+    (netEffect.broadcast[PeerB, Int](_: Reference[PeerB], _: Int)).times shouldBe 1 // PeerB broadcasts the received value
   it should "send the value when the placed value is local" in:
     given network: Locix[NoOpIntNetwork](NoOpIntNetwork())
 

@@ -33,6 +33,7 @@ class PlacedValueTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
     (netEffect.register(_: Reference[?], _: Id[Int])).returnsWith(())
     (netEffect.reachablePeersOf[Client](using _: PeerRepr[Client])).returnsWith(Set("server"))
     (netEffect.send[Server, Client, Int](_: String, _: Reference[?], _: Id[Int])).returnsWith(Right(()))
+    (netEffect.broadcast[Client, Int](_: Reference[Client], _: Int)).returnsWith(Right(()))
 
     def placedValueProgram(using Network, PlacedValue) = on[Client](10)
     val result = PlacedValue.run[Client]:
@@ -42,6 +43,5 @@ class PlacedValueTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
 
     result shouldBe 10
     (netEffect.register(_: Reference[?], _: Id[Int])).times shouldBe 1 // Register the value on the network
-    (netEffect.reachablePeersOf[Client](using _: PeerRepr[Client])).times shouldBe 1 // Check reachable peers
-    (netEffect.send(_: String, _: Reference[?], _: Id[Int])).times shouldBe 1 // Send the value to the reachable peers
+    (netEffect.broadcast[Client, Int](_: Reference[Client], _: Int)).times shouldBe 1 // Broadcast the value
 end PlacedValueTest

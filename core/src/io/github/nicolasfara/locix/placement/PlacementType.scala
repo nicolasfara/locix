@@ -22,9 +22,9 @@ object PlacementType:
   final class PlacedLabel extends compiletime.Erased, Capability
 
   trait Placement:
-    inline def liftF[P <: Peer: PeerRepr, Other <: TiedWith[P]](using
-        Network,
-    )[F[_], Value](value: Option[F[Value]], ref: Reference[P]): F[Value] on P =
+    inline def liftF[From <: Peer: PeerRepr](using
+        net: Network,
+    )[F[_], Value](value: Option[F[Value]], ref: Reference[From]): F[Value] on From =
       value
         .map: toSend =>
           register[F, Value](ref, toSend)
@@ -32,20 +32,24 @@ object PlacementType:
             case flowValue: Flow[?] =>
               supervised:
                 fork:
-                  flowValue.runForeach: toSendFlow =>
-                    sendToPeer(ref, toSendFlow.asInstanceOf[Value])
-                  reachablePeersOf[P].foreach(terminateFlow(_, ref))
+                  flowValue.runForeach:
+                    toSendFlow =>
+                      broadcast[From, Value](ref, toSendFlow.asInstanceOf[Value])
+                      // sendToPeer[From, To, Value](ref, toSendFlow.asInstanceOf[Value])
+                  // reachablePeersOf[To].foreach(terminateFlow[From, To](_, ref))
+                  broadcast[From, FlowTermination](ref, FlowTermination())
                 Placed.Local(flowValue, ref)
             case plainValue: Value @unchecked =>
-              sendToPeer(ref, plainValue)
+              broadcast[From, Value](ref, plainValue)
+              // sendToPeer(ref, plainValue)
               Placed.Local(toSend, ref)
         .getOrElse(PlacementType.Placed.Remote(ref))
 
-    private def sendToPeer[P <: Peer: PeerRepr, Other <: TiedWith[P], Value](using
-        net: Network,
-    )(ref: Reference[Other], value: Value) =
-      reachablePeersOf[P].foreach: address =>
-        send[P, Other, Value](address, ref, value)
+    // private def sendToPeer[From <: TiedWith[To]: PeerRepr, To <: Peer: PeerRepr, Value](using
+    //     net: Network,
+    // )(ref: Reference[?], value: Value) =
+    //   reachablePeersOf[To].foreach: address =>
+    //     send[To, From, Value](address, ref, value)
   end Placement
 
 end PlacementType

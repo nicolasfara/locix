@@ -11,5 +11,5 @@ object CaptureCheckingTest:
   type Client <: { type Tie <: Quantifier.Single[Server] }
   type Server <: { type Tie <: Quantifier.Multiple[Client] }
 
-  def foo(ps: Int on Server)(using Network, PlacedValue, Multitier): (Int => Int) on Client = on[Client]:
-    i => i + 42 //asLocal(ps)
+  def foo(ps: Int on Server)(using Network, PlacedValue, Multitier): (Int => Int) on Client = on[Client]: i =>
+    i + 42 // asLocal(ps)

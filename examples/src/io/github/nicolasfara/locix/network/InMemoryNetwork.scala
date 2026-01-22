@@ -18,11 +18,14 @@ enum InMemoryNetworkError extends Throwable:
   case ResourceNotFound(address: String, reference: Reference[?]) extends InMemoryNetworkError
   case PeerNotReachable(address: String) extends InMemoryNetworkError
 
-class InMemoryNetwork(address: String, id: Int) extends Network.Effect:
+class InMemoryNetwork[LocalPeer <: Peer: PeerRepr](address: String, id: Int) extends Network.Effect:
   private val localStorage = mutable.Map[Reference[?], Any]()
   private val receivedStorage = concurrent.TrieMap[(String, Reference[?]), Any]()
   private val flowReceivedStorage = concurrent.TrieMap[(String, Reference[?]), Channel[Any]]()
-  private val reachablePeers = mutable.Set[InMemoryNetwork]()
+  // Store peers with their type name for filtering
+  private val reachablePeers = mutable.Map[InMemoryNetwork[?], String]()
+
+  private val localPeerRepr: PeerRepr[LocalPeer] = summon[PeerRepr[LocalPeer]]
 
   given eitherSuccess[E]: Success[Either[E, ?]] = Success[Either[E, ?]](_.isRight)
 
@@ -35,25 +38,32 @@ class InMemoryNetwork(address: String, id: Int) extends Network.Effect:
   override def getId[P <: Peer](address: String): Id =
     if address == localAddress then id
     else
-      val peer = reachablePeers.find(_.localAddress == address).get
+      val peer = reachablePeers.keys.find(_.localAddress == address).get
       peer.getId(peer.localAddress)
+
   override def register[F[_], V](ref: Reference[?], data: F[V]): Unit =
     localStorage(ref) = data
   override def reachablePeersOf[P <: Peer: PeerRepr]: Set[String] =
-    reachablePeers /*.filter(_.peerRepr <:< peerRepr)*/ .map(_.localAddress).toSet
+    val targetPeerRepr = summon[PeerRepr[P]]
+    reachablePeers
+      .filter((_, peerTypeName) => peerTypeName == targetPeerRepr.baseTypeRepr)
+      .keys
+      .map(_.localAddress)
+      .toSet
+
   override def send[To <: Peer, From <: TiedWith[To], V](
-      address: String,
+      address: Address[To],
       ref: Reference[?],
       data: V,
   ): Either[NetworkError, Unit] =
-    reachablePeers.find(_.localAddress == address) match
+    reachablePeers.keys.find(_.localAddress == address) match
       case Some(peer) =>
         peer.deliverMessageFrom[V](this.address, ref, data)
         Right(())
       case None => Left(InMemoryNetworkError.PeerNotReachable(address))
 
   override def receive[From <: Peer, To <: TiedWith[From], F[_], V](
-      address: String,
+      address: Address[From],
       ref: Reference[?],
   ): Either[NetworkError, F[V]] =
     val result = retry.Backoff(4, 100.milliseconds).apply { () =>
@@ -69,6 +79,12 @@ class InMemoryNetwork(address: String, id: Int) extends Network.Effect:
     }
     Await.result(result, scala.concurrent.duration.Duration.Inf)
 
+  override def broadcast[From <: Peer, V](ref: Reference[From], data: V): Either[InMemoryNetworkError, Unit] =
+    reachablePeers.keys.foreach { peer =>
+      peer.deliverMessageFrom[V](this.address, ref, data)
+    }
+    Right(())
+
   def deliverMessageFrom[V](fromAddress: String, ref: Reference[?], data: V): Unit =
     ref.valueType match
       case ValueType.Flow =>
@@ -80,9 +96,9 @@ class InMemoryNetwork(address: String, id: Int) extends Network.Effect:
       case ValueType.Value =>
         receivedStorage((fromAddress, ref)) = data
 
-  def addReachablePeer(peer: InMemoryNetwork): Unit =
-    reachablePeers += peer
+  def addReachablePeer[P <: Peer: PeerRepr](peer: InMemoryNetwork[P]): Unit =
+    reachablePeers += (peer -> summon[PeerRepr[P]].baseTypeRepr)
 
-  def removeReachablePeer(peer: InMemoryNetwork): Unit =
+  def removeReachablePeer(peer: InMemoryNetwork[?]): Unit =
     reachablePeers -= peer
 end InMemoryNetwork
