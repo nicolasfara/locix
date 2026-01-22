@@ -11,7 +11,7 @@ import network.Network
 import network.Network.*
 import placement.Peers.Peer
 import placement.Peers.Quantifier.Single
-import placement.Peers.peer
+import placement.Peers.given
 import placement.PlacedValue
 import placement.PlacedValue.*
 

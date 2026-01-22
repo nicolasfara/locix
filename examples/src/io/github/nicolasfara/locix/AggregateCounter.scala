@@ -22,18 +22,18 @@ import io.github.nicolasfara.locix.FieldOps.sum
 object AggregateCounter:
   type Smartphone <: { type Tie <: Multiple[Smartphone] }
 
-//   def foo(using Network, Collective, PlacedFlow) = collective[Smartphone](1.seconds):
-//     (_: Int) => repeat(0) { i => i + 1 }
+  // def foo(using Network, Collective, PlacedFlow) = collective[Smartphone](1.seconds):
+  //   (_: Int) => repeat(0) { i => i + 1 }
 
   def neighborCounter(using Network, Collective, PlacedFlow, PlacedValue) =
     val collectiveCounters = collective[Smartphone](1.seconds):
       repeat(0): _ =>
         neighbors(1).sum
 
-    on[Smartphone]:
+    val unitOf = on[Smartphone]:
       val counter = collectiveCounters.takeFlow
       counter
-        .take(10)
+        // .take(10)
         .runForeach: count =>
           println(s"[$localAddress] counter: $count")
 

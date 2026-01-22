@@ -26,7 +26,7 @@ object Collective:
     coll.effect.repeat(using vm)(initial)(f)
   def neighbors[Value](value: Value)(using coll: Collective, vm: coll.effect.VM^): vm.Field[Value] =
     coll.effect.neighbors(using vm)(value)
-  def branch[Value](condition: Boolean)(ifTrue: => Value)(ifFalse: => Value)(using coll: Collective, vm: coll.effect.VM^): Value =
+  def branch[Value](condition: Boolean)(ifTrue: -> Value)(ifFalse: -> Value)(using coll: Collective, vm: coll.effect.VM^): Value =
     coll.effect.branch(using vm)(condition)(ifTrue)(ifFalse)
   def mux[Value](condition: Boolean)(ifTrue: Value)(ifFalse: Value)(using coll: Collective, vm: coll.effect.VM^): Value =
     coll.effect.mux(using vm)(condition)(ifTrue)(ifFalse)
@@ -146,7 +146,7 @@ object Collective:
         vm.setValueAt(value)
         vm.Field(value, vm.neighborsValuesAt[Value](vm.currentPath))
 
-    override def branch[Value](using vm: VM^)(condition: Boolean)(ifTrue: => Value)(ifFalse: => Value): Value =
+    override def branch[Value](using vm: VM^)(condition: Boolean)(ifTrue: -> Value)(ifFalse: -> Value): Value =
       vm.align(s"branch[$condition]"): () =>
         if condition then ifTrue else ifFalse
 
@@ -175,7 +175,7 @@ object Collective:
 
     def repeat[Value](using VM^)(initial: Value)(f: Value => Value): Value
     def neighbors[Value](using vm: VM^)(value: Value): vm.Field[Value]
-    def branch[Value](using VM^)(condition: Boolean)(ifTrue: => Value)(ifFalse: => Value): Value
+    def branch[Value](using VM^)(condition: Boolean)(ifTrue: -> Value)(ifFalse: -> Value): Value
     def mux[Value](using VM^)(condition: Boolean)(ifTrue: Value)(ifFalse: Value): Value
     def localId(using vm: VM^): vm.DeviceId
     def take[P <: Peer](using Network, PeerScope[P])[V](value: Flow[V] on P): Flow[V]

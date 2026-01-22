@@ -30,9 +30,9 @@ class PlacedValueTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
 
   // Commented due to a bug in Scalamock: https://github.com/scalamock/scalamock/issues/696
   "A `PlacedValue`" should "allow lifting a value produced in a peer scope into a placed value" in:
-    (netEffect.register(_: Reference, _: Id[Int])(using _: Encoder[Int])).returnsWith(())
-    (netEffect.reachablePeersOf(_: PeerRepr)).returnsWith(Set("server"))
-    (netEffect.send[Server, Client, Int](_: String, _: Reference, _: Id[Int])(using _: Encoder[Int])).returnsWith(Right(()))
+    (netEffect.register(_: Reference[?], _: Id[Int])).returnsWith(())
+    (netEffect.reachablePeersOf[Client](using _: PeerRepr[Client])).returnsWith(Set("server"))
+    (netEffect.send[Server, Client, Int](_: String, _: Reference[?], _: Id[Int])).returnsWith(Right(()))
 
     def placedValueProgram(using Network, PlacedValue) = on[Client](10)
     val result = PlacedValue.run[Client]:
@@ -41,7 +41,7 @@ class PlacedValueTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
       unwrappedValue
 
     result shouldBe 10
-    (netEffect.register(_: Reference, _: Id[Int])(using _: Encoder[Int])).times shouldBe 1 // Register the value on the network
-    (netEffect.reachablePeersOf(_: PeerRepr)).times shouldBe 1 // Check reachable peers
-    (netEffect.send(_: String, _: Reference, _: Id[Int])(using _: Encoder[Int])).times shouldBe 1 // Send the value to the reachable peers
+    (netEffect.register(_: Reference[?], _: Id[Int])).times shouldBe 1 // Register the value on the network
+    (netEffect.reachablePeersOf[Client](using _: PeerRepr[Client])).times shouldBe 1 // Check reachable peers
+    (netEffect.send(_: String, _: Reference[?], _: Id[Int])).times shouldBe 1 // Send the value to the reachable peers
 end PlacedValueTest

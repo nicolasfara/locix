@@ -28,13 +28,13 @@ class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
     resetStubs()
 
   "The `Choreography` capability" should "allow explicit communication between two peers" in:
-    (netEffect.reachablePeersOf(_: PeerRepr)).returnsWith(Set("peerA"))
-    (netEffect.send(_: String, _: Reference, _: Int)(using _: Encoder[Int])).returnsWith(Right(()))
-    (netEffect.register[Id, Int](_: Reference, _: Id[Int])(using _: Encoder[Int])).returnsWith(())
+    (netEffect.reachablePeersOf[PeerA](using _: PeerRepr[PeerA])).returnsWith(Set("peerA"))
+    (netEffect.send(_: String, _: Reference[?], _: Int)).returnsWith(Right(()))
+    (netEffect.register[Id, Int](_: Reference[?], _: Id[Int])).returnsWith(())
     (netEffect
-      .receive[PeerA, PeerB, Id, Int](_: String, _: Reference)(using _: Decoder[Int]))
+      .receive[PeerA, PeerB, Id, Int](_: String, _: Reference[?]))
       .returns:
-        case ("peerA", _, _) => Right(42)
+        case ("peerA", _) => Right(42)
         case _ => fail("Unexpected receive")
 
     val result = PlacedValue.run[PeerB]:
@@ -44,9 +44,9 @@ class ChoreographyTest extends AnyFlatSpecLike, Matchers, Stubs, BeforeAndAfter:
         receivedValue.take
 
     result shouldBe 42
-    (netEffect.reachablePeersOf(_: PeerRepr)).times shouldBe 2 // Check reachable peers
-    (netEffect.register[Id, Int](_: Reference, _: Id[Int])(using _: Encoder[Int])).times shouldBe 1 // Register the flow on the network
-    (netEffect.receive[PeerA, PeerB, Id, Int](_: String, _: Reference)(using _: Decoder[Int])).times shouldBe 1 // Receive the value from peerA
+    (netEffect.reachablePeersOf[PeerA](using _: PeerRepr[PeerA])).times shouldBe 2 // Check reachable peers
+    (netEffect.register[Id, Int](_: Reference[?], _: Id[Int])).times shouldBe 1 // Register the flow on the network
+    (netEffect.receive[PeerA, PeerB, Id, Int](_: String, _: Reference[?])).times shouldBe 1 // Receive the value from peerA
   it should "send the value when the placed value is local" in:
     given network: Locix[NoOpIntNetwork](NoOpIntNetwork())
 
