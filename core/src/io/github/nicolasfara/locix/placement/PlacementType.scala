@@ -10,6 +10,11 @@ import scala.caps.Capability
 object PlacementType:
   opaque infix type on[+V, -P <: Peer] = Placed[V, P]
 
+  trait MemberOf[Member, Group]
+  object MemberOf:
+    given [A]: MemberOf[A, A] with {}
+    given [A, B, X](using MemberOf[X, A]): MemberOf[X, A & B] with {}
+
   protected[locix] enum Placed[+V, -P <: Peer]:
     case Local(value: V, ref: Reference[P])
     case Remote(ref: Reference[P])

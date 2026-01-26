@@ -21,8 +21,8 @@ object PlacedFlow:
   )[Value](expression: (PeerScope[P], PlacedLabel) ?=> Flow[Value]): Flow[Value] on P =
     pf.effect.flowOn[P, Value](expression)
 
-  extension [Remote <: Peer, Value](using pf: PlacedFlow)(placedFlow: Flow[Value] on Remote)
-    def takeFlow(using PeerScope[Remote]): Flow[Value] =
+  extension [L <: Peer, Remote <: Peer, Value](using pf: PlacedFlow)(placedFlow: Flow[Value] on Remote)
+    def takeFlow(using PeerScope[L], MemberOf[L, Remote]): Flow[Value] =
       pf.effect.take(placedFlow)
 
   def run[P <: Peer: PeerRepr](using net: Network)[V](program: (PlacedFlow, PeerScope[P]) ?=> V): V =
@@ -32,7 +32,7 @@ object PlacedFlow:
     Locix.handle(program)(using handler)
 
   private def effectImplementation[LocalPeer <: Peer: PeerRepr] = new Effect:
-    override def take[P <: Peer](using PeerScope[P])[V](value: Flow[V] on P): Flow[V] =
+    override def take[L <: Peer, P <: Peer](using PeerScope[L], MemberOf[L, P])[V](value: Flow[V] on P): Flow[V] =
       val PlacementType.Placed.Local[Flow[V] @unchecked, P @unchecked](localValue, _) = value.runtimeChecked
       localValue
 
@@ -67,5 +67,5 @@ object PlacedFlow:
         NotGiven[PeerScope[P]],
     )(expression: (PeerScope[P], PlacedLabel) ?=> Flow[Value]): Flow[Value] on P
 
-    def take[P <: Peer](using PeerScope[P])[V](value: Flow[V] on P): Flow[V]
+    def take[L <: Peer, P <: Peer](using PeerScope[L], MemberOf[L, P])[V](value: Flow[V] on P): Flow[V]
 end PlacedFlow

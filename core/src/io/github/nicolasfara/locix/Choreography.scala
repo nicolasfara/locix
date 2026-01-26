@@ -54,4 +54,6 @@ object Choreography:
         Network,
         PlacedValue,
     )(value: V on Sender): V on Receiver
+
+    // def broadcast[V, Sender <: TiedWith[Receiver]: PeerRepr, Receiver <: Peer: PeerRepr](value: V on Sender): V on Receiver
 end Choreography

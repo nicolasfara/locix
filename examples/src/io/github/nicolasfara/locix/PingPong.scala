@@ -5,6 +5,7 @@ import scala.concurrent.Future
 
 import io.github.nicolasfara.locix.network.InMemoryNetwork
 import io.github.nicolasfara.locix.{ Choreography, Locix }
+import io.github.nicolasfara.locix.placement.PlacementType.on
 
 import Choreography.*
 import network.Network
@@ -20,7 +21,7 @@ object PingPong:
   type Ponger <: { type Tie <: Single[Pinger] }
 
   def pingPongProgram(using Network, Choreography, PlacedValue) =
-    val ping = on[Pinger]("ping")
+    val ping = on[Pinger]{ "ping" }
     val pingReceived = comm[Pinger, Ponger](ping)
     val pong = on[Ponger]:
       val receivedPing = pingReceived.take

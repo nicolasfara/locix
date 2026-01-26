@@ -34,12 +34,11 @@ object PlacedValue:
   )[Value](expression: (PeerScope[P], PlacedLabel) ?=> Value): Value on P =
     pv.effect.on[P, Value](expression)
 
-  def take[P <: Peer](using pv: PlacedValue, net: Network, scope: PeerScope[P])[V](value: V on P): V =
+  def take[L <: Peer, P <: Peer](using pv: PlacedValue, net: Network, scope: PeerScope[L], mo: MemberOf[L, P])[V](value: V on P): V =
     pv.effect.take(value)
 
-  extension [Remote <: Peer, Value](using pl: PlacedValue)(placedValue: Value on Remote)
-    def take(using PeerScope[Remote]): Value =
-      pl.effect.take(placedValue)
+  extension [L <: Peer, P <: Peer, Value](using pl: PlacedValue)(placedValue: Value on P)
+    def take(using PeerScope[L], MemberOf[L, P]): Value = pl.effect.take(placedValue)
 
   def run[P <: Peer: PeerRepr](using net: Network)[V](program: (PlacedValue, PeerScope[P]) ?=> V): V =
     val handler = new Locix.Handler[PlacedValue.Effect, V, V]:
@@ -48,7 +47,7 @@ object PlacedValue:
     Locix.handle(program)(using handler)
 
   private def effectImplementation[LocalPeer <: Peer: PeerRepr] = new Effect:
-    override def take[P <: Peer](using PeerScope[P])[V](value: V on P): V =
+    override def take[L <: Peer, P <: Peer](using PeerScope[L], MemberOf[L, P])[V](value: V on P): V =
       val PlacementType.Placed.Local[V @unchecked, P @unchecked](localValue, _) = value.runtimeChecked
       localValue
     override def on[P <: Peer: PeerRepr, Value](using
@@ -72,5 +71,5 @@ object PlacedValue:
         NotGiven[PeerScope[P]],
     )(expression: (PeerScope[P], PlacedLabel) ?=> Value): Value on P
 
-    def take[P <: Peer](using PeerScope[P])[V](value: V on P): V
+    def take[L <: Peer, P <: Peer](using PeerScope[L], MemberOf[L, P])[V](value: V on P): V
 end PlacedValue
