@@ -19,12 +19,10 @@ import placement.PlacementType.on
 /**
  * GMW (Goldreich-Micali-Widgerson) Secure Multiparty Computation Protocol
  *
- * This implementation demonstrates the classic GMW protocol for secure multiparty
- * computation within the locicope choreographic framework.
+ * This implementation demonstrates the classic GMW protocol for secure multiparty computation within the locicope choreographic framework.
  *
- * The GMW protocol allows n parties to jointly compute an agreed-upon function of
- * their distributed data WITHOUT revealing the data or any intermediate results
- * to the other parties.
+ * The GMW protocol allows n parties to jointly compute an agreed-upon function of their distributed data WITHOUT revealing the data or any
+ * intermediate results to the other parties.
  *
  * Key building blocks:
  *   1. Additive Secret Sharing: Encrypts distributed data while still allowing computation
@@ -49,9 +47,8 @@ import placement.PlacementType.on
  *   - FanIn/FanOut: Using ShareHolder/Party architecture for share distribution
  *   - Conclave: Nested two-party OT sub-choreography for each pair
  *
- * Note: This implementation uses a ShareHolder/Party peer architecture to work
- * within the framework's communication model, where ShareHolder peers hold input
- * shares and Party peers gather and compute on them.
+ * Note: This implementation uses a ShareHolder/Party peer architecture to work within the framework's communication model, where ShareHolder peers
+ * hold input shares and Party peers gather and compute on them.
  */
 object GMW:
 
@@ -60,14 +57,12 @@ object GMW:
   // ============================================================
 
   /**
-   * Party peers in the MPC protocol.
-   * Each party computes on their shares and sends output shares to Coordinator.
+   * Party peers in the MPC protocol. Each party computes on their shares and sends output shares to Coordinator.
    */
   type Party <: { type Tie <: Single[Coordinator] }
 
   /**
-   * Coordinator peer that gathers output shares and reconstructs the result.
-   * Connected to all Party peers.
+   * Coordinator peer that gathers output shares and reconstructs the result. Connected to all Party peers.
    */
   type Coordinator <: { type Tie <: Multiple[Party] }
 
@@ -81,8 +76,7 @@ object GMW:
   case class Wire(index: Int)
 
   /**
-   * Gate types in the binary circuit.
-   * GMW protocol supports XOR and AND gates:
+   * Gate types in the binary circuit. GMW protocol supports XOR and AND gates:
    *   - XOR: Can be computed locally on shares
    *   - AND: Requires oblivious transfer between all pairs
    */
@@ -105,10 +99,14 @@ object GMW:
   /**
    * A binary circuit consisting of gates.
    *
-   * @param gates    The gates in topological order
-   * @param inputs   Map from party ID to their input wires
-   * @param outputs  The output wires
-   * @param numParties  Number of parties in the protocol
+   * @param gates
+   *   The gates in topological order
+   * @param inputs
+   *   Map from party ID to their input wires
+   * @param outputs
+   *   The output wires
+   * @param numParties
+   *   Number of parties in the protocol
    */
   case class Circuit(
       gates: List[Gate],
@@ -124,21 +122,18 @@ object GMW:
   // ============================================================
 
   /**
-   * A secret share of a bit.
-   * XOR of all shares equals the original bit.
+   * A secret share of a bit. XOR of all shares equals the original bit.
    */
   case class BitShare(partyId: Int, wireIndex: Int, value: Boolean)
 
   /**
-   * Secret-shared wire value.
-   * Each party holds one share; XOR of all shares = actual value.
+   * Secret-shared wire value. Each party holds one share; XOR of all shares = actual value.
    */
   case class SharedWireValue(wireIndex: Int, shares: Map[Int, Boolean]):
     def reconstruct: Boolean = shares.values.reduce(_ ^ _)
 
   /**
-   * Split a bit into n additive (XOR) shares.
-   * The XOR of all shares equals the original bit.
+   * Split a bit into n additive (XOR) shares. The XOR of all shares equals the original bit.
    */
   def splitBitIntoShares(bit: Boolean, numParties: Int, wireIndex: Int): Map[Int, BitShare] =
     val random = new scala.util.Random()
@@ -161,9 +156,8 @@ object GMW:
   // ============================================================
 
   /**
-   * Oblivious Transfer result.
-   * The receiver gets m_b where b is their choice bit,
-   * without the sender learning b, and without the receiver learning m_{1-b}.
+   * Oblivious Transfer result. The receiver gets m_b where b is their choice bit, without the sender learning b, and without the receiver learning
+   * m_{1-b}.
    */
   case class OTResult(choiceBit: Boolean, receivedValue: Boolean)
 
@@ -180,9 +174,7 @@ object GMW:
   /**
    * Simulated OT protocol (in production, would use real crypto like RSA-based OT).
    *
-   * The sender has two messages m0, m1.
-   * The receiver has a choice bit b.
-   * After OT:
+   * The sender has two messages m0, m1. The receiver has a choice bit b. After OT:
    *   - Receiver learns m_b
    *   - Sender learns nothing about b
    *   - Receiver learns nothing about m_{1-b}
@@ -202,24 +194,18 @@ object GMW:
   /**
    * Compute party i's contribution to AND gate shares using OT with party j.
    *
-   * For AND gate on wires a,b with output c:
-   * Each pair (i,j) where i < j performs OT where:
+   * For AND gate on wires a,b with output c: Each pair (i,j) where i < j performs OT where:
    *   - Party i (sender) prepares messages based on their a_i share
    *   - Party j (receiver) uses their b_j share as choice
    *   - They both get shares of a_i AND b_j
    *
-   * The final AND share for party k is:
-   *   c_k = (a_k AND b_k) XOR (XOR over all pairs involving k of the OT results)
+   * The final AND share for party k is: c_k = (a_k AND b_k) XOR (XOR over all pairs involving k of the OT results)
    */
   case class ANDContribution(fromParty: Int, toParty: Int, value: Boolean)
 
   /**
-   * Prepare OT sender messages for AND gate.
-   * If sender has share a_i and wants to help compute (a AND b):
-   *   m0 = random r
-   *   m1 = r XOR a_i
-   * Receiver with b_j will get r if b_j=0, or r XOR a_i if b_j=1.
-   * This equals r XOR (a_i AND b_j).
+   * Prepare OT sender messages for AND gate. If sender has share a_i and wants to help compute (a AND b): m0 = random r m1 = r XOR a_i Receiver with
+   * b_j will get r if b_j=0, or r XOR a_i if b_j=1. This equals r XOR (a_i AND b_j).
    */
   def prepareANDSenderMessages(senderShare: Boolean, randomMask: Boolean): OTSenderMessage =
     OTSenderMessage(
@@ -232,8 +218,7 @@ object GMW:
   // ============================================================
 
   /**
-   * Example: 2-party AND function.
-   * Computes (input1 AND input2) where each party provides one input.
+   * Example: 2-party AND function. Computes (input1 AND input2) where each party provides one input.
    */
   def twoPartyANDCircuit: Circuit = Circuit(
     gates = List(
@@ -248,13 +233,11 @@ object GMW:
   )
 
   /**
-   * Example: 3-party majority function.
-   * Computes majority(a, b, c) = (a AND b) OR (b AND c) OR (a AND c)
-   * Using only AND/XOR: (a AND b) XOR (b AND c) XOR (a AND c) XOR (a AND b AND c)
+   * Example: 3-party majority function. Computes majority(a, b, c) = (a AND b) OR (b AND c) OR (a AND c) Using only AND/XOR: (a AND b) XOR (b AND c)
+   * XOR (a AND c) XOR (a AND b AND c)
    *
-   * Simplified to: (a XOR b) AND (b XOR c) XOR b
-   * Actually, let's use: (a AND b) XOR (a AND c) XOR (b AND c)
-   * which is close but needs adjustment. We'll use a direct formula.
+   * Simplified to: (a XOR b) AND (b XOR c) XOR b Actually, let's use: (a AND b) XOR (a AND c) XOR (b AND c) which is close but needs adjustment.
+   * We'll use a direct formula.
    */
   def threePartyMajorityCircuit: Circuit = Circuit(
     gates = List(
@@ -275,8 +258,7 @@ object GMW:
   )
 
   /**
-   * Example: 3-party XOR-only circuit (no OT needed).
-   * Computes XOR of all inputs.
+   * Example: 3-party XOR-only circuit (no OT needed). Computes XOR of all inputs.
    */
   def threePartyXORCircuit: Circuit = Circuit(
     gates = List(
@@ -297,8 +279,7 @@ object GMW:
   // ============================================================
 
   /**
-   * Shared state for circuit evaluation.
-   * Maps wire indices to the local party's share of that wire.
+   * Shared state for circuit evaluation. Maps wire indices to the local party's share of that wire.
    */
   type WireShares = Map[Int, Boolean]
 
@@ -313,18 +294,18 @@ object GMW:
   /**
    * Main GMW protocol with Coordinator architecture.
    *
-   * This implementation demonstrates the GMW protocol structure within the framework.
-   * It uses a Party/Coordinator architecture where:
+   * This implementation demonstrates the GMW protocol structure within the framework. It uses a Party/Coordinator architecture where:
    *   - Party peers compute on their secret shares
    *   - Coordinator gathers output shares and reconstructs the final result
    *   - Coordinator then distributes the result back to all parties
    *
-   * The share derivation uses a deterministic scheme to simulate proper share
-   * distribution, ensuring all parties derive consistent shares without explicit
-   * peer-to-peer communication.
+   * The share derivation uses a deterministic scheme to simulate proper share distribution, ensuring all parties derive consistent shares without
+   * explicit peer-to-peer communication.
    *
-   * @param circuit  The circuit to evaluate
-   * @param inputs   Map from party ID to their input bits
+   * @param circuit
+   *   The circuit to evaluate
+   * @param inputs
+   *   Map from party ID to their input bits
    */
   def gmwProtocol(circuit: Circuit, partyInputs: Map[Int, List[Boolean]])(using
       net: Network,
@@ -349,19 +330,19 @@ object GMW:
       circuit.gates.foreach:
         case InputGate(ownerPartyId, wire) =>
           val inputValue = partyInputs.getOrElse(ownerPartyId, List.empty).headOption.getOrElse(false)
-          
+
           // Deterministic share derivation
           val seed = ownerPartyId * 10000 + wire.index * 100
           val random = new scala.util.Random(seed)
-          
+
           val shares = (0 until numParties - 1).map { i =>
             i -> random.nextBoolean()
           }.toMap
-          
+
           val xorOfOthers = shares.values.fold(false)(_ ^ _)
           val lastShare = inputValue ^ xorOfOthers
           val allShares = shares + ((numParties - 1) -> lastShare)
-          
+
           val myShare = allShares(myId)
           myWireShares = myWireShares + (wire.index -> myShare)
           println(s"[Party $myId] Input wire ${wire.index} (owner: $ownerPartyId, value: $inputValue): my share = $myShare")
@@ -383,7 +364,7 @@ object GMW:
           // GMW AND gate using simulated correlated randomness
           // For c = a AND b where a = XOR(a_i) and b = XOR(b_i):
           // c = XOR over all i,j of (a_i AND b_j)
-          // 
+          //
           // Each party i computes:
           // c_i = (a_i AND b_i) XOR (sum of OT terms with other parties)
           //
@@ -393,7 +374,7 @@ object GMW:
           // - Receiver with choice b_j gets: r XOR (a_i AND b_j)
           // - Sender keeps: r
           // - Together they hold shares of (a_i AND b_j)
-          
+
           val leftShare = myWireShares.getOrElse(left.index, false)
           val rightShare = myWireShares.getOrElse(right.index, false)
 
@@ -409,29 +390,30 @@ object GMW:
             // Get the shares that parties i and j hold for the input wires
             // We need to derive them the same way as above
             val seedLeft = (circuit.gates.collectFirst { case InputGate(p, w) if w.index == left.index => p }.getOrElse(0)) * 10000 + left.index * 100
-            val seedRight = (circuit.gates.collectFirst { case InputGate(p, w) if w.index == right.index => p }.getOrElse(0)) * 10000 + right.index * 100
-            
+            val seedRight =
+              (circuit.gates.collectFirst { case InputGate(p, w) if w.index == right.index => p }.getOrElse(0)) * 10000 + right.index * 100
+
             val leftRandom = new scala.util.Random(seedLeft)
             val leftShares = (0 until numParties - 1).map(p => p -> leftRandom.nextBoolean()).toMap
             val leftXor = leftShares.values.fold(false)(_ ^ _)
             val leftInputValue = partyInputs.values.flatten.toList.lift(left.index).getOrElse(false)
             val allLeftShares = leftShares + ((numParties - 1) -> (leftInputValue ^ leftXor))
-            
+
             val rightRandom = new scala.util.Random(seedRight)
             val rightShares = (0 until numParties - 1).map(p => p -> rightRandom.nextBoolean()).toMap
             val rightXor = rightShares.values.fold(false)(_ ^ _)
             val rightInputValue = partyInputs.values.flatten.toList.lift(right.index).getOrElse(false)
             val allRightShares = rightShares + ((numParties - 1) -> (rightInputValue ^ rightXor))
-            
+
             val a_i = allLeftShares.getOrElse(i, false)
             val a_j = allLeftShares.getOrElse(j, false)
             val b_i = allRightShares.getOrElse(i, false)
             val b_j = allRightShares.getOrElse(j, false)
-            
+
             // Cross products
-            val cross_ij = a_i && b_j  // Party i's left share AND party j's right share
-            val cross_ji = a_j && b_i  // Party j's left share AND party i's right share
-            
+            val cross_ij = a_i && b_j // Party i's left share AND party j's right share
+            val cross_ji = a_j && b_i // Party j's left share AND party i's right share
+
             // Deterministic "random" mask for this pair
             val otSeed = output.index * 10000 + i * 100 + j
             val otRandom = new scala.util.Random(otSeed)
@@ -448,6 +430,7 @@ object GMW:
               // For cross_ij: I'm receiver, I get r_ij XOR cross_ij
               // For cross_ji: I'm sender, I keep r_ji
               myContribution = myContribution ^ (r_ij ^ cross_ij) ^ r_ji
+          end for
 
           myWireShares = myWireShares + (output.index -> myContribution)
           println(s"[Party $myId] AND: wire ${left.index} & wire ${right.index} -> wire ${output.index}($myContribution)")
@@ -463,9 +446,9 @@ object GMW:
     // Step 2: Coordinator gathers all shares and reconstructs result
     val coordinatorResult: Boolean on Coordinator = on[Coordinator]:
       println(s"[Coordinator] Gathering output shares from all parties")
-      
+
       val allShares = asLocalAll[Party, Coordinator, Boolean](partyOutputShare)
-      
+
       println(s"[Coordinator] Received ${allShares.size} shares:")
       allShares.foreach { case (id, share) =>
         println(s"[Coordinator]   Party $id: $share")

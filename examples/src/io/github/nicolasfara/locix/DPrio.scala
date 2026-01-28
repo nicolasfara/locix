@@ -20,8 +20,7 @@ import placement.PlacementType.on
 /**
  * DPrio: Differentially Private Secure Aggregation Protocol
  *
- * This example implements a simplified version of the DPrio protocol, which extends Prio
- * with differential privacy. The key mechanism is:
+ * This example implements a simplified version of the DPrio protocol, which extends Prio with differential privacy. The key mechanism is:
  *
  *   1. Each client generates a secret noise value for the DP layer
  *   2. Clients split their noise into additive shares and send one share to each server
@@ -42,14 +41,12 @@ import placement.PlacementType.on
  */
 object DPrio:
   /**
-   * Client peers generate noise for differential privacy.
-   * Each client is connected to multiple servers to distribute shares.
+   * Client peers generate noise for differential privacy. Each client is connected to multiple servers to distribute shares.
    */
   type Client <: { type Tie <: Multiple[Server] }
 
   /**
-   * Server peers coordinate the lottery and hold shares.
-   * Each server:
+   * Server peers coordinate the lottery and hold shares. Each server:
    *   - Receives shares from multiple clients
    *   - Coordinates with other servers for the lottery
    *   - Sends result to the analyst
@@ -57,8 +54,7 @@ object DPrio:
   type Server <: { type Tie <: Multiple[Client] & Multiple[Server] & Single[Analyst] }
 
   /**
-   * Analyst peer receives the final aggregated noise.
-   * Connected to multiple servers for the final aggregation.
+   * Analyst peer receives the final aggregated noise. Connected to multiple servers for the final aggregation.
    */
   type Analyst <: { type Tie <: Multiple[Server] }
 
@@ -67,14 +63,12 @@ object DPrio:
   // ============================================================
 
   /**
-   * A share of a client's secret noise value.
-   * Additive shares: sum of all shares = original secret.
+   * A share of a client's secret noise value. Additive shares: sum of all shares = original secret.
    */
   case class Share(clientId: String, value: Long)
 
   /**
-   * Server's contribution to the lottery.
-   * Each server generates a random value; XOR of all values determines winner.
+   * Server's contribution to the lottery. Each server generates a random value; XOR of all values determines winner.
    */
   case class LotteryContribution(serverId: String, randomValue: Long)
 
@@ -93,8 +87,7 @@ object DPrio:
   // ============================================================
 
   /**
-   * Split a secret into n additive shares.
-   * The sum of all shares equals the original secret.
+   * Split a secret into n additive shares. The sum of all shares equals the original secret.
    *
    * In a real implementation, this would use proper finite field arithmetic.
    */
@@ -113,9 +106,8 @@ object DPrio:
     shares.map(_.value).sum
 
   /**
-   * Determine lottery winner using XOR of all contributions.
-   * The XOR ensures that as long as one server is honest and random,
-   * the result is uniformly random.
+   * Determine lottery winner using XOR of all contributions. The XOR ensures that as long as one server is honest and random, the result is uniformly
+   * random.
    */
   def computeLotteryWinner(
       contributions: Map[String, LotteryContribution],
@@ -168,15 +160,16 @@ object DPrio:
       val serverIndex = getId(localAddress).toString.takeRight(1).toInt
 
       // ===== GATHER: Collect shares from all clients =====
-      val allClientShares: Map[net.effect.Id, List[Share]] = 
+      val allClientShares: Map[net.effect.Id, List[Share]] =
         asLocalAll[Client, Server, List[Share]](clientShares)
 
       // Each server takes their designated share from each client
-      val myShares: Map[String, Share] = allClientShares.map: (_, sharesList) =>
-        val myShare = sharesList.lift(serverIndex).getOrElse(sharesList.head)
-        println(s"[Server:$serverId] Received share from client ${myShare.clientId}: ${myShare.value}")
-        myShare.clientId -> myShare
-      .toMap
+      val myShares: Map[String, Share] = allClientShares
+        .map: (_, sharesList) =>
+          val myShare = sharesList.lift(serverIndex).getOrElse(sharesList.head)
+          println(s"[Server:$serverId] Received share from client ${myShare.clientId}: ${myShare.value}")
+          myShare.clientId -> myShare
+        .toMap
 
       // ===== LOTTERY: Deterministic winner selection =====
       // For all servers to agree on the same winner without explicit coordination,
@@ -184,7 +177,7 @@ object DPrio:
       // In a full DPrio implementation, servers would exchange random commitments
       // via the network to achieve random but agreed-upon selection.
       val clientIds = myShares.keys.toList.sorted
-      
+
       // Use a hash of all client IDs as the "shared random" value
       // This ensures all servers select the same winner deterministically
       val sharedRandom = clientIds.mkString(",").hashCode.toLong
@@ -208,7 +201,7 @@ object DPrio:
       val analystId = localAddress.toString
 
       // Gather shares from all servers
-      val allShares: Map[net.effect.Id, AnalystShare] = 
+      val allShares: Map[net.effect.Id, AnalystShare] =
         asLocalAll[Server, Analyst, AnalystShare](serverAnalystShares)
       println(s"[Analyst:$analystId] Received ${allShares.size} shares from servers")
 
@@ -224,7 +217,7 @@ object DPrio:
       println(s"[Analyst:$analystId] This noise can be used for differential privacy!")
 
       reconstructedNoise
-    
+
     finalResult
   end dprioProtocol
 
@@ -235,8 +228,7 @@ object DPrio:
   /**
    * DPrio protocol with full server-to-server lottery coordination.
    *
-   * This version demonstrates the complete lottery mechanism where servers
-   * exchange random contributions to ensure the winner selection is truly
+   * This version demonstrates the complete lottery mechanism where servers exchange random contributions to ensure the winner selection is truly
    * random even if some servers are malicious.
    *
    * The key difference from the simplified version:
@@ -271,11 +263,12 @@ object DPrio:
 
       // Gather shares from all clients
       val allClientShares = asLocalAll[Client, Server, List[Share]](clientShares)
-      val myShares: Map[String, Share] = allClientShares.map: (_, sharesList) =>
-        val myShare = sharesList.lift(serverIndex).getOrElse(sharesList.head)
-        println(s"[Server:$serverId] Received share from ${myShare.clientId}: ${myShare.value}")
-        myShare.clientId -> myShare
-      .toMap
+      val myShares: Map[String, Share] = allClientShares
+        .map: (_, sharesList) =>
+          val myShare = sharesList.lift(serverIndex).getOrElse(sharesList.head)
+          println(s"[Server:$serverId] Received share from ${myShare.clientId}: ${myShare.value}")
+          myShare.clientId -> myShare
+        .toMap
 
       // Gather lottery contributions from all servers (including self via the placed value)
       val allContributions = asLocalAll[Server, Server, LotteryContribution](serverLotteryContrib)
@@ -416,15 +409,17 @@ object DPrio:
           Multitier.run[Analyst](dprioProtocol)
 
     // Wait for all peers to complete
-    val allFutures = Future.sequence(List(
-      client1Future,
-      client2Future,
-      client3Future,
-      server1Future,
-      server2Future,
-      server3Future,
-      analystFuture,
-    ))
+    val allFutures = Future.sequence(
+      List(
+        client1Future,
+        client2Future,
+        client3Future,
+        server1Future,
+        server2Future,
+        server3Future,
+        analystFuture,
+      ),
+    )
 
     Await.result(allFutures, 30.seconds)
 

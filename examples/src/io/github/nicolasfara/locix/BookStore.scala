@@ -17,8 +17,7 @@ import placement.PlacedValue.*
 /**
  * Classical Book Store Protocol
  *
- * This example demonstrates a choreographic programming bookstore example,
- * where a buyer requests a book quote from a seller and receives a response.
+ * This example demonstrates a choreographic programming bookstore example, where a buyer requests a book quote from a seller and receives a response.
  *
  * Protocol:
  *   1. Buyer sends a book request to the Seller
@@ -54,8 +53,7 @@ object BookStore:
   /**
    * The Book Store Protocol
    *
-   * Demonstrates a choreographic pattern where a buyer sends an order
-   * to a seller and receives a confirmation.
+   * Demonstrates a choreographic pattern where a buyer sends an order to a seller and receives a confirmation.
    */
   def bookStoreProtocol(using Network, Choreography, PlacedValue) =
     // Step 1: Buyer creates an order with title, budget, and delivery address
@@ -94,10 +92,8 @@ object BookStore:
     // Step 5: Buyer receives and displays result
     on[Buyer]:
       val orderResult = resultAtBuyer.take
-      if orderResult.success then
-        println(s"[$localAddress] SUCCESS: ${orderResult.message}")
-      else
-        println(s"[$localAddress] FAILED: ${orderResult.message}")
+      if orderResult.success then println(s"[$localAddress] SUCCESS: ${orderResult.message}")
+      else println(s"[$localAddress] FAILED: ${orderResult.message}")
       orderResult
   end bookStoreProtocol
 

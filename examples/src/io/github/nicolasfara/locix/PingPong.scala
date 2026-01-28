@@ -21,7 +21,7 @@ object PingPong:
   type Ponger <: { type Tie <: Single[Pinger] }
 
   def pingPongProgram(using Network, Choreography, PlacedValue) =
-    val ping = on[Pinger]{ "ping" }
+    val ping = on[Pinger] { "ping" }
     val pingReceived = comm[Pinger, Ponger](ping)
     val pong = on[Ponger]:
       val receivedPing = pingReceived.take

@@ -34,7 +34,7 @@ object Choreography:
 
     override def multicast[V, Sender <: TiedToMultiple[Receiver]: PeerRepr, Receiver <: TiedToSingle[Sender]: PeerRepr](using
         Network,
-        PlacedValue
+        PlacedValue,
     )(value: V on Sender): V on Receiver =
       val senderPeerRepr = summon[PeerRepr[Sender]]
       val receiverPeerRepr = summon[PeerRepr[Receiver]]
@@ -88,6 +88,6 @@ object Choreography:
 
     def multicast[V, Sender <: TiedToMultiple[Receiver]: PeerRepr, Receiver <: TiedToSingle[Sender]: PeerRepr](using
         Network,
-        PlacedValue
+        PlacedValue,
     )(value: V on Sender): V on Receiver
 end Choreography

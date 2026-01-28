@@ -5,7 +5,7 @@ import io.github.nicolasfara.locix.network.NetworkResource.Reference
 import io.github.nicolasfara.locix.placement.Peers.*
 import ox.flow.Flow
 import ox.{ fork, supervised }
-import scala.caps.Capability
+import scala.caps.SharedCapability
 
 object PlacementType:
   opaque infix type on[+V, -P <: Peer] = Placed[V, P]
@@ -23,8 +23,8 @@ object PlacementType:
     case Placed.Local(_, ref) => ref
     case Placed.Remote(ref) => ref
 
-  final class PeerScope[P <: Peer] extends /*compiletime.Erased,*/ Capability
-  final class PlacedLabel extends compiletime.Erased, Capability
+  final class PeerScope[P <: Peer] extends /*compiletime.Erased,*/ SharedCapability
+  final class PlacedLabel extends compiletime.Erased, SharedCapability
 
   trait Placement:
     inline def liftF[From <: Peer: PeerRepr](using

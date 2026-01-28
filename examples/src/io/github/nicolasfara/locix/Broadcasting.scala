@@ -21,7 +21,7 @@ object Broadcasting:
 
   def main(args: Array[String]): Unit =
     import scala.concurrent.ExecutionContext.Implicits.global
-    import scala.concurrent.{Await, Future}
+    import scala.concurrent.{ Await, Future }
 
     // Create one server and three clients
     val serverNetwork = InMemoryNetwork[Server]("server-address", 1)
@@ -65,9 +65,11 @@ object Broadcasting:
         PlacedValue.run[Client] {
           Choreography.run[Client](broadcast)
         }
-      }
+      },
     )
 
     val complete = Future.sequence(serverFuture :: clientFutures)
     Await.result(complete, scala.concurrent.duration.Duration.Inf)
     println("Main program completed")
+  end main
+end Broadcasting

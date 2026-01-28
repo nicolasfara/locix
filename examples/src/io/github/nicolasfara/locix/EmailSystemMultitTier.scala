@@ -33,7 +33,7 @@ object EmailSystem:
 
   case class Email(id: Long, subject: String, body: String, timestamp: Long, attachments: List[Attachment])
   case class Attachment(filename: String, data: Array[Byte])
-  
+
   case class ClientConfig(userId: UserId, isOnFlatRate: Boolean)
 
   // Mock implementations for demonstration
@@ -43,7 +43,7 @@ object EmailSystem:
         Email(1L, "Welcome", "Welcome to our service", 1000L, List.empty),
         Email(2L, "Update", "System update available", 2000L, List.empty),
         Email(3L, "Newsletter", "Monthly newsletter", 3000L, List.empty),
-      )
+      ),
     )
     private val attachments = Map(
       1L -> List(Attachment("welcome.pdf", Array[Byte](1, 2, 3))),
@@ -71,8 +71,8 @@ object EmailSystem:
   /**
    * Email synchronization protocol
    *
-   * This demonstrates a multi-tier choreography where a client synchronizes emails
-   * from a server, with context-aware attachment fetching based on network conditions.
+   * This demonstrates a multi-tier choreography where a client synchronizes emails from a server, with context-aware attachment fetching based on
+   * network conditions.
    */
   def emailSyncProtocol(config: ClientConfig)(using Network, PlacedValue, Multitier) =
     // Get emails from server
@@ -80,13 +80,13 @@ object EmailSystem:
       val ts = 0L
       println(s"[Server] Fetching emails for user ${config.userId}")
       createServerDB().since(config.userId, ts)
-    
+
     // Update emails on client
     on[Client]:
       val emails = asLocal(emailsOnServer)
       val db = createClientDB()
       db.update(emails)
-    
+
     // Fetch attachments from server if client is on flat rate
     val attachmentsOnServer: List[Attachment] on Server = on[Server]:
       if config.isOnFlatRate then
@@ -97,14 +97,14 @@ object EmailSystem:
       else
         println(s"[Server] Skipping attachments (client not on flat rate)")
         List.empty[Attachment]
-    
+
     // Update attachments on client if any were fetched
     on[Client]:
       val attachments = asLocal(attachmentsOnServer)
-      if attachments.nonEmpty then
-        createClientDB().updateAttachments(attachments)
+      if attachments.nonEmpty then createClientDB().updateAttachments(attachments)
       println(s"[Client] Email synchronization completed")
       ()
+  end emailSyncProtocol
 
   def main(args: Array[String]): Unit =
     import scala.concurrent.ExecutionContext.Implicits.global
@@ -113,7 +113,7 @@ object EmailSystem:
     val userId = if args.length > 0 then args(0) else "user1"
     val isOnFlatRate = if args.length > 1 then args(1).toBoolean else true
     val config = ClientConfig(userId, isOnFlatRate)
-    
+
     println(s"Configuration: userId=$userId, isOnFlatRate=$isOnFlatRate")
     println()
 
