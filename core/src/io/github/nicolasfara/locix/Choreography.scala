@@ -18,6 +18,12 @@ object Choreography:
       choreo: Choreography,
   )[V](value: V on Sender): V on Receiver = choreo.effect.comm(value)
 
+  def multicast[Sender <: TiedToMultiple[Receiver]: PeerRepr, Receiver <: TiedToSingle[Sender]: PeerRepr](using
+      net: Network,
+      placed: PlacedValue,
+      choreo: Choreography,
+  )[V](value: V on Sender): V on Receiver = choreo.effect.multicast(value)
+
   def run[P <: Peer: PeerRepr](using Network)[V](expression: Choreography ?=> V): V =
     val effect = effectImplementation[P]
     val handler = new Locix.Handler[Choreography.Effect, V, V]:
@@ -25,6 +31,31 @@ object Choreography:
     Locix.handle(expression)(using handler)
 
   private def effectImplementation[LocalPeer <: Peer: PeerRepr] = new Effect:
+
+    override def multicast[V, Sender <: TiedToMultiple[Receiver]: PeerRepr, Receiver <: TiedToSingle[Sender]: PeerRepr](using
+        Network,
+        PlacedValue
+    )(value: V on Sender): V on Receiver =
+      val senderPeerRepr = summon[PeerRepr[Sender]]
+      val receiverPeerRepr = summon[PeerRepr[Receiver]]
+      given PeerScope[Sender] = PeerScope[Sender]()
+      val (ref, placedValue): (Reference[Sender], Option[Id[V]]) =
+        if summon[PeerRepr[LocalPeer]] <:< senderPeerRepr then
+          val peers = reachablePeersOf[Receiver]
+          val Placed.Local[V @unchecked, Sender @unchecked](localValue, reference) = value.runtimeChecked
+          peers.foreach: peerAddress =>
+            send[Receiver, Sender, V](peerAddress, reference, localValue).fold(throw _, identity)
+          (reference, None)
+        else
+          val peers = reachablePeersOf[Sender]
+          val Placed.Remote[V @unchecked, Sender @unchecked](reference) = value.runtimeChecked
+          // For broadcast, we can just receive from any of the senders
+          val receivedValue = receive[Sender, Receiver, Id, V](peers.head, reference).fold(throw _, identity)
+          (reference, Some(receivedValue))
+      val newRef = Reference(ref.resourceId, receiverPeerRepr, ref.valueType)
+      summon[PlacedValue].effect.liftF(placedValue, newRef)
+    end multicast
+
     override def comm[V, Sender <: TiedToSingle[Receiver]: PeerRepr, Receiver <: TiedToSingle[Sender]: PeerRepr](using
         Network,
         PlacedValue,
@@ -55,5 +86,8 @@ object Choreography:
         PlacedValue,
     )(value: V on Sender): V on Receiver
 
-    // def broadcast[V, Sender <: TiedWith[Receiver]: PeerRepr, Receiver <: Peer: PeerRepr](value: V on Sender): V on Receiver
+    def multicast[V, Sender <: TiedToMultiple[Receiver]: PeerRepr, Receiver <: TiedToSingle[Sender]: PeerRepr](using
+        Network,
+        PlacedValue
+    )(value: V on Sender): V on Receiver
 end Choreography
