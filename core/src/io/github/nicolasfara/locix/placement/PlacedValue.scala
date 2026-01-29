@@ -27,18 +27,18 @@ object PlacedValue:
    * @return
    *   a placed value representing the value on the specified peer.
    */
-  def on[P <: Peer: PeerRepr](using
+  inline def on[P <: Peer: PeerRepr](using
       pv: PlacedValue,
       net: Network,
       ng: NotGiven[PlacedLabel],
-  )[Value](expression: (PeerScope[P], PlacedLabel) ?=> Value): Value on P =
-    pv.effect.on[P, Value](expression)
+  )[Value](inline expression: (PeerScope[P], PlacedLabel) ?=> Value): Value on P =
+    pv.effect.on[P, Value](hashBody(""))(expression)
 
-  def take[L <: Peer, P <: Peer](using pv: PlacedValue, net: Network, scope: PeerScope[L], mo: MemberOf[L, P])[V](value: V on P): V =
+  def take[L <: Peer, P <: Peer](using pv: PlacedValue, net: Network, scope: PeerScope[L])[V](value: V on P): V =
     pv.effect.take(value)
 
   extension [L <: Peer, P <: Peer, Value](using pl: PlacedValue)(placedValue: Value on P)
-    def take(using PeerScope[L], MemberOf[L, P]): Value = pl.effect.take(placedValue)
+    def take(using PeerScope[L]): Value = pl.effect.take(placedValue)
 
   def run[P <: Peer: PeerRepr](using net: Network)[V](program: (PlacedValue, PeerScope[P]) ?=> V): V =
     val handler = new Locix.Handler[PlacedValue.Effect, V, V]:
@@ -47,17 +47,17 @@ object PlacedValue:
     Locix.handle(program)(using handler)
 
   private def effectImplementation[LocalPeer <: Peer: PeerRepr] = new Effect:
-    override def take[L <: Peer, P <: Peer](using PeerScope[L], MemberOf[L, P])[V](value: V on P): V =
+    override def take[L <: Peer, P <: Peer](using PeerScope[L])[V](value: V on P): V =
       val PlacementType.Placed.Local[V @unchecked, P @unchecked](localValue, _) = value.runtimeChecked
       localValue
     override def on[P <: Peer: PeerRepr, Value](using
         Network,
         NotGiven[PeerScope[P]],
-    )(expression: (PeerScope[P], PlacedLabel) ?=> Value): Value on P =
+    )(hash: String)(expression: (PeerScope[P], PlacedLabel) ?=> Value): Value on P =
       given PeerScope[P] = PeerScope[P]()
       given PlacedLabel = new PlacedLabel
       val peerRepr = summon[PeerRepr[P]]
-      val resourceReference = Reference(hashBody(expression), peerRepr, ValueType.Value)
+      val resourceReference = Reference(hash, peerRepr, ValueType.Value)
       val placedValue: Option[Id[Value]] = if summon[PeerRepr[LocalPeer]] <:< peerRepr then
         val result = expression
         Some(result)
@@ -69,7 +69,7 @@ object PlacedValue:
     def on[P <: Peer: PeerRepr, Value](using
         Network,
         NotGiven[PeerScope[P]],
-    )(expression: (PeerScope[P], PlacedLabel) ?=> Value): Value on P
+    )(hash: String)(expression: (PeerScope[P], PlacedLabel) ?=> Value): Value on P
 
-    def take[L <: Peer, P <: Peer](using PeerScope[L], MemberOf[L, P])[V](value: V on P): V
+    def take[L <: Peer, P <: Peer](using PeerScope[L])[V](value: V on P): V
 end PlacedValue

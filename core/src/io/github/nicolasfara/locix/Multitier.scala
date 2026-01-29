@@ -25,7 +25,7 @@ object Multitier:
   )(placedValue: V on Remote): Map[net.effect.Id, V] =
     mt.effect.asLocalAll(placedValue)
 
-  inline def collectAsLocal[Remote <: Peer: PeerRepr, Local <: TiedToSingle[Remote], V](using
+  def collectAsLocal[Remote <: Peer: PeerRepr, Local <: TiedToSingle[Remote], V](using
       mt: Multitier,
       net: Network,
       scope: PeerScope[Local],

@@ -14,12 +14,12 @@ import ox.flow.Flow
 object PlacedFlow:
   type PlacedFlow = Locix[PlacedFlow.Effect]
 
-  def flowOn[P <: Peer: PeerRepr](using
+  inline def flowOn[P <: Peer: PeerRepr](using
       pf: PlacedFlow,
       net: Network,
       ng: NotGiven[PeerScope[P]],
-  )[Value](expression: (PeerScope[P], PlacedLabel) ?=> Flow[Value]): Flow[Value] on P =
-    pf.effect.flowOn[P, Value](expression)
+  )[Value](inline expression: (PeerScope[P], PlacedLabel) ?=> Flow[Value]): Flow[Value] on P =
+    pf.effect.flowOn[P, Value](hashBody(""))(expression)
 
   extension [L <: Peer, Remote <: Peer, Value](using pf: PlacedFlow)(placedFlow: Flow[Value] on Remote)
     def takeFlow(using PeerScope[L], MemberOf[L, Remote]): Flow[Value] =
@@ -36,14 +36,14 @@ object PlacedFlow:
       val PlacementType.Placed.Local[Flow[V] @unchecked, P @unchecked](localValue, _) = value.runtimeChecked
       localValue
 
-    override def flowOn[P <: Peer: PeerRepr, Value](using
+    override inline def flowOn[P <: Peer: PeerRepr, Value](using
         Network,
         NotGiven[PeerScope[P]],
-    )(expression: (PeerScope[P], PlacedLabel) ?=> Flow[Value]): Flow[Value] on P =
+    )(hash: String)(expression: (PeerScope[P], PlacedLabel) ?=> Flow[Value]): Flow[Value] on P =
       given PeerScope[P] = PeerScope[P]()
       given PlacedLabel = new PlacedLabel
       val peerRepr = summon[PeerRepr[P]]
-      val resourceReference = Reference(hashBody(expression), peerRepr, ValueType.Flow)
+      val resourceReference = Reference(hash, peerRepr, ValueType.Flow)
       val placedFlow = if summon[PeerRepr[LocalPeer]] <:< peerRepr then
         val result = expression
         Some(result)
@@ -65,7 +65,7 @@ object PlacedFlow:
     def flowOn[P <: Peer: PeerRepr, Value](using
         Network,
         NotGiven[PeerScope[P]],
-    )(expression: (PeerScope[P], PlacedLabel) ?=> Flow[Value]): Flow[Value] on P
+    )(hash: String)(expression: (PeerScope[P], PlacedLabel) ?=> Flow[Value]): Flow[Value] on P
 
     def take[L <: Peer, P <: Peer](using PeerScope[L], MemberOf[L, P])[V](value: Flow[V] on P): Flow[V]
 end PlacedFlow
