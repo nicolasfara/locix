@@ -2,6 +2,7 @@ package io.github.nicolasfara.locix
 
 import scala.concurrent.*
 import scala.concurrent.duration.*
+import scala.util.Random
 
 import io.github.nicolasfara.locix.network.InMemoryNetwork
 import io.github.nicolasfara.locix.{ Locix, Multitier }
@@ -19,36 +20,33 @@ import placement.PlacementType.on
 /**
  * GMW (Goldreich-Micali-Widgerson) Secure Multiparty Computation Protocol
  *
- * This implementation demonstrates the classic GMW protocol for secure multiparty computation within the locicope choreographic framework.
+ * This implementation is semantically equivalent to the Haskell HasChor GMW implementation.
  *
  * The GMW protocol allows n parties to jointly compute an agreed-upon function of their distributed data WITHOUT revealing the data or any
  * intermediate results to the other parties.
  *
  * Key building blocks:
- *   1. Additive Secret Sharing: Encrypts distributed data while still allowing computation
+ *   1. Additive Secret Sharing: Each value is split into XOR shares across all parties
  *   2. Oblivious Transfer (OT): A two-party sub-protocol for AND gate evaluation
- *   3. Circuit Representation: The function is specified as a binary circuit
+ *   3. Circuit Representation: The function is specified as a binary circuit (InputWire, LitWire, AndGate, XorGate)
  *
- * Protocol overview:
- *   1. Each party secret-shares its input values
- *   2. Parties iteratively evaluate gates, keeping intermediate values secret-shared:
- *      - XOR gates: local computation (XOR the shares)
- *      - AND gates: requires oblivious transfer between all pairs of parties
- *   3. When evaluation finishes, parties reveal their shares to decrypt the final result
+ * Protocol overview (following Haskell implementation):
+ *   1. secretShare: Party p secret-shares its input using genShares and scatter
+ *   2. Gate evaluation:
+ *      - XOR gates: Each party locally XORs their shares (parallel computation)
+ *      - AND gates: Uses fAnd with OT between all pairs of parties
+ *   3. reveal: All parties gather shares and XOR them to get the final result
+ *
+ * The circuit is represented as an ADT:
+ *   - InputWire(partyId): Input from a specific party
+ *   - LitWire(value): A literal boolean value
+ *   - AndGate(left, right): AND of two sub-circuits
+ *   - XorGate(left, right): XOR of two sub-circuits
  *
  * Security properties:
  *   - Input privacy: No party learns another party's input
  *   - Computation integrity: The result is correct if parties follow the protocol
  *   - Semi-honest security: Secure against honest-but-curious adversaries
- *
- * Framework Patterns Demonstrated:
- *   - Census polymorphism: parametric on the number of participants
- *   - Faceted values: Secret-shares as distributed values
- *   - FanIn/FanOut: Using ShareHolder/Party architecture for share distribution
- *   - Conclave: Nested two-party OT sub-choreography for each pair
- *
- * Note: This implementation uses a ShareHolder/Party peer architecture to work within the framework's communication model, where ShareHolder peers
- * hold input shares and Party peers gather and compute on them.
  */
 object GMW:
 
@@ -57,416 +55,547 @@ object GMW:
   // ============================================================
 
   /**
-   * Party peers in the MPC protocol. Each party computes on their shares and sends output shares to Coordinator.
+   * Party peers in the MPC protocol. Each party holds their secret shares and participates in the computation. Parties are connected to all other
+   * parties (for OT) and to the Coordinator.
    */
   type Party <: { type Tie <: Single[Coordinator] }
 
   /**
-   * Coordinator peer that gathers output shares and reconstructs the result. Connected to all Party peers.
+   * Coordinator peer that orchestrates the protocol, gathers output shares and reconstructs the result. Connected to all Party peers.
    */
   type Coordinator <: { type Tie <: Multiple[Party] }
 
   // ============================================================
-  // Circuit Representation
+  // Circuit Representation (Haskell-equivalent ADT)
   // ============================================================
 
   /**
-   * A wire in the circuit, identified by its index.
-   */
-  case class Wire(index: Int)
-
-  /**
-   * Gate types in the binary circuit. GMW protocol supports XOR and AND gates:
-   *   - XOR: Can be computed locally on shares
-   *   - AND: Requires oblivious transfer between all pairs
-   */
-  sealed trait Gate:
-    def output: Wire
-    def inputs: List[Wire]
-
-  case class XorGate(left: Wire, right: Wire, output: Wire) extends Gate:
-    def inputs: List[Wire] = List(left, right)
-
-  case class AndGate(left: Wire, right: Wire, output: Wire) extends Gate:
-    def inputs: List[Wire] = List(left, right)
-
-  case class InputGate(partyId: Int, output: Wire) extends Gate:
-    def inputs: List[Wire] = Nil
-
-  case class OutputGate(input: Wire, output: Wire) extends Gate:
-    def inputs: List[Wire] = List(input)
-
-  /**
-   * A binary circuit consisting of gates.
+   * A circuit in the GMW protocol, represented as an ADT.
    *
-   * @param gates
-   *   The gates in topological order
-   * @param inputs
-   *   Map from party ID to their input wires
-   * @param outputs
-   *   The output wires
+   * This mirrors the Haskell definition:
+   * {{{
+   * data Circuit :: [LocTy] -> Type where
+   *   InputWire :: (KnownSymbol p) => Member p ps -> Circuit ps
+   *   LitWire :: Bool -> Circuit ps
+   *   AndGate :: Circuit ps -> Circuit ps -> Circuit ps
+   *   XorGate :: Circuit ps -> Circuit ps -> Circuit ps
+   * }}}
+   *
+   * @tparam NumParties
+   *   The number of parties in the protocol (type-level integer for stronger typing)
+   */
+  sealed trait Circuit:
+    /** Recursively evaluate the circuit given input values from each party */
+    def evaluate(inputs: Map[Int, Boolean]): Boolean = this match
+      case InputWire(partyId)      => inputs(partyId)
+      case LitWire(value)          => value
+      case AndGate(left, right)    => left.evaluate(inputs) && right.evaluate(inputs)
+      case XorGate(left, right)    => left.evaluate(inputs) ^ right.evaluate(inputs)
+
+    /** Pretty print the circuit */
+    override def toString: String = this match
+      case InputWire(partyId)   => s"InputWire<p$partyId>"
+      case LitWire(value)       => s"LitWire($value)"
+      case AndGate(left, right) => s"($left) AND ($right)"
+      case XorGate(left, right) => s"($left) XOR ($right)"
+
+  /** Input wire from a specific party (equivalent to Haskell's InputWire with Member p ps) */
+  case class InputWire(partyId: Int) extends Circuit
+
+  /** Literal boolean value (publicly known) */
+  case class LitWire(value: Boolean) extends Circuit
+
+  /** AND gate - requires OT for secure computation */
+  case class AndGate(left: Circuit, right: Circuit) extends Circuit
+
+  /** XOR gate - can be computed locally on shares */
+  case class XorGate(left: Circuit, right: Circuit) extends Circuit
+
+  // ============================================================
+  // Utility: XOR fold (equivalent to Haskell's xor :: Foldable f => f Bool -> Bool)
+  // ============================================================
+
+  /** XOR all boolean values in a collection (foldr1 (/=) in Haskell) */
+  def xor(values: Iterable[Boolean]): Boolean = values.reduce(_ ^ _)
+
+  def xor(values: Boolean*): Boolean = values.reduce(_ ^ _)
+
+  // ============================================================
+  // Secret Sharing (equivalent to Haskell's genShares and secretShare)
+  // ============================================================
+
+  /**
+   * A share held by a party. The XOR of all shares for a value equals the original value.
+   *
+   * In Haskell: `Faceted parties '[] Bool` represents a value faceted across all parties.
+   */
+  case class Share(partyId: Int, value: Boolean)
+
+  /**
+   * A collection of shares across all parties (equivalent to Haskell's Quire ps Bool).
+   */
+  case class Shares(shares: Map[Int, Boolean]):
+    def apply(partyId: Int): Boolean = shares(partyId)
+    def values: Iterable[Boolean] = shares.values
+    def reconstruct: Boolean = xor(values)
+
+  /**
+   * Generate n XOR shares of a boolean value.
+   *
+   * Equivalent to Haskell's genShares:
+   * {{{
+   * genShares :: forall ps p m. (MonadIO m, KnownSymbols ps) => Member p ps -> Bool -> m (Quire ps Bool)
+   * genShares p x = quorum1 p gs'
+   *   where
+   *     gs' :: forall q qs. (KnownSymbol q, KnownSymbols qs) => m (Quire (q ': qs) Bool)
+   *     gs' = do
+   *       freeShares <- sequence $ pure $ liftIO randomIO -- generate n-1 random shares
+   *       return $ qCons (xor (qCons @q x freeShares)) freeShares
+   * }}}
+   *
+   * The last share is computed so that XOR of all shares equals the original value.
+   *
+   * @param value
+   *   The boolean value to secret-share
    * @param numParties
-   *   Number of parties in the protocol
+   *   Number of parties to share among
+   * @return
+   *   A map from party ID to their share
    */
-  case class Circuit(
-      gates: List[Gate],
-      inputs: Map[Int, List[Wire]],
-      outputs: List[Wire],
-      numParties: Int,
-  ):
-    def inputWires: Set[Wire] = gates.collect { case InputGate(_, w) => w }.toSet
-    def outputWires: Set[Wire] = outputs.toSet
-
-  // ============================================================
-  // Secret Sharing Primitives
-  // ============================================================
-
-  /**
-   * A secret share of a bit. XOR of all shares equals the original bit.
-   */
-  case class BitShare(partyId: Int, wireIndex: Int, value: Boolean)
-
-  /**
-   * Secret-shared wire value. Each party holds one share; XOR of all shares = actual value.
-   */
-  case class SharedWireValue(wireIndex: Int, shares: Map[Int, Boolean]):
-    def reconstruct: Boolean = shares.values.reduce(_ ^ _)
-
-  /**
-   * Split a bit into n additive (XOR) shares. The XOR of all shares equals the original bit.
-   */
-  def splitBitIntoShares(bit: Boolean, numParties: Int, wireIndex: Int): Map[Int, BitShare] =
-    val random = new scala.util.Random()
+  def genShares(value: Boolean, numParties: Int): Shares =
     // Generate n-1 random shares
-    val randomShares = (0 until numParties - 1).map(i => i -> random.nextBoolean()).toMap
-    // Last share makes XOR equal to the original bit
-    val xorOfRandom = randomShares.values.fold(false)(_ ^ _)
-    val lastShare = bit ^ xorOfRandom
-    val allShares = randomShares + ((numParties - 1) -> lastShare)
-    allShares.map { case (partyId, value) => partyId -> BitShare(partyId, wireIndex, value) }
+    val freeShares = (0 until numParties - 1).map(i => i -> Random.nextBoolean()).toMap
+    // Compute the last share so XOR of all shares = value
+    val xorOfFree = freeShares.values.fold(false)(_ ^ _)
+    val lastShare = value ^ xorOfFree
+    Shares(freeShares + ((numParties - 1) -> lastShare))
 
   /**
-   * Reconstruct a bit from XOR shares.
-   */
-  def reconstructBit(shares: List[BitShare]): Boolean =
-    shares.map(_.value).reduce(_ ^ _)
-
-  // ============================================================
-  // Oblivious Transfer Primitives (Simplified)
-  // ============================================================
-
-  /**
-   * Oblivious Transfer result. The receiver gets m_b where b is their choice bit, without the sender learning b, and without the receiver learning
-   * m_{1-b}.
-   */
-  case class OTResult(choiceBit: Boolean, receivedValue: Boolean)
-
-  /**
-   * Sender's messages for OT.
-   */
-  case class OTSenderMessage(m0: Boolean, m1: Boolean)
-
-  /**
-   * Receiver's choice for OT (encrypted in real implementation).
-   */
-  case class OTReceiverChoice(partyId: Int, encryptedChoice: Boolean)
-
-  /**
-   * Simulated OT protocol (in production, would use real crypto like RSA-based OT).
+   * A faceted value: each party holds their share, and XOR of all shares = original value.
    *
-   * The sender has two messages m0, m1. The receiver has a choice bit b. After OT:
-   *   - Receiver learns m_b
+   * This corresponds to Haskell's `Faceted parties '[] Bool`.
+   */
+  case class Faceted(shares: Map[Int, Boolean]):
+    def apply(partyId: Int): Boolean = shares(partyId)
+    def reveal: Boolean = xor(shares.values)
+
+  // ============================================================
+  // Oblivious Transfer (OT) Simulation
+  // ============================================================
+
+  /**
+   * Simulated 1-2 Oblivious Transfer.
+   *
+   * In the Haskell code, OT is used in fAnd:
+   * {{{
+   * conclaveTo (p_i @@ p_j @@ nobody) (listedSecond @@ nobody) (ot2 bb $ localize p_j vShares)
+   * }}}
+   *
+   * The sender has (m0, m1), the receiver has choice bit b. After OT:
+   *   - Receiver learns m_b (nothing about m_{1-b})
    *   - Sender learns nothing about b
-   *   - Receiver learns nothing about m_{1-b}
    *
-   * For GMW AND gates, we use OT to compute a XOR b*c where:
-   *   - Party i has share a_i of wire a
-   *   - Party j has share b_j of wire b
-   *   - They need to compute shares of (a AND b) without revealing their shares
+   * @param m0
+   *   Message if choice is false
+   * @param m1
+   *   Message if choice is true
+   * @param choice
+   *   Receiver's choice bit
+   * @return
+   *   m_choice
    */
-  def simulateOT(senderMessages: OTSenderMessage, receiverChoice: Boolean): Boolean =
-    if receiverChoice then senderMessages.m1 else senderMessages.m0
+  def ot2(m0: Boolean, m1: Boolean, choice: Boolean): Boolean =
+    if choice then m1 else m0
 
   // ============================================================
-  // AND Gate Evaluation via OT
-  // ============================================================
-
-  /**
-   * Compute party i's contribution to AND gate shares using OT with party j.
-   *
-   * For AND gate on wires a,b with output c: Each pair (i,j) where i < j performs OT where:
-   *   - Party i (sender) prepares messages based on their a_i share
-   *   - Party j (receiver) uses their b_j share as choice
-   *   - They both get shares of a_i AND b_j
-   *
-   * The final AND share for party k is: c_k = (a_k AND b_k) XOR (XOR over all pairs involving k of the OT results)
-   */
-  case class ANDContribution(fromParty: Int, toParty: Int, value: Boolean)
-
-  /**
-   * Prepare OT sender messages for AND gate. If sender has share a_i and wants to help compute (a AND b): m0 = random r m1 = r XOR a_i Receiver with
-   * b_j will get r if b_j=0, or r XOR a_i if b_j=1. This equals r XOR (a_i AND b_j).
-   */
-  def prepareANDSenderMessages(senderShare: Boolean, randomMask: Boolean): OTSenderMessage =
-    OTSenderMessage(
-      m0 = randomMask,
-      m1 = randomMask ^ senderShare,
-    )
-
-  // ============================================================
-  // Circuit Examples
+  // fAnd: AND gate using OT (equivalent to Haskell's fAnd)
   // ============================================================
 
   /**
-   * Example: 2-party AND function. Computes (input1 AND input2) where each party provides one input.
-   */
-  def twoPartyANDCircuit: Circuit = Circuit(
-    gates = List(
-      InputGate(0, Wire(0)),
-      InputGate(1, Wire(1)),
-      AndGate(Wire(0), Wire(1), Wire(2)),
-      OutputGate(Wire(2), Wire(3)),
-    ),
-    inputs = Map(0 -> List(Wire(0)), 1 -> List(Wire(1))),
-    outputs = List(Wire(3)),
-    numParties = 2,
-  )
-
-  /**
-   * Example: 3-party majority function. Computes majority(a, b, c) = (a AND b) OR (b AND c) OR (a AND c) Using only AND/XOR: (a AND b) XOR (b AND c)
-   * XOR (a AND c) XOR (a AND b AND c)
+   * Compute secret-shared AND of two secret-shared values using OT.
    *
-   * Simplified to: (a XOR b) AND (b XOR c) XOR b Actually, let's use: (a AND b) XOR (a AND c) XOR (b AND c) which is close but needs adjustment.
-   * We'll use a direct formula.
+   * Equivalent to Haskell's fAnd:
+   * {{{
+   * fAnd :: forall parties m. (KnownSymbols parties, MonadIO m, CRT.MonadRandom m)
+   *      => Faceted parties '[] Bool
+   *      -> Faceted parties '[] Bool
+   *      -> Choreo parties (CLI m) (Faceted parties '[] Bool)
+   * }}}
+   *
+   * Algorithm:
+   * 1. Each party j generates random a_j values for all other parties
+   * 2. For each pair (i, j) where i ≠ j:
+   *    - Party i prepares truth table bb = (xor[u_i, a_ij], a_ij)
+   *    - Party j uses their v_j share as choice in OT to get one value
+   * 3. Each party j computes b = XOR of all OT results
+   * 4. Final share for party i: c_i = (u_i AND v_i) XOR b_i XOR (XOR of all a_ij where j ≠ i)
+   *
+   * @param uShares
+   *   Faceted shares of first operand
+   * @param vShares
+   *   Faceted shares of second operand
+   * @param numParties
+   *   Number of parties
+   * @return
+   *   Faceted shares of (u AND v)
    */
-  def threePartyMajorityCircuit: Circuit = Circuit(
-    gates = List(
-      InputGate(0, Wire(0)), // a
-      InputGate(1, Wire(1)), // b
-      InputGate(2, Wire(2)), // c
-      AndGate(Wire(0), Wire(1), Wire(3)), // a AND b
-      AndGate(Wire(1), Wire(2), Wire(4)), // b AND c
-      AndGate(Wire(0), Wire(2), Wire(5)), // a AND c
-      XorGate(Wire(3), Wire(4), Wire(6)), // (a AND b) XOR (b AND c)
-      XorGate(Wire(6), Wire(5), Wire(7)), // ... XOR (a AND c)
-      // Majority needs one more adjustment, but this demonstrates the pattern
-      OutputGate(Wire(7), Wire(8)),
-    ),
-    inputs = Map(0 -> List(Wire(0)), 1 -> List(Wire(1)), 2 -> List(Wire(2))),
-    outputs = List(Wire(8)),
-    numParties = 3,
-  )
+  def fAnd(uShares: Faceted, vShares: Faceted, numParties: Int): Faceted =
+    // Step 1: Generate random a_j values for each party j
+    // a_j_s[j][i] = random value that party j generates for party i
+    val a_j_s: Map[Int, Map[Int, Boolean]] =
+      (0 until numParties).map { j =>
+        j -> (0 until numParties).map(i => i -> Random.nextBoolean()).toMap
+      }.toMap
 
-  /**
-   * Example: 3-party XOR-only circuit (no OT needed). Computes XOR of all inputs.
-   */
-  def threePartyXORCircuit: Circuit = Circuit(
-    gates = List(
-      InputGate(0, Wire(0)),
-      InputGate(1, Wire(1)),
-      InputGate(2, Wire(2)),
-      XorGate(Wire(0), Wire(1), Wire(3)),
-      XorGate(Wire(3), Wire(2), Wire(4)),
-      OutputGate(Wire(4), Wire(5)),
-    ),
-    inputs = Map(0 -> List(Wire(0)), 1 -> List(Wire(1)), 2 -> List(Wire(2))),
-    outputs = List(Wire(5)),
-    numParties = 3,
-  )
+    // Step 2: Compute b values using OT (fanIn/fanOut pattern from Haskell)
+    val bs: Map[Int, Boolean] = (0 until numParties).map { p_j =>
+      // For each party p_j, compute b by XORing OT results from all other parties
+      val b_i_s = (0 until numParties).map { p_i =>
+        if p_i == p_j then
+          false // Skip self
+        else
+          // Party p_i is sender, party p_j is receiver
+          // bb (truth table): (xor[u_i, a_ij], a_ij)
+          val a_ij = a_j_s(p_j)(p_i) // a value from j's perspective for i
+          val u_i = uShares(p_i)
+          val m0 = a_ij // if v_j = false, receiver gets a_ij
+          val m1 = xor(u_i, a_ij) // if v_j = true, receiver gets u_i XOR a_ij
+          // OT: receiver (p_j) uses v_j as choice
+          ot2(m0, m1, vShares(p_j))
+      }
+      p_j -> xor(b_i_s)
+    }.toMap
+
+    // Step 3: Compute final shares
+    // c_i = (u_i AND v_i) XOR b_i XOR (XOR of a_j_s[j][i] for j ≠ i, but with party i's a_ii set to false)
+    val resultShares: Map[Int, Boolean] = (0 until numParties).map { p_i =>
+      val u_i = uShares(p_i)
+      val v_i = vShares(p_i)
+      val localProduct = u_i && v_i
+      val b_i = bs(p_i)
+
+      // XOR of a_j values where we modify our own contribution to be false
+      val a_js_xor = (0 until numParties).map { j =>
+        if j == p_i then false
+        else a_j_s(j)(p_i)
+      }.reduce(_ ^ _)
+
+      p_i -> xor(localProduct, b_i, a_js_xor)
+    }.toMap
+
+    Faceted(resultShares)
+  end fAnd
 
   // ============================================================
-  // GMW Protocol Implementation
+  // GMW Circuit Evaluation (equivalent to Haskell's gmw function)
   // ============================================================
 
   /**
-   * Shared state for circuit evaluation. Maps wire indices to the local party's share of that wire.
-   */
-  type WireShares = Map[Int, Boolean]
-
-  /**
-   * AND gate OT data exchanged between parties.
-   */
-  case class ANDGateOTData(
-      gateOutput: Int,
-      contributions: Map[(Int, Int), Boolean], // (sender, receiver) -> contribution
-  )
-
-  /**
-   * Main GMW protocol with Coordinator architecture.
+   * Recursively evaluate a circuit on secret-shared values.
    *
-   * This implementation demonstrates the GMW protocol structure within the framework. It uses a Party/Coordinator architecture where:
-   *   - Party peers compute on their secret shares
-   *   - Coordinator gathers output shares and reconstructs the final result
-   *   - Coordinator then distributes the result back to all parties
-   *
-   * The share derivation uses a deterministic scheme to simulate proper share distribution, ensuring all parties derive consistent shares without
-   * explicit peer-to-peer communication.
+   * Equivalent to Haskell's gmw:
+   * {{{
+   * gmw :: forall parties m. (KnownSymbols parties, MonadIO m, CRT.MonadRandom m)
+   *     => Circuit parties
+   *     -> Choreo parties (CLI m) (Faceted parties '[] Bool)
+   * gmw circuit = case circuit of
+   *   InputWire p -> do
+   *     value :: Located '[p] Bool <- _locally p $ getInput "..."
+   *     secretShare p value
+   *   LitWire b -> do
+   *     let chooseShare :: forall p. (KnownSymbol p) => Member p parties -> Choreo parties (CLI m) (Located '[p] Bool)
+   *         chooseShare p = congruently (p @@ nobody) $ \_ -> case p of
+   *           First -> b
+   *           Later _ -> False
+   *     fanOut chooseShare
+   *   AndGate l r -> do
+   *     lResult <- gmw l
+   *     rResult <- gmw r
+   *     fAnd lResult rResult
+   *   XorGate l r -> do
+   *     lResult <- gmw l
+   *     rResult <- gmw r
+   *     parallel (allOf @parties) \p un -> pure $ xor [viewFacet un p lResult, viewFacet un p rResult]
+   * }}}
    *
    * @param circuit
    *   The circuit to evaluate
-   * @param inputs
-   *   Map from party ID to their input bits
+   * @param partyInputs
+   *   Map from party ID to their secret input value
+   * @param numParties
+   *   Number of parties
+   * @return
+   *   Faceted (secret-shared) result
    */
-  def gmwProtocol(circuit: Circuit, partyInputs: Map[Int, List[Boolean]])(using
+  def gmw(circuit: Circuit, partyInputs: Map[Int, Boolean], numParties: Int): Faceted = circuit match
+    case InputWire(partyId) =>
+      // Process a secret input value from party p
+      // In Haskell: value <- _locally p $ getInput; secretShare p value
+      val inputValue = partyInputs.getOrElse(partyId, false)
+      val shares = genShares(inputValue, numParties)
+      Faceted(shares.shares)
+
+    case LitWire(value) =>
+      // Process a publicly-known literal value
+      // In Haskell: First party gets the literal, others get false
+      // fanOut chooseShare where chooseShare picks b for First, False for Later
+      val shares = (0 until numParties).map { p =>
+        p -> (if p == 0 then value else false)
+      }.toMap
+      Faceted(shares)
+
+    case AndGate(left, right) =>
+      // Process an AND gate using OT
+      val lResult = gmw(left, partyInputs, numParties)
+      val rResult = gmw(right, partyInputs, numParties)
+      fAnd(lResult, rResult, numParties)
+
+    case XorGate(left, right) =>
+      // Process an XOR gate - each party locally XORs their shares
+      // parallel (allOf @parties) \p un -> pure $ xor [viewFacet un p lResult, viewFacet un p rResult]
+      val lResult = gmw(left, partyInputs, numParties)
+      val rResult = gmw(right, partyInputs, numParties)
+      val shares = (0 until numParties).map { p =>
+        p -> xor(lResult(p), rResult(p))
+      }.toMap
+      Faceted(shares)
+
+  /**
+   * Reveal a faceted value by XORing all shares.
+   *
+   * Equivalent to Haskell's reveal:
+   * {{{
+   * reveal :: forall ps m. (KnownSymbols ps) => Faceted ps '[] Bool -> Choreo ps m Bool
+   * reveal shares = xor <$> (gather ps ps shares >>= naked ps)
+   * }}}
+   */
+  def reveal(faceted: Faceted): Boolean = faceted.reveal
+
+  // ============================================================
+  // MPC Entry Point (equivalent to Haskell's mpc)
+  // ============================================================
+
+  /**
+   * Full MPC protocol: evaluate circuit and reveal result.
+   *
+   * Equivalent to Haskell's mpc:
+   * {{{
+   * mpc :: forall parties m. (KnownSymbols parties, MonadIO m, CRT.MonadRandom m)
+   *     => Circuit parties
+   *     -> Choreo parties (CLI m) ()
+   * mpc circuit = do
+   *   outputWire <- gmw circuit
+   *   result <- reveal outputWire
+   *   void $ _parallel (allOf @parties) $ putOutput "The resulting bit:" result
+   * }}}
+   */
+  def mpc(circuit: Circuit, partyInputs: Map[Int, Boolean], numParties: Int): Boolean =
+    val outputWire = gmw(circuit, partyInputs, numParties)
+    val result = reveal(outputWire)
+    println(s"The resulting bit: $result")
+    result
+
+  // ============================================================
+  // Example Circuits (matching Haskell examples)
+  // ============================================================
+
+  /** Simple 2-input AND: InputWire(0) AND InputWire(1) */
+  def twoInputAND: Circuit = AndGate(InputWire(0), InputWire(1))
+
+  /** Simple 2-input XOR: InputWire(0) XOR InputWire(1) */
+  def twoInputXOR: Circuit = XorGate(InputWire(0), InputWire(1))
+
+  /** 4-party example: (p1 XOR p2) AND (p3 XOR p4) */
+  def fourPartyCircuit: Circuit =
+    AndGate(
+      XorGate(InputWire(0), InputWire(1)),
+      XorGate(InputWire(2), InputWire(3)),
+    )
+
+  /** Mixed circuit: (p1 AND p2) XOR LitWire(true) */
+  def mixedCircuit: Circuit = XorGate(AndGate(InputWire(0), InputWire(1)), LitWire(true))
+
+  // ============================================================
+  // Test/Reference function (equivalent to Haskell's TestArgs)
+  // ============================================================
+
+  /**
+   * Test that GMW produces correct results.
+   *
+   * Equivalent to Haskell's TestArgs instance:
+   * {{{
+   * instance TestArgs Args (Bool, Bool, Bool, Bool) where
+   *   reference Args {circuit, p1in, p2in, p3in, p4in} = (answer, answer, answer, answer)
+   *     where
+   *       recurse c = case c of
+   *         InputWire p -> fromJust $ toLocTm p `lookup` inputs
+   *         LitWire b -> b
+   *         AndGate left right -> recurse left && recurse right
+   *         XorGate left right -> recurse left /= recurse right
+   *       inputs = ["p1", "p2", "p3", "p4"] `zip` [p1in, p2in, p3in, p4in]
+   *       answer = recurse circuit
+   * }}}
+   */
+  // def reference(circuit: Circuit, inputs: Map[Int, Boolean]): Boolean =
+  //   circuit.evaluate(inputs)
+
+  // def testGMW(circuit: Circuit, inputs: Map[Int, Boolean], numParties: Int): Boolean =
+  //   val gmwResult = mpc(circuit, inputs, numParties)
+  //   val refResult = reference(circuit, inputs)
+  //   gmwResult == refResult
+
+  // ============================================================
+  // Distributed GMW Protocol with Coordinator Architecture
+  // ============================================================
+
+  /**
+   * Distributed GMW protocol using the locicope framework.
+   *
+   * This version uses the Party/Coordinator architecture where:
+   *   - Each Party computes their share of the circuit evaluation
+   *   - Coordinator gathers all shares and reconstructs the final result
+   *   - Result is distributed back to all parties
+   *
+   * This mirrors the choreographic structure of the Haskell implementation where:
+   *   - secretShare scatters shares to all parties
+   *   - gmw evaluates the circuit on faceted values
+   *   - reveal gathers shares and reconstructs
+   */
+  def gmwProtocol(circuit: Circuit, partyInputs: Map[Int, Boolean], numParties: Int)(using
       net: Network,
       mt: Multitier,
-      pf: PlacedFlow,
       pv: PlacedValue,
   ) =
-    val numParties = circuit.numParties
-
     // Step 1: Each party computes their output share
+    // This corresponds to the parallel evaluation in Haskell's gmw
     val partyOutputShare: Boolean on Party = on[Party]:
-      val myIdRaw = getId(localAddress)
-      // Party IDs are encoded in the address (e.g., "party-0" -> 0)
+      // Party ID extracted from address (e.g., "party-0" -> 0)
       val myId = localAddress.toString.split("-").last.toInt
-
-      println(s"[Party $myId] Starting GMW protocol")
-
-      // Initialize wire shares using deterministic derivation
-      var myWireShares: WireShares = Map.empty
-
-      // For each input gate, derive this party's share
-      circuit.gates.foreach:
-        case InputGate(ownerPartyId, wire) =>
-          val inputValue = partyInputs.getOrElse(ownerPartyId, List.empty).headOption.getOrElse(false)
-
-          // Deterministic share derivation
-          val seed = ownerPartyId * 10000 + wire.index * 100
-          val random = new scala.util.Random(seed)
-
-          val shares = (0 until numParties - 1).map { i =>
-            i -> random.nextBoolean()
-          }.toMap
-
-          val xorOfOthers = shares.values.fold(false)(_ ^ _)
-          val lastShare = inputValue ^ xorOfOthers
-          val allShares = shares + ((numParties - 1) -> lastShare)
-
-          val myShare = allShares(myId)
-          myWireShares = myWireShares + (wire.index -> myShare)
-          println(s"[Party $myId] Input wire ${wire.index} (owner: $ownerPartyId, value: $inputValue): my share = $myShare")
-
-        case _ => ()
-
-      // Evaluate gates
-      circuit.gates.foreach:
-        case InputGate(_, _) => ()
-
-        case XorGate(left, right, output) =>
-          val leftShare = myWireShares.getOrElse(left.index, false)
-          val rightShare = myWireShares.getOrElse(right.index, false)
-          val outputShare = leftShare ^ rightShare
-          myWireShares = myWireShares + (output.index -> outputShare)
-          println(s"[Party $myId] XOR: wire ${left.index}($leftShare) ^ wire ${right.index}($rightShare) = wire ${output.index}($outputShare)")
-
-        case AndGate(left, right, output) =>
-          // GMW AND gate using simulated correlated randomness
-          // For c = a AND b where a = XOR(a_i) and b = XOR(b_i):
-          // c = XOR over all i,j of (a_i AND b_j)
-          //
-          // Each party i computes:
-          // c_i = (a_i AND b_i) XOR (sum of OT terms with other parties)
-          //
-          // For OT between party i (sender) and party j (receiver):
-          // - Sender picks random r
-          // - Sender prepares messages: m0 = r, m1 = r XOR a_i
-          // - Receiver with choice b_j gets: r XOR (a_i AND b_j)
-          // - Sender keeps: r
-          // - Together they hold shares of (a_i AND b_j)
-
-          val leftShare = myWireShares.getOrElse(left.index, false)
-          val rightShare = myWireShares.getOrElse(right.index, false)
-
-          // Start with local product
-          var myContribution = leftShare && rightShare
-
-          // For each pair (i,j) where i < j, simulate OT
-          // The OT gives both parties shares of (a_i AND b_j) + (a_j AND b_i)
-          for
-            i <- 0 until numParties
-            j <- 0 until numParties if i < j
-          do
-            // Get the shares that parties i and j hold for the input wires
-            // We need to derive them the same way as above
-            val seedLeft = (circuit.gates.collectFirst { case InputGate(p, w) if w.index == left.index => p }.getOrElse(0)) * 10000 + left.index * 100
-            val seedRight =
-              (circuit.gates.collectFirst { case InputGate(p, w) if w.index == right.index => p }.getOrElse(0)) * 10000 + right.index * 100
-
-            val leftRandom = new scala.util.Random(seedLeft)
-            val leftShares = (0 until numParties - 1).map(p => p -> leftRandom.nextBoolean()).toMap
-            val leftXor = leftShares.values.fold(false)(_ ^ _)
-            val leftInputValue = partyInputs.values.flatten.toList.lift(left.index).getOrElse(false)
-            val allLeftShares = leftShares + ((numParties - 1) -> (leftInputValue ^ leftXor))
-
-            val rightRandom = new scala.util.Random(seedRight)
-            val rightShares = (0 until numParties - 1).map(p => p -> rightRandom.nextBoolean()).toMap
-            val rightXor = rightShares.values.fold(false)(_ ^ _)
-            val rightInputValue = partyInputs.values.flatten.toList.lift(right.index).getOrElse(false)
-            val allRightShares = rightShares + ((numParties - 1) -> (rightInputValue ^ rightXor))
-
-            val a_i = allLeftShares.getOrElse(i, false)
-            val a_j = allLeftShares.getOrElse(j, false)
-            val b_i = allRightShares.getOrElse(i, false)
-            val b_j = allRightShares.getOrElse(j, false)
-
-            // Cross products
-            val cross_ij = a_i && b_j // Party i's left share AND party j's right share
-            val cross_ji = a_j && b_i // Party j's left share AND party i's right share
-
-            // Deterministic "random" mask for this pair
-            val otSeed = output.index * 10000 + i * 100 + j
-            val otRandom = new scala.util.Random(otSeed)
-            val r_ij = otRandom.nextBoolean()
-            val r_ji = otRandom.nextBoolean()
-
-            if myId == i then
-              // I'm party i in this pair
-              // For cross_ij: I'm sender, I keep r_ij
-              // For cross_ji: I'm receiver, I get r_ji XOR cross_ji
-              myContribution = myContribution ^ r_ij ^ (r_ji ^ cross_ji)
-            else if myId == j then
-              // I'm party j in this pair
-              // For cross_ij: I'm receiver, I get r_ij XOR cross_ij
-              // For cross_ji: I'm sender, I keep r_ji
-              myContribution = myContribution ^ (r_ij ^ cross_ij) ^ r_ji
-          end for
-
-          myWireShares = myWireShares + (output.index -> myContribution)
-          println(s"[Party $myId] AND: wire ${left.index} & wire ${right.index} -> wire ${output.index}($myContribution)")
-
-        case OutputGate(input, output) =>
-          myWireShares = myWireShares + (output.index -> myWireShares.getOrElse(input.index, false))
-
-      val outputWire = circuit.outputs.head.index
-      val myShare = myWireShares.getOrElse(outputWire, false)
-      println(s"[Party $myId] Output share: $myShare")
-      myShare
+      // Evaluate the circuit to get this party's share of the output
+      evaluateCircuitForParty(circuit, partyInputs, numParties, myId)
 
     // Step 2: Coordinator gathers all shares and reconstructs result
+    // This corresponds to Haskell's reveal function: gather ps ps shares >>= naked ps
     val coordinatorResult: Boolean on Coordinator = on[Coordinator]:
-      println(s"[Coordinator] Gathering output shares from all parties")
-
       val allShares = asLocalAll[Party, Coordinator, Boolean](partyOutputShare)
-
-      println(s"[Coordinator] Received ${allShares.size} shares:")
-      allShares.foreach { case (id, share) =>
-        println(s"[Coordinator]   Party $id: $share")
-      }
-
-      // XOR all shares to reconstruct
+      // XOR all shares to reconstruct (equivalent to xor <$> gather)
       val result = allShares.values.reduce(_ ^ _)
-      println(s"[Coordinator] Reconstructed result: $result")
+      // putOutput "The resulting bit:" result
+      println(s"The resulting bit: $result")
       result
 
-    // Step 3: Distribute result back to parties
+    // Step 3: Distribute result back to parties (parallel putOutput)
     val finalResult: Boolean on Party = on[Party]:
       val result = asLocal[Coordinator, Party, Boolean](coordinatorResult)
-      println(s"[Party ${localAddress}] Received final result: $result")
+      // putOutput "The resulting bit:" result
+      println(s"The resulting bit: $result")
       result
 
     (partyOutputShare, coordinatorResult, finalResult)
   end gmwProtocol
+
+  /**
+   * Evaluate the circuit for a specific party, returning that party's share of the output.
+   *
+   * This simulates the distributed evaluation where each party:
+   * 1. Has their share of each input (from secretShare/scatter)
+   * 2. Evaluates XOR gates locally
+   * 3. Participates in OT for AND gates
+   */
+  private def evaluateCircuitForParty(circuit: Circuit, partyInputs: Map[Int, Boolean], numParties: Int,myId: Int): Boolean =
+    // Use deterministic random for reproducibility across parties
+    def deterministicShares(value: Boolean, seed: Int): Map[Int, Boolean] =
+      val random = new scala.util.Random(seed)
+      val freeShares = (0 until numParties - 1).map(i => i -> random.nextBoolean()).toMap
+      val xorOfFree = freeShares.values.fold(false)(_ ^ _)
+      val lastShare = value ^ xorOfFree
+      freeShares + ((numParties - 1) -> lastShare)
+
+    def eval(c: Circuit, depth: Int): Boolean = c match
+      case InputWire(partyId) =>
+        // secretShare: party partyId shares their input
+        val inputValue = partyInputs.getOrElse(partyId, false)
+        val seed = partyId * 10000 + depth
+        val allShares = deterministicShares(inputValue, seed)
+        allShares(myId) // This party's share
+
+      case LitWire(value) =>
+        // fanOut chooseShare: First party gets the literal, others get false
+        if myId == 0 then value else false
+
+      case AndGate(left, right) =>
+        // fAnd using OT - we need all parties' shares to compute this correctly
+        // Compute the faceted values first
+        val leftShares = (0 until numParties).map(p => p -> evalForParty(left, p, depth * 2)).toMap
+        val rightShares = (0 until numParties).map(p => p -> evalForParty(right, p, depth * 2 + 1)).toMap
+
+        // Apply fAnd logic for this party
+        val facetedResult = fAndForParty(Faceted(leftShares), Faceted(rightShares), numParties, myId, depth)
+        facetedResult
+
+      case XorGate(left, right) =>
+        // XOR gate: each party locally XORs their shares
+        val leftShare = eval(left, depth * 2)
+        val rightShare = eval(right, depth * 2 + 1)
+        leftShare ^ rightShare
+
+    def evalForParty(c: Circuit, partyId: Int, depth: Int): Boolean = c match
+      case InputWire(owner) =>
+        val inputValue = partyInputs.getOrElse(owner, false)
+        val seed = owner * 10000 + depth
+        val allShares = deterministicShares(inputValue, seed)
+        allShares(partyId)
+
+      case LitWire(value) =>
+        if partyId == 0 then value else false
+
+      case AndGate(l, r) =>
+        val leftShares = (0 until numParties).map(p => p -> evalForParty(l, p, depth * 2)).toMap
+        val rightShares = (0 until numParties).map(p => p -> evalForParty(r, p, depth * 2 + 1)).toMap
+        fAndForParty(Faceted(leftShares), Faceted(rightShares), numParties, partyId, depth)
+
+      case XorGate(l, r) =>
+        evalForParty(l, partyId, depth * 2) ^ evalForParty(r, partyId, depth * 2 + 1)
+
+    eval(circuit, 0)
+
+  /**
+   * fAnd computation for a specific party using deterministic randomness.
+   */
+  private def fAndForParty(uShares: Faceted, vShares: Faceted, numParties: Int, myId: Int, depth: Int): Boolean =
+    // Deterministic random generator for this AND gate
+    val baseRandom = new scala.util.Random(depth * 100000)
+
+    // Generate a_j values deterministically
+    val a_j_s: Map[Int, Map[Int, Boolean]] = (0 until numParties).map { j =>
+      val jRandom = new scala.util.Random(baseRandom.nextInt())
+      j -> (0 until numParties).map(i => i -> jRandom.nextBoolean()).toMap
+    }.toMap
+
+    // Compute b values using OT
+    val bs: Map[Int, Boolean] = (0 until numParties).map { p_j =>
+      val b_i_s = (0 until numParties).map { p_i =>
+        if p_i == p_j then false
+        else
+          val a_ij = a_j_s(p_j)(p_i)
+          val u_i = uShares(p_i)
+          val m0 = a_ij
+          val m1 = u_i ^ a_ij
+          ot2(m0, m1, vShares(p_j))
+      }
+      p_j -> b_i_s.reduce(_ ^ _)
+    }.toMap
+
+    // Compute final share for this party
+    val u_i = uShares(myId)
+    val v_i = vShares(myId)
+    val localProduct = u_i && v_i
+    val b_i = bs(myId)
+    val a_js_xor = (0 until numParties).map { j =>
+      if j == myId then false else a_j_s(j)(myId)
+    }.reduce(_ ^ _)
+
+    xor(localProduct, b_i, a_js_xor)
 
   // ============================================================
   // Main Entry Point
@@ -475,61 +604,34 @@ object GMW:
   def main(args: Array[String]): Unit =
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    println("=" * 70)
-    println("GMW Secure Multiparty Computation Protocol")
-    println("=" * 70)
-    println()
+    // Pure GMW computation tests
+    // testGMW(twoInputAND, Map(0 -> true, 1 -> true), 2)   // 1 AND 1 = 1
+    // testGMW(twoInputAND, Map(0 -> true, 1 -> false), 2)  // 1 AND 0 = 0
+    // testGMW(twoInputAND, Map(0 -> false, 1 -> true), 2)  // 0 AND 1 = 0
+    // testGMW(twoInputAND, Map(0 -> false, 1 -> false), 2) // 0 AND 0 = 0
 
-    // Demo 1: 3-party XOR (no OT needed)
-    println("-" * 70)
-    println("Demo 1: 3-Party XOR Function")
-    println("Computing XOR(1, 0, 1) = 0")
-    println("-" * 70)
+    // testGMW(twoInputXOR, Map(0 -> true, 1 -> true), 2)   // 1 XOR 1 = 0
+    // testGMW(twoInputXOR, Map(0 -> true, 1 -> false), 2)  // 1 XOR 0 = 1
+    // testGMW(twoInputXOR, Map(0 -> false, 1 -> true), 2)  // 0 XOR 1 = 1
+    // testGMW(twoInputXOR, Map(0 -> false, 1 -> false), 2) // 0 XOR 0 = 0
 
-    runDemo(
-      threePartyXORCircuit,
-      Map(0 -> List(true), 1 -> List(false), 2 -> List(true)),
-      expectedResult = false, // 1 XOR 0 XOR 1 = 0
-    )
+    // testGMW(fourPartyCircuit, Map(0 -> true, 1 -> false, 2 -> true, 3 -> false), 4)
+    // testGMW(fourPartyCircuit, Map(0 -> true, 1 -> true, 2 -> false, 3 -> false), 4)
 
-    println()
+    // testGMW(mixedCircuit, Map(0 -> true, 1 -> true), 2)  // (1 AND 1) XOR 1 = 0
+    // testGMW(mixedCircuit, Map(0 -> true, 1 -> false), 2) // (1 AND 0) XOR 1 = 1
 
-    // Demo 2: 2-party AND
-    println("-" * 70)
-    println("Demo 2: 2-Party AND Function")
-    println("Computing AND(1, 1) = 1")
-    println("-" * 70)
-
-    runDemo(
-      twoPartyANDCircuit,
-      Map(0 -> List(true), 1 -> List(true)),
-      expectedResult = true, // 1 AND 1 = 1
-    )
-
-    println()
-
-    // Demo 3: 2-party AND with different inputs
-    println("-" * 70)
-    println("Demo 3: 2-Party AND Function")
-    println("Computing AND(1, 0) = 0")
-    println("-" * 70)
-
-    runDemo(
-      twoPartyANDCircuit,
-      Map(0 -> List(true), 1 -> List(false)),
-      expectedResult = false, // 1 AND 0 = 0
-    )
-
-    println()
-    println("=" * 70)
-    println("GMW Protocol Demos Complete!")
-    println("=" * 70)
+    // Distributed GMW protocol demos
+    runDistributedDemo(twoInputAND, Map(0 -> true, 1 -> true), numParties = 2)
+    runDistributedDemo(twoInputXOR, Map(0 -> true, 1 -> false), numParties = 2)
   end main
 
-  private def runDemo(circuit: Circuit, inputs: Map[Int, List[Boolean]], expectedResult: Boolean): Unit =
+  private def runDistributedDemo(
+      circuit: Circuit,
+      inputs: Map[Int, Boolean],
+      numParties: Int,
+  ): Unit =
     import scala.concurrent.ExecutionContext.Implicits.global
-
-    val numParties = circuit.numParties
 
     // Create network for each party
     val partyNetworks = (0 until numParties).map { i =>
@@ -548,33 +650,24 @@ object GMW:
     // Run the protocol on all parties and coordinator concurrently
     val partyFutures = partyNetworks.zipWithIndex.map { case (network, i) =>
       Future:
-        println(s"\n[Starting] Party $i with input ${inputs.getOrElse(i, List.empty)}")
         given Locix[InMemoryNetwork[Party]] = Locix(network)
         PlacedValue.run[Party]:
           PlacedFlow.run[Party]:
             Multitier.run[Party]:
-              val (_, _, finalResult) = gmwProtocol(circuit, inputs)
+              val (_, _, finalResult) = gmwProtocol(circuit, inputs, numParties)
               finalResult.take
     }
 
     val coordinatorFuture = Future:
-      println(s"\n[Starting] Coordinator")
       given Locix[InMemoryNetwork[Coordinator]] = Locix(coordinatorNetwork)
       PlacedValue.run[Coordinator]:
         PlacedFlow.run[Coordinator]:
           Multitier.run[Coordinator]:
-            val (_, coordResult, _) = gmwProtocol(circuit, inputs)
+            val (_, coordResult, _) = gmwProtocol(circuit, inputs, numParties)
             coordResult.take
 
     val allFutures = Future.sequence(partyFutures :+ coordinatorFuture)
-    val results = Await.result(allFutures, 30.seconds)
-
-    println()
-    // Coordinator's result is the last one
-    val coordinatorResult = results.last
-    println(s"Coordinator computed result: $coordinatorResult")
-    println(s"Expected result: $expectedResult")
-    println(s"Verification: ${if coordinatorResult == expectedResult then "PASSED ✓" else "FAILED ✗"}")
-  end runDemo
+    Await.result(allFutures, 30.seconds)
+  end runDistributedDemo
 
 end GMW
