@@ -23,7 +23,7 @@ object PlacementType:
     case Placed.Local(_, ref) => ref
     case Placed.Remote(ref) => ref
 
-  final class PeerScope[P <: Peer] extends /*compiletime.Erased,*/ SharedCapability
+  final class PeerScope[+P <: Peer] extends /*compiletime.Erased,*/ SharedCapability
   final class PlacedLabel extends compiletime.Erased, SharedCapability
 
   trait Placement:
