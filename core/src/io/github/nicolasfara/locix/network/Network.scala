@@ -1,80 +1,30 @@
 package io.github.nicolasfara.locix.network
 
-import io.github.nicolasfara.locix.Locix
-import io.github.nicolasfara.locix.network.NetworkResource.Reference
-import io.github.nicolasfara.locix.placement.Peers.*
+import io.github.nicolasfara.locix.raise.Raise
+import io.github.nicolasfara.locix.peers.Peers.*
+import scala.caps.SharedCapability
 
-object Network:
-  type Network = Locix[Network.Effect]
+enum NetworkError:
+  case SinglePeerExpected(peerType: String)
+  case UnreachablePeer(info: String)
+  case NetworkFailure(message: String)
+  case RuntimeError[E](error: E)
 
-  case class FlowTermination()
+trait Network extends SharedCapability:
+  type PeerAddress
+  type KeyId
 
-  private[locix] def terminateFlow[From <: TiedWith[To], To <: Peer](using
-      net: Network,
-  )(address: net.effect.Address[To], ref: Reference[From]): Either[net.effect.NetworkError, Unit] =
-    net.effect.terminateFlow[From, To](address, ref)
+  def reachablePeers: Set[PeerAddress]
 
-  def localAddress[P <: Peer](using net: Network): net.effect.Address[P] =
-    net.effect.localAddress[P]
+  def reachablePeersOf[P <: Peer]: Set[PeerAddress]
 
-  def getId[P <: Peer](using net: Network)(address: net.effect.Address[P]): net.effect.Id =
-    net.effect.getId[P](address)
+  def push[S <: TiedWith[D], D <: Peer, V](using Raise[NetworkError])(to: PeerAddress, key: Identifier, value: V): Unit
+  def pull[From <: TiedWith[To], To <: Peer, V](using Raise[NetworkError])(from: PeerAddress, key: Identifier): V
+  def broadcast[S <: Peer, V](using Raise[NetworkError])(key: Identifier, value: V): Unit
+  def retrieve[S <: Peer, V](using Raise[NetworkError])(key: Identifier): V
+  def store[V](key: Identifier, value: V): Unit
+  def emit[V](key: Identifier, value: V): Unit
+  def close(key: Identifier): Unit
 
-  def register[F[_], V](ref: Reference[?], data: F[V])(using net: Network): Unit =
-    net.effect.register[F, V](ref, data)
-
-  def send[To <: Peer, From <: TiedWith[To], V](using
-      net: Network,
-  )(address: net.effect.Address[To], ref: Reference[?], data: V): Either[net.effect.NetworkError, Unit] =
-    net.effect.send[To, From, V](address, ref, data)
-
-  def broadcast[From <: Peer, V](using
-      net: Network,
-  )(ref: Reference[From], data: V): Either[net.effect.NetworkError, Unit] =
-    net.effect.broadcast[From, V](ref, data)
-
-  def receive[From <: Peer, To <: TiedWith[From], F[_], V](using
-      net: Network,
-  )(address: net.effect.Address[From], ref: Reference[?]): Either[net.effect.NetworkError, F[V]] =
-    net.effect.receive[From, To, F, V](address, ref)
-
-  def reachablePeersOf[P <: Peer: PeerRepr](using net: Network): Set[net.effect.Address[P]] =
-    net.effect.reachablePeersOf[P]
-
-  extension [P <: Peer](using net: Network)(address: net.effect.Address[P]) def id: net.effect.Id = net.effect.getId[P](address)
-
-  trait Effect:
-    type Address[_ <: Peer]
-    type NetworkError <: Throwable
-    type Id
-
-    // given flowTerminatorCodec: Codec[FlowTermination] = scala.compiletime.deferred
-
-    private[locix] def terminateFlow[From <: TiedWith[To], To <: Peer](address: Address[To], ref: Reference[From]): Either[NetworkError, Unit] =
-      send(address, ref, FlowTermination())
-
-    def localAddress[P <: Peer]: Address[P]
-
-    def getId[P <: Peer](address: Address[P]): Id
-
-    def register[F[_], V](ref: Reference[?], data: F[V]): Unit
-
-    def reachablePeersOf[P <: Peer: PeerRepr]: Set[Address[P]]
-
-    def broadcast[From <: Peer, V](
-        ref: Reference[From],
-        data: V,
-    ): Either[NetworkError, Unit]
-
-    def send[To <: Peer, From <: TiedWith[To], V](
-        address: Address[To],
-        ref: Reference[?],
-        data: V,
-    ): Either[NetworkError, Unit]
-
-    def receive[From <: Peer, To <: TiedWith[From], F[_], V](
-        address: Address[From],
-        ref: Reference[?],
-    ): Either[NetworkError, F[V]]
-  end Effect
-end Network
+  def createKey[P <: Peer](namespace: Option[String] = None, metadata: Map[String, String] = Map.empty): Identifier
+  def peerAddress: PeerAddress
