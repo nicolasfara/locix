@@ -1,6 +1,7 @@
 package io.github.nicolasfara.locix
 
 import io.github.nicolasfara.locix.placement.PlacementType
+import io.github.nicolasfara.locix.placement.PeerScope.*
 import io.github.nicolasfara.locix.placement.PlacementType.*
 import io.github.nicolasfara.locix.peers.Peers.Cardinality.*
 import io.github.nicolasfara.locix.Choreography

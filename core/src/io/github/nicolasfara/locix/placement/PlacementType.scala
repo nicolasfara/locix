@@ -7,11 +7,6 @@ import io.github.nicolasfara.locix.network.Identifier
 import io.github.nicolasfara.locix.network.Network
 import scala.caps.ExclusiveCapability
 
-trait PeerScope[+P <: Peer]:
-  def id: Identifier
-
-  def take[V](placement: V on P): V = placement.runtimeChecked match
-    case Placement.Local(value, _) => value
 
 trait PlacementType extends Mutable:
   update def on[P <: Peer: PeerTag, V](using Network)(body: PeerScope[P] ?=> V): V on P
@@ -32,5 +27,3 @@ object PlacementType:
 
   def on[P <: Peer: PeerTag](using pt: PlacementType^, n: Network)[V](body: PeerScope[P] ?=> V): V on P =
     pt.on(body)
-
-  def take[P <: Peer, V](using scope: PeerScope[P])(placement: V on P): V = scope.take(placement)
