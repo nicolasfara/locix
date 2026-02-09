@@ -2,6 +2,8 @@ package io.github.nicolasfara.locix
 
 import scala.caps.ExclusiveCapability
 import scala.caps.SharedCapability
+import scala.compiletime.Erased
 
-trait Multiparty extends ExclusiveCapability:
-  trait Scope[L <: Multiparty]
+trait Scope[L <: Multiparty] extends ExclusiveCapability
+
+trait Multiparty

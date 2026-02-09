@@ -14,6 +14,16 @@ trait Network extends SharedCapability:
   type PeerAddress
   type KeyId
 
+  enum NetworkMessage:
+    case Push[V](key: Identifier, value: V, peer: PeerAddress)
+    case RequestValue(key: Identifier, correlationId: String, peer: PeerAddress)
+    case ResponseValue[V](key: Identifier, value: V, correlationId: String, peer: PeerAddress)
+    case Broadcast[V](key: Identifier, value: V, peer: PeerAddress)
+    case Emitted[V](key: Identifier, value: V, peer: PeerAddress)
+    case CloseSignal(key: Identifier, peer: PeerAddress)
+    case Subscribe(key: Identifier, peer: PeerAddress)
+    case Unsubscribe(key: Identifier, peer: PeerAddress)
+
   def reachablePeers: Set[PeerAddress]
 
   def reachablePeersOf[P <: Peer]: Set[PeerAddress]
@@ -23,8 +33,15 @@ trait Network extends SharedCapability:
   def broadcast[S <: Peer, V](using Raise[NetworkError])(key: Identifier, value: V): Unit
   def retrieve[S <: Peer, V](using Raise[NetworkError])(key: Identifier): V
   def store[V](key: Identifier, value: V): Unit
+
+  // Reactive primitives
   def emit[V](key: Identifier, value: V): Unit
+  def setCallback[V](key: Identifier)(callback: V -> Unit): Unit
   def close(key: Identifier): Unit
 
-  def createKey[P <: Peer](namespace: Option[String] = None, metadata: Map[String, String] = Map.empty): Identifier
+  def subscribe[V](signalId: Identifier, subscriberId: Identifier, callback: (PeerAddress, V) => Unit): Unit
+  def unsubscribe(signalId: Identifier, subscriberId: Identifier): Unit
+  def propagate[V](signalId: Identifier, value: V): Unit
+
+  // def createKey[P <: Peer](namespace: Option[String] = None, metadata: Map[String, String] = Map.empty): Identifier
   def peerAddress: PeerAddress

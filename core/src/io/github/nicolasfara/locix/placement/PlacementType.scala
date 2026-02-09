@@ -5,20 +5,18 @@ import PlacementType.*
 import scala.caps.Mutable
 import io.github.nicolasfara.locix.network.Identifier
 import io.github.nicolasfara.locix.network.Network
+import scala.caps.ExclusiveCapability
 
-trait PlacementType:
+trait PeerScope[+P <: Peer]:
+  def id: Identifier
 
-  infix type on[+V, -P <: Peer]
+  def take[V](placement: V on P): V = placement.runtimeChecked match
+    case Placement.Local(value, _) => value
 
-  trait PeerScope[+P <: Peer]:
-    def id: Identifier
+trait PlacementType extends Mutable:
+  update def on[P <: Peer: PeerTag, V](using Network)(body: PeerScope[P] ?=> V): V on P
 
-  sealed trait OnGuard extends Mutable
-
-  protected[locix] def newOnGuard: OnGuard^ = new OnGuard {}
-
-  def on[P <: Peer: PeerTag, V](using OnGuard^, Network)(body: PeerScope[P] ?=> V): V on P
-  def take[P <: Peer, V](using ps: PeerScope[P])(placement: V on P): V
+  protected[locix] update def freshKey[P <: Peer](namespace: Option[String] = None, metadata: Map[String, String] = Map.empty): Identifier
 
   protected[locix] def local[V, P <: Peer](value: V, key: Identifier): V on P
   protected[locix] def remote[V, P <: Peer](key: Identifier): V on P
@@ -26,10 +24,13 @@ trait PlacementType:
   protected[locix] def getLocalValue[V, P <: Peer](value: V on P): Option[V]
 
 object PlacementType:
-  infix type on[+V, -P <: Peer] = PlacementType#on[V, P]
+  infix type on[+V, -P <: Peer] = Placement[V, P]
 
-  def on[P <: Peer: PeerTag](using pt: PlacementType^, guard: pt.OnGuard^, n: Network)[V](body: pt.PeerScope[P] ?=> V): pt.on[V, P] =
+  protected[locix] enum Placement[+V, -P <: Peer](val key: Identifier):
+    case Local(value: V, override val key: Identifier) extends Placement[V, P](key)
+    case Remote(override val key: Identifier) extends Placement[V, P](key)
+
+  def on[P <: Peer: PeerTag](using pt: PlacementType^, n: Network)[V](body: PeerScope[P] ?=> V): V on P =
     pt.on(body)
 
-  def take[P <: Peer, V](using pt: PlacementType^, scope: pt.PeerScope[P])(placement: pt.on[V, P]): V =
-    pt.take(placement)
+  def take[P <: Peer, V](using scope: PeerScope[P])(placement: V on P): V = scope.take(placement)

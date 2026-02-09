@@ -12,23 +12,27 @@ object Test:
   type Pinger <: { type Tie <: One[Ponger] }
   type Ponger <: { type Tie <: One[Pinger] }
 
-  def bar(using Network^, PlacementType, Multitier): Int on Ponger = Multitier:
+  def bar(using Network, PlacementType^, Multitier) = Multitier:
     val p = on[Pinger] { "Hello from the pinger!" }
     on[Ponger] { asLocal(p).length }
 
-  def b(using n: Network, p: PlacementType, c: Choreography, g: p.OnGuard^) = on[Pinger] { "Hello from the pinger!" }
+  def b(using Network, PlacementType^, Choreography) = on[Pinger] { "Hello from the pinger!" }
 
-  def foo(using n: Network, p: PlacementType, c: Choreography, m: Multitier)(value: Int on Ponger) = Choreography:
-    val onPinger = on[Pinger] { "Hello from the pinger!" }
-    val messageOnPonger = comm[Pinger, Ponger](onPinger)
-    val a = on[Ponger]:
-      take(messageOnPonger)
-      // on[Ponger] { "ds" }
-      ()
-    // Multitier.apply:
-    //   on[Ponger] { asLocal(onPinger) }
-    ???
+  def foo(using Network, PlacementType^, Choreography, Multitier)(value: Int on Ponger) =
+    val a = Choreography:
+      val onPinger = on[Pinger] { "Hello from the pinger!" }
+      val messageOnPonger = comm[Pinger, Ponger](onPinger)
+      on[Ponger]:
+        // 10
+        // comm[Ponger, Pinger](messageOnPonger)
+        take(messageOnPonger)
+        // on[Pinger] { "ds" }
+        // b
+      on[Pinger] { "ds" }
+    Multitier:
+      // comm[Ponger, Pinger](???)
+      on[Pinger] { "ds" }
 
-  def baz(using Network, PlacementType, Choreography, Multitier) =
+  def baz(using Network, PlacementType^, Choreography, Multitier) =
     val r = bar
     foo(r)
