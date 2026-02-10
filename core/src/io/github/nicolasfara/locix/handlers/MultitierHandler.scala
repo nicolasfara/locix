@@ -13,8 +13,6 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import io.github.nicolasfara.locix.placement.PlacementType.on
 
 private final class MultitierEffectImpl[P <: Peer: PeerTag](using r: Raise[NetworkError]) extends Multitier:
-  this: MultitierEffectImpl[P]^{r} =>
-
   type |~>[Id, V] = Map[Id, V]
 
   extension [Id, V](perPeer: Id |~> V) def get(peerId: Id): Option[V] =
@@ -45,3 +43,5 @@ object MultitierHandler:
   def run[P <: Peer: PeerTag](using r: Raise[NetworkError])[V](program: Multitier^ ?=> V): V =
     given (Multitier^{r}) = new MultitierEffectImpl[P]
     program
+
+  def handler[P <: Peer: PeerTag](using Raise[NetworkError]): Multitier^ = new MultitierEffectImpl[P]

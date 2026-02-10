@@ -4,6 +4,6 @@ import scala.caps.ExclusiveCapability
 import scala.caps.SharedCapability
 import scala.compiletime.Erased
 
-trait Scope[L <: Multiparty] extends ExclusiveCapability
+trait Scope[L]// extends ExclusiveCapability
 
-trait Multiparty
+trait Multiparty extends SharedCapability

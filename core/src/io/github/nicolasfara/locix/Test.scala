@@ -22,15 +22,15 @@ object Test:
 
   def b(using Network, PlacementType^, Choreography) = on[Pinger] { "Hello from the pinger!" }
 
-  def foo(using Network, PlacementType^, Choreography, Multitier)(value: Int on Ponger) =
-    val a = Choreography:
+  def foo(using n: Network, p: PlacementType^, c: Choreography, m:Multitier)(value: Int on Ponger) =
+    val a = Choreography: sss ?=>
       val onPinger = on[Pinger]:
         signalling: it =>
           it.emit(42)
           it.emit(43)
           ()
       val messageOnPonger = comm[Pinger, Ponger](onPinger)
-      on[Ponger]:
+      on[Ponger]: s ?=>
         // 10
         // comm[Ponger, Pinger](messageOnPonger)
         val sig = take(messageOnPonger)
@@ -40,8 +40,9 @@ object Test:
       on[Pinger] { "ds" }
     Multitier:
       // comm[Ponger, Pinger](???)
-      on[Pinger] { "ds" }
+      on[Ponger] { asLocal(a) }
 
   def baz(using Network, PlacementType^, Choreography, Multitier) =
-    val r = bar
-    foo(r)
+    // val r = bar
+    // foo(r)
+    ???

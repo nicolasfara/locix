@@ -14,10 +14,10 @@ private final class ChoreographyEffectImpl[P <: Peer: PeerTag](using r: Raise[Ne
   private val namespace = Some("choreography")
   private val local = summon[PeerTag[P]]
 
-  def comm[S <: TiedSingleWith[R]: PeerTag, R <: TiedSingleWith[S]: PeerTag](using n: Network, p: PlacementType)[V](placement: V on S): V on R =
+  def comm[S <: TiedSingleWith[R]: PeerTag, R <: TiedSingleWith[S]: PeerTag](using n: Network)[V](placement: V on S): V on R =
     val sender = summon[PeerTag[S]]
     val receiver = summon[PeerTag[R]]
-    val key = p.getKey(placement)
+    val key = placement.key
     selectWithDefault(local, sender, receiver)(
       onLocal = {
         val reachablePeers = n.reachablePeersOf[R]
@@ -25,9 +25,11 @@ private final class ChoreographyEffectImpl[P <: Peer: PeerTag](using r: Raise[Ne
           NetworkError.SinglePeerExpected(s"Expected exactly one reachable peer of type ${receiver}, but found ${reachablePeers.size}")
         }
         val remotePeer = reachablePeers.head
-        val value = p.getLocalValue(placement).value(NetworkError.RuntimeError(LocixError.ExpectLocalValue(key, sender.toString)))
+        val value = placement match
+          case PlacementValue.Local(v, _) => v
+          case _ => raise(NetworkError.RuntimeError(LocixError.ExpectLocalValue(key, sender.toString)))
         n.push[S, R, V](remotePeer, key, value)
-        p.remote(key)
+        PlacementValue.Remote(key)
       },
       onRemote = {
         val reachablePeers = n.reachablePeersOf[S]
@@ -36,24 +38,26 @@ private final class ChoreographyEffectImpl[P <: Peer: PeerTag](using r: Raise[Ne
         }
         val remotePeer = reachablePeers.head
         val value = n.pull[S, R, V](remotePeer, key)
-        p.local(value, key)
+        PlacementValue.Local(value, key)
       },
-      default = p.remote(key)
+      default = PlacementValue.Remote(key)
     )
 
-  def multicast[S <: TiedManyWith[R]: PeerTag, R <: TiedSingleWith[S]: PeerTag](using n: Network, p: PlacementType)[V](placement: V on S): V on R =
+  def multicast[S <: TiedManyWith[R]: PeerTag, R <: TiedSingleWith[S]: PeerTag](using n: Network)[V](placement: V on S): V on R =
     val sender = summon[PeerTag[S]]
     val receiver = summon[PeerTag[R]]
-    val key = p.getKey(placement)
+    val key = placement.key
     selectWithDefault(local, sender, receiver)(
       onLocal = {
         val reachablePeers = n.reachablePeersOf[R]
         ensure(reachablePeers.nonEmpty) {
           NetworkError.SinglePeerExpected(s"Expected at least one reachable peer of type ${receiver}, but found none")
         }
-        val value = p.getLocalValue(placement).value(NetworkError.RuntimeError(LocixError.ExpectLocalValue(key, sender.toString)))
+        val value = placement match
+          case PlacementValue.Local(v, _) => v
+          case _ => raise(NetworkError.RuntimeError(LocixError.ExpectLocalValue(key, sender.toString)))
         reachablePeers.foreach(n.push[S, R, V](_, key, value))
-        p.remote(key)
+        PlacementValue.Remote(key)
       },
       onRemote = {
         val reachablePeers = n.reachablePeersOf[S]
@@ -62,16 +66,18 @@ private final class ChoreographyEffectImpl[P <: Peer: PeerTag](using r: Raise[Ne
         }
         val remotePeer = reachablePeers.head
         val value = n.pull[S, R, V](remotePeer, key)
-        p.local(value, key)
+        PlacementValue.Local(value, key)
       },
-      default = p.remote(key)
+      default = PlacementValue.Remote(key)
     )
     
-  def broadcast[S <: Peer: PeerTag, V](using n: Network, p: PlacementType)(placement: V on S): V =
+  def broadcast[S <: Peer: PeerTag, V](using n: Network)(placement: V on S): V =
     val sender = summon[PeerTag[S]]
-    val key = p.getKey(placement)
+    val key = placement.key
     val value = select(local, sender)(
-      onLocal = p.getLocalValue(placement).value(NetworkError.RuntimeError(LocixError.ExpectLocalValue(key, sender.toString))),
+      onLocal = placement match
+        case PlacementValue.Local(v, _) => v
+        case _ => raise(NetworkError.RuntimeError(LocixError.ExpectLocalValue(key, sender.toString))),
       onRemote = n.retrieve(key)
     )
     n.broadcast(key, value)
@@ -81,3 +87,5 @@ object ChoreographyHandler:
   def run[P <: Peer: PeerTag](using r: Raise[NetworkError])[V](program: Choreography^ ?=> V): V =
     given (Choreography^{r}) = ChoreographyEffectImpl[P]
     program
+
+  def handler[P <: Peer: PeerTag](using Raise[NetworkError]): Choreography = ChoreographyEffectImpl[P]

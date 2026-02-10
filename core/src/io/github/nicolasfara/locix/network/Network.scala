@@ -5,12 +5,12 @@ import io.github.nicolasfara.locix.peers.Peers.*
 import scala.caps.SharedCapability
 import io.github.nicolasfara.locix.placement.Signal
 
-enum NetworkError:
-  case SinglePeerExpected(peerType: String)
-  case UnreachablePeer(info: String)
-  case NetworkFailure(message: String)
-  case KeyNotFound(key: Identifier)
-  case RuntimeError[E](error: E)
+enum NetworkError(val message: String) extends Throwable(message):
+  case SinglePeerExpected(peerType: String) extends NetworkError(s"Expected a single peer of type $peerType, but found multiple.")
+  case UnreachablePeer(info: String) extends NetworkError(s"Unreachable peer: $info")
+  case NetworkFailure(err: String) extends NetworkError(s"Network failure: $err")
+  case KeyNotFound(key: Identifier) extends NetworkError(s"Key not found: $key")
+  case RuntimeError[E](error: E) extends NetworkError(s"Runtime error: $error")
 
 trait Network extends SharedCapability:
   type PeerAddress
@@ -27,7 +27,7 @@ trait Network extends SharedCapability:
     case Unsubscribe(key: Identifier, peer: PeerAddress)
 
   def reachablePeers: Set[PeerAddress]
-  def reachablePeersOf[P <: Peer]: Set[PeerAddress]
+  def reachablePeersOf[P <: Peer: PeerTag]: Set[PeerAddress]
   def peerAddress: PeerAddress
 
   /**

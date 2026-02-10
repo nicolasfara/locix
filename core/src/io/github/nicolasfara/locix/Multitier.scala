@@ -6,6 +6,8 @@ import io.github.nicolasfara.locix.placement.{PlacementType}
 import io.github.nicolasfara.locix.network.Network
 import io.github.nicolasfara.locix.placement.Signal
 import io.github.nicolasfara.locix.placement.PlacementType.on
+import scala.caps.SharedCapability
+import io.github.nicolasfara.locix.placement.PeerScope
 
 trait Multitier extends Multiparty:
   infix type |~>[Id, V]
@@ -21,20 +23,20 @@ trait Multitier extends Multiparty:
   def asLocalAll[L <: TiedManyWith[R]: PeerTag, R <: Peer: PeerTag, V](using n: Network)(placement: V on R): n.PeerAddress |~> V
 
 object Multitier:
-  def asLocal[L <: TiedSingleWith[R]: PeerTag, R <: Peer: PeerTag, V, S <: Multiparty](using
+  sealed trait MultitierScope extends Erased
+
+  def asLocal[L <: TiedSingleWith[R]: PeerTag, R <: Peer: PeerTag](using
     m: Multitier,
     n: Network,
-    s: Scope[S],
-    ev: S =:= Multitier
-  )(placement: V on R): V = m.asLocal[L, R, V](placement)
+    scope: PeerScope[L]
+  )[V, SC](using s: Scope[SC], ev: SC =:= MultitierScope)(placement: V on R): V = m.asLocal[L, R, V](placement)
 
-  def asLocalAll[L <: TiedManyWith[R]: PeerTag, R <: Peer: PeerTag, V, S <: Multiparty](using
+  def asLocalAll[L <: TiedManyWith[R]: PeerTag, R <: Peer: PeerTag](using
     m: Multitier,
     n: Network,
-    s: Scope[S],
-    ev: S =:= Multitier
-  )(placement: V on R): m.|~>[n.PeerAddress, V] = m.asLocalAll[L, R, V](placement)
+    scope: PeerScope[L]
+  )[V, SC](using s: Scope[SC], ev: SC =:= MultitierScope)(placement: V on R): m.|~>[n.PeerAddress, V] = m.asLocalAll[L, R, V](placement)
 
-  def apply[A](using Multitier)(multitier: Scope[Multitier] ?=> A): A =
-    given Scope[Multitier] = new Scope[Multitier] {}
+  def apply[A](using Multitier)(multitier: Scope[MultitierScope] ?=> A): A =
+    given Scope[MultitierScope] = new Scope[MultitierScope] {}
     multitier

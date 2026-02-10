@@ -8,6 +8,8 @@ import io.github.nicolasfara.locix.network.Network
 import scala.caps.ExclusiveCapability
 import scala.annotation.targetName
 
+type Placement = PlacementType^
+
 trait PlacementType extends Mutable:
   update def on[P <: Peer: PeerTag, V](using Network)(body: PeerScope[P] ?=> V): V on P
 
@@ -19,11 +21,11 @@ trait PlacementType extends Mutable:
   protected[locix] def getLocalValue[V, P <: Peer](value: V on P): Option[V]
 
 object PlacementType:
-  infix type on[+V, -P <: Peer] = Placement[V, P]
+  infix type on[+V, -P <: Peer] = PlacementValue[V, P]
 
-  protected[locix] enum Placement[+V, -P <: Peer](val key: Identifier):
-    case Local(value: V, override val key: Identifier) extends Placement[V, P](key)
-    case Remote(override val key: Identifier) extends Placement[V, P](key)
+  protected[locix] enum PlacementValue[+V, -P <: Peer](val key: Identifier):
+    case Local(value: V, override val key: Identifier) extends PlacementValue[V, P](key)
+    case Remote(override val key: Identifier) extends PlacementValue[V, P](key)
 
   def on[P <: Peer: PeerTag](using pt: PlacementType^, n: Network)[V](body: PeerScope[P] ?=> V): V on P =
     pt.on(body)

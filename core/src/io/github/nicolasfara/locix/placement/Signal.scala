@@ -129,16 +129,10 @@ object Signal:
   // -- internal helpers ------------------------------------------------------
 
   private def derivedId(parent: Identifier, suffix: String): Identifier =
-    new Identifier:
-      override val id: String = s"${parent.id}::$suffix"
-      override val namespace: Option[String] = parent.namespace
-      override val metadata: Map[String, String] = parent.metadata
+    Identifier(s"${parent.id}::$suffix", parent.namespace, parent.metadata)
 
   private def derivedId(left: Identifier, right: Identifier, op: String): Identifier =
-    new Identifier:
-      override val id: String = s"${left.id}::$op::${right.id}"
-      override val namespace: Option[String] = left.namespace
-      override val metadata: Map[String, String] = left.metadata ++ right.metadata
+    Identifier(s"${left.id}::$op::${right.id}", left.namespace, left.metadata ++ right.metadata)
 
   private def asImpl[V, L <: Peer](signal: Signal[V, L]): SignalImpl[V, L] =
     signal.asInstanceOf[SignalImpl[V, L]]

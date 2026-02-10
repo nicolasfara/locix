@@ -26,8 +26,11 @@ object Raise:
       case NonFatal(t) => raise(handler(t))
       case ex => throw ex
 
-  def rethrowError: Raise[Throwable] = new Raise[Throwable]:
-    def raise(e: -> Throwable): Nothing = throw e
+  def rethrowError[E <: Throwable]: Raise[E] = new Raise[E]:
+    def raise(e: -> E): Nothing =
+      val message: String | Null = e.getMessage()
+      if message != null then println(s"Failed with error: $message")
+      throw e
 
   extension [E, V](option: Option[V])(using r: Raise[E])
     def value(e: -> E): V = option match
