@@ -91,3 +91,8 @@ trait Network extends SharedCapability:
     * Unsubscribe from the signal identified by [[signalId]], removing any previously registered callback and stopping the reception of further updates for that signal.
     */
   def unsubscribe(to: PeerAddress, signalId: Identifier): Unit
+
+object Network:
+  def peerAddress(using n: Network): n.PeerAddress = n.peerAddress
+
+  def reachablePeersOf[P <: Peer: PeerTag](using n: Network): Set[n.PeerAddress] = n.reachablePeersOf[P]

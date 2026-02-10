@@ -19,8 +19,8 @@ import scala.concurrent.Await
 import io.github.nicolasfara.locix.placement.Placement
 
 object PingPong:
-  type Pinger <: { type Tie <: One[Ponger] }
-  type Ponger <: { type Tie <: One[Pinger] }
+  type Pinger <: { type Tie <: Single[Ponger] }
+  type Ponger <: { type Tie <: Single[Pinger] }
 
   def pingPong(using Network, Placement, Choreography) = Choreography:
     var c = 0
@@ -37,10 +37,10 @@ object PingPong:
       c += 1
       Thread.sleep(500) // Simulate some delay
 
-  private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](program: (Network, Placement, Choreography) ?=> V): V =
+  private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](program: (Network, PlacementType, Choreography) ?=> V): V =
     given Network = net
     given Raise[NetworkError] = Raise.rethrowError
-    given ptHandler: Placement = PlacementTypeHandler.handler[P]
+    given ptHandler: PlacementType = PlacementTypeHandler.handler[P]
     given cHandler: Choreography = ChoreographyHandler.handler[P]
     program
 
@@ -56,4 +56,3 @@ object PingPong:
     // Wait for both peers to finish
     val combinedFuture = Future.sequence(Seq(pingerFuture, pongerFuture))
     Await.result(combinedFuture, scala.concurrent.duration.Duration.Inf)
-    println("PingPong choreography completed.")

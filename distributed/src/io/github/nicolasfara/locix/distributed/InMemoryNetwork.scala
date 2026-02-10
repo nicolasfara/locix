@@ -8,7 +8,9 @@ import scala.collection.mutable
 import scala.concurrent.duration.*
 import scala.util.Try
 import scala.caps.SharedCapability
+import java.util.UUID
 import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
+import java.util.concurrent.atomic.AtomicBoolean
 
 /** In-memory network implementation simulating distributed peers communication.
   *
@@ -53,20 +55,24 @@ private final class InMemoryNetworkImpl[LocalPeer <: Peer: PeerTag](
   ): V =
     if !broker.hasPeer(from) then
       r.raise(NetworkError.UnreachablePeer(s"Cannot reach peer $from"))
-    // Poll the broker for the value deposited into this peer's store (by the remote peer via push)
+    // Request-response pattern: send a request to the remote peer and wait for the response
+    val correlationId = UUID.randomUUID().toString
+    broker.postRequest(from, address, key, correlationId)
     val maxRetries = 10
     val baseDelay = 50.millis
 
-    def tryPull(attempt: Int): V =
-      broker.getValue(address, key) match
+    def awaitResponse(attempt: Int): V =
+      // Also process any incoming requests while waiting (cooperative scheduling)
+      processIncomingRequests()
+      broker.pollResponse(address, correlationId) match
         case Some(value) => value.asInstanceOf[V]
         case None if attempt >= maxRetries =>
-          r.raise(NetworkError.NetworkFailure(s"Pull from $from for key $key timed out"))
+          r.raise(NetworkError.NetworkFailure(s"Pull from $from for key $key timed out (correlationId=$correlationId)"))
         case None =>
           Thread.sleep(baseDelay.toMillis * Math.pow(1.5, attempt).toLong)
-          tryPull(attempt + 1)
+          awaitResponse(attempt + 1)
 
-    tryPull(0)
+    awaitResponse(0)
 
   override def broadcast[S <: Peer, V](using r: Raise[NetworkError])(
     key: Identifier,
@@ -127,6 +133,45 @@ private final class InMemoryNetworkImpl[LocalPeer <: Peer: PeerTag](
     if to != address then
       broker.unregisterSubscription(to, signalId, address)
 
+  // ---- Request-response processing ----
+
+  // Background thread flag
+  private val running = AtomicBoolean(true)
+
+  /** Process incoming pull requests: look up values in the local store via the broker
+    * and post responses back to the requesting peer.
+    */
+  private[distributed] def processIncomingRequests(): Unit =
+    val requests = broker.drainRequests(address)
+    requests.foreach { case (requester, key, correlationId) =>
+      broker.getValue(address, key) match
+        case Some(value) =>
+          broker.postResponse(requester, correlationId, value)
+        case None =>
+          // Value not yet available — re-enqueue the request so it can be retried
+          broker.postRequest(address, requester, key, correlationId)
+    }
+
+  // Start a background daemon thread that continuously processes incoming requests
+  private val requestProcessorThread: Thread =
+    val t = Thread(() => {
+      while running.get() do
+        try
+          processIncomingRequests()
+          Thread.sleep(10) // Small sleep to avoid busy-waiting
+        catch
+          case _: InterruptedException => ()
+    })
+    t.setDaemon(true)
+    t.setName(s"locix-request-processor-$address")
+    t.start()
+    t
+
+  /** Stop the background request processing thread. */
+  def shutdown(): Unit =
+    running.set(false)
+    requestProcessorThread.interrupt()
+
   /** Drain pending signal emissions from the broker and invoke local callbacks.
     * This should be called periodically (or in an event-loop) to process
     * remote signal emissions that were deposited into this peer's mailbox.
@@ -157,6 +202,12 @@ class NetworkBroker:
   // Peer type metadata: peerAddress -> peerTypeName
   private val peerTypes: TrieMap[String, String] = TrieMap.empty
 
+  // Request mailboxes: targetPeerAddress -> queue of (requesterAddress, key, correlationId)
+  private val requestMailboxes: TrieMap[String, LinkedBlockingQueue[(String, Identifier, String)]] = TrieMap.empty
+
+  // Response mailboxes: requesterAddress -> (correlationId -> value)
+  private val responseMailboxes: TrieMap[String, TrieMap[String, Any]] = TrieMap.empty
+
   // Signal subscriptions: signalId -> set of subscriber peer addresses
   private val signalSubscribers: TrieMap[Identifier, mutable.Set[String]] = TrieMap.empty
 
@@ -167,6 +218,8 @@ class NetworkBroker:
   def registerPeer[P <: Peer: PeerTag](address: String): Unit =
     peerStores.getOrElseUpdate(address, TrieMap.empty)
     signalMailboxes.getOrElseUpdate(address, LinkedBlockingQueue())
+    requestMailboxes.getOrElseUpdate(address, LinkedBlockingQueue())
+    responseMailboxes.getOrElseUpdate(address, TrieMap.empty)
     peerTypes.put(address, summon[PeerTag[P]].baseTypeRepr)
 
   /** Unregister a peer, removing all its stored data. */
@@ -174,6 +227,8 @@ class NetworkBroker:
     peerStores.remove(address)
     peerTypes.remove(address)
     signalMailboxes.remove(address)
+    requestMailboxes.remove(address)
+    responseMailboxes.remove(address)
 
   /** Check whether a peer is registered. */
   def hasPeer(address: String): Boolean =
@@ -194,6 +249,34 @@ class NetworkBroker:
   /** Retrieve a value from a peer's store. Returns [[None]] if not yet available. */
   def getValue(peerAddress: String, key: Identifier): Option[Any] =
     peerStores.get(peerAddress).flatMap(_.get(key))
+
+  // ---- Request-response helpers ----
+
+  /** Post a pull request into the target peer's request mailbox. */
+  def postRequest(targetPeer: String, requester: String, key: Identifier, correlationId: String): Unit =
+    requestMailboxes.getOrElseUpdate(targetPeer, LinkedBlockingQueue())
+      .put((requester, key, correlationId))
+
+  /** Drain all pending pull requests for a peer. Returns a list of (requesterAddress, key, correlationId). */
+  def drainRequests(peerAddress: String): List[(String, Identifier, String)] =
+    requestMailboxes.get(peerAddress) match
+      case Some(queue) =>
+        val buffer = mutable.ListBuffer[(String, Identifier, String)]()
+        var item: (String, Identifier, String) | Null = queue.poll()
+        while item != null do
+          buffer.addOne(item.nn)
+          item = queue.poll()
+        buffer.toList
+      case None => Nil
+
+  /** Post a response value for a specific correlationId into the requester's response mailbox. */
+  def postResponse(requester: String, correlationId: String, value: Any): Unit =
+    responseMailboxes.getOrElseUpdate(requester, TrieMap.empty)
+      .put(correlationId, value)
+
+  /** Poll for a response matching the given correlationId. Returns [[Some]] if available, consuming the entry. */
+  def pollResponse(peerAddress: String, correlationId: String): Option[Any] =
+    responseMailboxes.get(peerAddress).flatMap(_.remove(correlationId))
 
   // ---- Signal helpers ----
 

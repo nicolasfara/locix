@@ -13,8 +13,8 @@ import io.github.nicolasfara.locix.placement.Signal.signalling
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object Test:
-  type Pinger <: { type Tie <: One[Ponger] }
-  type Ponger <: { type Tie <: One[Pinger] }
+  type Pinger <: { type Tie <: Single[Ponger] }
+  type Ponger <: { type Tie <: Single[Pinger] }
 
   def bar(using Network, PlacementType^, Multitier) = Multitier:
     val p = on[Pinger] { "Hello from the pinger!" }

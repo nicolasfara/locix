@@ -44,10 +44,10 @@ object Peers:
 
   type Peer = { type Tie }
 
-  type TiedSingleWith[P <: Peer] = { type Tie <: Cardinality.One[P] }
-  type TiedManyWith[P <: Peer] = { type Tie <: Cardinality.Many[P] }
+  type TiedSingleWith[P <: Peer] = { type Tie <: Cardinality.Single[P] }
+  type TiedManyWith[P <: Peer] = { type Tie <: Cardinality.Multiple[P] }
   type TiedWith[P <: Peer] = TiedSingleWith[P] | TiedManyWith[P]
 
   enum Cardinality[+P <: Peer]:
-    case One()
-    case Many()
+    case Single()
+    case Multiple()
