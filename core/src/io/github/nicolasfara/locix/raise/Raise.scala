@@ -26,6 +26,9 @@ object Raise:
       case NonFatal(t) => raise(handler(t))
       case ex => throw ex
 
+  def rethrowError: Raise[Throwable] = new Raise[Throwable]:
+    def raise(e: -> Throwable): Nothing = throw e
+
   extension [E, V](option: Option[V])(using r: Raise[E])
     def value(e: -> E): V = option match
       case Some(value) => value

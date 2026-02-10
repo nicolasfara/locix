@@ -14,7 +14,7 @@ private final class ChoreographyEffectImpl[P <: Peer: PeerTag](using r: Raise[Ne
   private val namespace = Some("choreography")
   private val local = summon[PeerTag[P]]
 
-  def comm[S <: TiedSingleWith[R]: PeerTag, R <: Peer: PeerTag](using n: Network, p: PlacementType)[V](placement: V on S): V on R =
+  def comm[S <: TiedSingleWith[R]: PeerTag, R <: TiedSingleWith[S]: PeerTag](using n: Network, p: PlacementType)[V](placement: V on S): V on R =
     val sender = summon[PeerTag[S]]
     val receiver = summon[PeerTag[R]]
     val key = p.getKey(placement)
@@ -40,7 +40,8 @@ private final class ChoreographyEffectImpl[P <: Peer: PeerTag](using r: Raise[Ne
       },
       default = p.remote(key)
     )
-  def multicast[S <: TiedManyWith[R]: PeerTag, R <: Peer: PeerTag](using n: Network, p: PlacementType)[V](placement: V on S): V on R =
+
+  def multicast[S <: TiedManyWith[R]: PeerTag, R <: TiedSingleWith[S]: PeerTag](using n: Network, p: PlacementType)[V](placement: V on S): V on R =
     val sender = summon[PeerTag[S]]
     val receiver = summon[PeerTag[R]]
     val key = p.getKey(placement)

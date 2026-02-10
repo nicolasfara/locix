@@ -9,18 +9,18 @@ import scala.caps.Control
 import io.github.nicolasfara.locix.network.Network
 
 trait Choreography extends Multiparty:
-  def comm[S <: TiedSingleWith[R]: PeerTag, R <: Peer: PeerTag](using Network, PlacementType)[V](placement: V on S): V on R
-  def multicast[S <: TiedManyWith[R]: PeerTag, R <: Peer: PeerTag](using Network, PlacementType)[V](placement: V on S): V on R
+  def comm[S <: TiedSingleWith[R]: PeerTag, R <: TiedSingleWith[S]: PeerTag](using Network, PlacementType)[V](placement: V on S): V on R
+  def multicast[S <: TiedManyWith[R]: PeerTag, R <: TiedSingleWith[S]: PeerTag](using Network, PlacementType)[V](placement: V on S): V on R
   def broadcast[S <: Peer: PeerTag, V](using Network, PlacementType)(placement: V on S): V
 
 object Choreography:
-  def comm[S <: TiedSingleWith[R]: PeerTag, R <: Peer: PeerTag](using
+  def comm[S <: TiedSingleWith[R]: PeerTag, R <: TiedSingleWith[S]: PeerTag](using
     c: Choreography,
     n: Network,
     p: PlacementType,
   )[V, SC <: Multiparty](placement: V on S)(using Scope[SC], SC =:= Choreography): V on R = c.comm[S, R](placement)
 
-  def multicast[S <: TiedManyWith[R]: PeerTag, R <: Peer: PeerTag](using
+  def multicast[S <: TiedManyWith[R]: PeerTag, R <: TiedSingleWith[S]: PeerTag](using
     c: Choreography,
     n: Network,
     p: PlacementType,

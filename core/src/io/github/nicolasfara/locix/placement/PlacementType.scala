@@ -6,7 +6,7 @@ import scala.caps.Mutable
 import io.github.nicolasfara.locix.network.Identifier
 import io.github.nicolasfara.locix.network.Network
 import scala.caps.ExclusiveCapability
-
+import scala.annotation.targetName
 
 trait PlacementType extends Mutable:
   update def on[P <: Peer: PeerTag, V](using Network)(body: PeerScope[P] ?=> V): V on P

@@ -7,9 +7,11 @@ import mill._
 import scalalib._
 import com.goyeau.mill.scalafix.ScalafixModule
 import mill.api.Task.Simple
+import mill.scalanativelib.ScalaNativeModule
 
-trait CommonScala extends ScalaModule with ScalafixModule {
+trait CommonScala extends ScalaModule with ScalafixModule /*with ScalaNativeModule*/ {
   def scalaVersion = "3.8.1"
+  def scalaNativeVersion = "0.5.10"
 //  def scoverageVersion = "2.1.0"
 
   // def jvmId = "temurin:23.0.1"
@@ -37,16 +39,16 @@ trait CommonScala extends ScalaModule with ScalafixModule {
 
   def mvnDeps = Seq(
     // mvn"org.scala-lang::scala2-library-cc-tasty-experimental:${scalaVersion()}",
-    mvn"com.softwaremill.ox::core:1.0.1",
-    mvn"com.softwaremill.retry::retry:0.3.6",
+    // mvn"com.softwaremill.ox::core:1.0.1",
+    // mvn"com.softwaremill.retry::retry:0.3.6",
     // mvn"com.softwaremill.sttp.client4::ox:4.0.7",
     // mvn"com.softwaremill.sttp.client4::circe:4.0.7",
     // mvn"com.softwaremill.sttp.tapir::tapir-core:1.11.29",
     // mvn"com.softwaremill.sttp.tapir::tapir-json-circe:1.11.29",
     // mvn"com.softwaremill.sttp.tapir::tapir-netty-server-sync:1.11.29",
-    mvn"com.outr::scribe:3.16.1",
-    mvn"org.scalamock::scalamock:7.5.2",
-    mvn"io.circe::circe-core:0.14.15",
+    // mvn"com.outr::scribe:3.16.1",
+    // mvn"org.scalamock::scalamock:7.5.2",
+    // mvn"io.circe::circe-core:0.14.15",
   )
 }
 
@@ -60,6 +62,10 @@ object core extends CommonScala {
       mvn"io.circe::circe-parser:0.14.15",
     )
   }
+}
+
+object distributed extends CommonScala {
+  def moduleDeps = Seq(core)
 }
 
 // object examples extends CommonScala {

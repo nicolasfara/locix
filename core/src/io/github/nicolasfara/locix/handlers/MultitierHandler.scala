@@ -27,7 +27,7 @@ private final class MultitierEffectImpl[P <: Peer: PeerTag](using r: Raise[Netwo
     perPeer.foldLeft(initial) { case (acc, (id, value)) => f(acc, id, value) }
 
   def asLocal[L <: TiedSingleWith[R]: PeerTag, R <: Peer: PeerTag, V](using n: Network)(placement: V on R): V =
-    val key = ??? // p.getKey(placement)
+    val key = placement.key
     val reachablePeers = n.reachablePeersOf[R]
     ensure(reachablePeers.size == 1):
       NetworkError.SinglePeerExpected(s"Expected exactly one reachable peer of type ${summon[PeerTag[R]]}, but found ${reachablePeers.size}")
@@ -35,7 +35,7 @@ private final class MultitierEffectImpl[P <: Peer: PeerTag](using r: Raise[Netwo
     n.pull(remotePeer, key)
 
   def asLocalAll[L <: TiedManyWith[R]: PeerTag, R <: Peer: PeerTag, V](using n: Network)(placement: V on R): n.PeerAddress |~> V =
-    val key = ??? // p.getKey(placement)
+    val key = placement.key
     val reachablePeers = n.reachablePeersOf[R]
     ensure(reachablePeers.nonEmpty):
       NetworkError.SinglePeerExpected(s"Expected at least one reachable peer of type ${summon[PeerTag[R]]}, but found none")

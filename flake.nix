@@ -14,15 +14,20 @@
       devShells = {
         "${system}" = {
           default = pkgs.mkShell {
+            LLVM_BIN = pkgs.clang + "/bin";
             buildInputs = with pkgs; [
-              openjdk21
-              sbt
-              git
+                stdenv
+                mill
+                openjdk21
+                boehmgc
+                libunwind
+                clang
+                zlib
             ];
 
             shellHook = ''
               export JAVA_HOME=${pkgs.openjdk21}
-              export PATH=${pkgs.sbt}/bin:$PATH
+              export PATH=${pkgs.sbt}/bin:${pkgs.clang}/bin:${pkgs.llvm}/bin:$PATH
             '';
           };
         };

@@ -8,6 +8,9 @@ import io.github.nicolasfara.locix.Choreography
 import io.github.nicolasfara.locix.Choreography.*
 import io.github.nicolasfara.locix.Multitier.*
 import io.github.nicolasfara.locix.network.Network
+import io.github.nicolasfara.locix.placement.Signal
+import io.github.nicolasfara.locix.placement.Signal.signalling
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object Test:
   type Pinger <: { type Tie <: One[Ponger] }
@@ -21,12 +24,17 @@ object Test:
 
   def foo(using Network, PlacementType^, Choreography, Multitier)(value: Int on Ponger) =
     val a = Choreography:
-      val onPinger = on[Pinger] { "Hello from the pinger!" }
+      val onPinger = on[Pinger]:
+        signalling: it =>
+          it.emit(42)
+          it.emit(43)
+          ()
       val messageOnPonger = comm[Pinger, Ponger](onPinger)
       on[Ponger]:
         // 10
         // comm[Ponger, Pinger](messageOnPonger)
-        take(messageOnPonger)
+        val sig = take(messageOnPonger)
+        sig.subscribe(println)
         // on[Pinger] { "ds" }
         // b
       on[Pinger] { "ds" }

@@ -9,7 +9,6 @@ import io.github.nicolasfara.locix.network.Network
 import io.github.nicolasfara.locix.network.NetworkError
 import io.github.nicolasfara.locix.raise.Raise
 import io.github.nicolasfara.locix.utils.Utils.select
-import cats.instances.map
 import io.github.nicolasfara.locix.placement.Signal
 import scala.reflect.Typeable
 import scala.collection.IndexedSeqView.Id
