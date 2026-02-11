@@ -23,6 +23,7 @@ trait CommonScala extends ScalaModule with ScalafixModule /*with ScalaNativeModu
     "-indent",
     "-unchecked",
     "-explain",
+    "-deprecation",
     "-Xcheck-macros",
     // "-Wunused:imports",
 //    "-source:3.8",

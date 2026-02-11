@@ -9,7 +9,6 @@ import io.github.nicolasfara.locix.Choreography.*
 import io.github.nicolasfara.locix.Multitier.*
 import io.github.nicolasfara.locix.network.Network
 import io.github.nicolasfara.locix.placement.Signal
-import io.github.nicolasfara.locix.placement.Signal.signalling
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object Test:
@@ -23,18 +22,18 @@ object Test:
   def b(using Network, PlacementType^, Choreography) = on[Pinger] { "Hello from the pinger!" }
 
   def foo(using n: Network, p: PlacementType^, c: Choreography, m:Multitier)(value: Int on Ponger) =
-    val a = Choreography: sss ?=>
+    val a = Choreography:
       val onPinger = on[Pinger]:
-        signalling: it =>
-          it.emit(42)
-          it.emit(43)
-          ()
+        // signalling: it =>
+        //   it.emit(42)
+        //   it.emit(43)
+        ()
       val messageOnPonger = comm[Pinger, Ponger](onPinger)
-      on[Ponger]: s ?=>
-        // 10
+      on[Ponger]:
+        10
         // comm[Ponger, Pinger](messageOnPonger)
-        val sig = take(messageOnPonger)
-        sig.subscribe(println)
+        // val sig = take(messageOnPonger)
+        // sig.subscribe(println)
         // on[Pinger] { "ds" }
         // b
       on[Pinger] { "ds" }

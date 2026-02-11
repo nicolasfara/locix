@@ -5,7 +5,6 @@ import io.github.nicolasfara.locix.network.Network
 import io.github.nicolasfara.locix.placement.Placement
 import io.github.nicolasfara.locix.Multitier
 import io.github.nicolasfara.locix.Multitier.*
-import io.github.nicolasfara.locix.placement.Signal.signalling
 import io.github.nicolasfara.locix.placement.PlacementType.on
 import scala.concurrent.ExecutionContext.Implicits.global
 import io.github.nicolasfara.locix.peers.Peers.Peer
@@ -23,15 +22,16 @@ object AsyncMasterWorker:
   type Worker <: { type Tie <: Single[Master] }
 
   def asyncMasterWorker(using Network, Placement, Multitier) = Multitier:
-    val signals = on[Master]:
-      signalling: it =>
-        for i <- 1 to 5 do
-          println(s"Master emitting $i")
-          it.emit(i)
-          Thread.sleep(1000)
-    val results = on[Worker]:
-      val tasks = asLocal(signals).subscribe(num => println(num))
-    Thread.sleep(6000) // Wait for all messages to be processed
+    ???
+    // val signals = on[Master]:
+    //   signalling: it =>
+    //     for i <- 1 to 5 do
+    //       println(s"Master emitting $i")
+    //       it.emit(i)
+    //       Thread.sleep(1000)
+    // val results = on[Worker]:
+    //   val tasks = asLocal(signals).subscribe(num => println(num))
+    // Thread.sleep(6000) // Wait for all messages to be processed
 
   private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](program: (Network, PlacementType, Multitier) ?=> V): V =
     given Network = net

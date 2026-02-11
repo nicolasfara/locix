@@ -88,7 +88,6 @@ private final class InMemoryNetworkImpl[LocalPeer <: Peer: PeerTag](
     // Look up value in this peer's store in the broker
     val maxRetries = 10
     val baseDelay = 50.millis
-
     @tailrec def tryRetrieve(attempt: Int): V =
       broker.getValue(address, key) match
         case Some(value) => value.asInstanceOf[V]
@@ -96,7 +95,6 @@ private final class InMemoryNetworkImpl[LocalPeer <: Peer: PeerTag](
         case None =>
           Thread.sleep(baseDelay.toMillis * Math.pow(1.5, attempt).toLong)
           tryRetrieve(attempt + 1)
-
     tryRetrieve(0)
 
   override def store[V](key: Identifier, value: V): Unit = broker.putValue(address, key, value)
