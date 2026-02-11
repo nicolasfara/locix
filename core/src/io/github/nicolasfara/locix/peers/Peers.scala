@@ -51,3 +51,4 @@ object Peers:
   enum Cardinality[+P <: Peer]:
     case Single()
     case Multiple()
+end Peers

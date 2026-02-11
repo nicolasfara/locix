@@ -56,3 +56,4 @@ object PingPong:
     // Wait for both peers to finish
     val combinedFuture = Future.sequence(Seq(pingerFuture, pongerFuture))
     Await.result(combinedFuture, scala.concurrent.duration.Duration.Inf)
+end PingPong

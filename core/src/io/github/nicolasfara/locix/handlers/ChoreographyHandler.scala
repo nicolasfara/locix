@@ -32,12 +32,12 @@ private final class ChoreographyEffectImpl[P <: Peer: PeerTag](using r: Raise[Ne
         PlacementValue.Remote(key)
       },
       onRemote = {
-        val reachablePeers = n.reachablePeersOf[S]
-        ensure(reachablePeers.size == 1) {
-          NetworkError.SinglePeerExpected(s"Expected exactly one reachable peer of type ${sender}, but found ${reachablePeers.size}")
-        }
-        val remotePeer = reachablePeers.head
-        val value = n.pull[S, R, V](remotePeer, key)
+        // val reachablePeers = n.reachablePeersOf[S]
+        // ensure(reachablePeers.size == 1) {
+        //   NetworkError.SinglePeerExpected(s"Expected exactly one reachable peer of type ${sender}, but found ${reachablePeers.size}")
+        // }
+        // val remotePeer = reachablePeers.head
+        val value = n.retrieve[S, V](key)
         PlacementValue.Local(value, key)
       },
       default = PlacementValue.Remote(key)
@@ -60,12 +60,12 @@ private final class ChoreographyEffectImpl[P <: Peer: PeerTag](using r: Raise[Ne
         PlacementValue.Remote(key)
       },
       onRemote = {
-        val reachablePeers = n.reachablePeersOf[S]
-        ensure(reachablePeers.nonEmpty) {
-          NetworkError.SinglePeerExpected(s"Expected at least one reachable peer of type ${sender}, but found none")
-        }
-        val remotePeer = reachablePeers.head
-        val value = n.pull[S, R, V](remotePeer, key)
+        // val reachablePeers = n.reachablePeersOf[S]
+        // ensure(reachablePeers.nonEmpty) {
+        //   NetworkError.SinglePeerExpected(s"Expected at least one reachable peer of type ${sender}, but found none")
+        // }
+        // val remotePeer = reachablePeers.head
+        val value = n.retrieve[S, V](key)
         PlacementValue.Local(value, key)
       },
       default = PlacementValue.Remote(key)
@@ -78,7 +78,7 @@ private final class ChoreographyEffectImpl[P <: Peer: PeerTag](using r: Raise[Ne
       onLocal = placement match
         case PlacementValue.Local(v, _) => v
         case _ => raise(NetworkError.RuntimeError(LocixError.ExpectLocalValue(key, sender.toString))),
-      onRemote = n.retrieve(key)
+      onRemote = n.retrieve[S, V](key)
     )
     n.broadcast(key, value)
     value

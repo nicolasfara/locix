@@ -38,7 +38,7 @@ private final class MultitierEffectImpl[P <: Peer: PeerTag](using r: Raise[Netwo
     val reachablePeers = n.reachablePeersOf[R]
     ensure(reachablePeers.nonEmpty):
       NetworkError.SinglePeerExpected(s"Expected at least one reachable peer of type ${summon[PeerTag[R]]}, but found none")
-    reachablePeers.map(peer => peer -> n.pull(peer, key)).toMap
+    n.pullFromAll(reachablePeers, key)
 
 object MultitierHandler:
   def run[P <: Peer: PeerTag](using r: Raise[NetworkError])[V](program: Multitier^ ?=> V): V =
