@@ -4,7 +4,7 @@ import io.github.nicolasfara.locix.peers.Peers.*
 import scala.compiletime.Erased
 import io.github.nicolasfara.locix.placement.{PlacementType}
 import io.github.nicolasfara.locix.network.Network
-import io.github.nicolasfara.locix.placement.Signal
+import io.github.nicolasfara.locix.signal.Signal
 import io.github.nicolasfara.locix.placement.PlacementType.on
 import scala.caps.SharedCapability
 import io.github.nicolasfara.locix.placement.PeerScope

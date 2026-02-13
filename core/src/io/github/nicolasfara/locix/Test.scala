@@ -8,7 +8,7 @@ import io.github.nicolasfara.locix.Choreography
 import io.github.nicolasfara.locix.Choreography.*
 import io.github.nicolasfara.locix.Multitier.*
 import io.github.nicolasfara.locix.network.Network
-import io.github.nicolasfara.locix.placement.Signal
+import io.github.nicolasfara.locix.signal.Signal
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object Test:

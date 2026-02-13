@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "AsyncMasterWorker",
+      "mainClass": "io.github.nicolasfara.locix.distributed.AsyncMasterWorker",
+      "buildTarget": "file:///home/nicolas/Documents/repos/locix/distributed",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    }
+  ]
+}

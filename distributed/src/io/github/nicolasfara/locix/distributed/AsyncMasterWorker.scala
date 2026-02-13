@@ -16,22 +16,32 @@ import io.github.nicolasfara.locix.handlers.MultitierHandler
 import scala.concurrent.Future
 import scala.concurrent.Await
 import io.github.nicolasfara.locix.placement.PlacementType
+import io.github.nicolasfara.locix.signal.Signal
+import io.github.nicolasfara.locix.signal.Signal.signalBuilder
+import io.github.nicolasfara.locix.network.Network.peerAddress
 
 object AsyncMasterWorker:
   type Master <: { type Tie <: Multiple[Worker] }
   type Worker <: { type Tie <: Single[Master] }
 
   def asyncMasterWorker(using Network, Placement, Multitier) = Multitier:
-    ???
-    // val signals = on[Master]:
-    //   signalling: it =>
-    //     for i <- 1 to 5 do
-    //       println(s"Master emitting $i")
-    //       it.emit(i)
-    //       Thread.sleep(1000)
-    // val results = on[Worker]:
-    //   val tasks = asLocal(signals).subscribe(num => println(num))
-    // Thread.sleep(6000) // Wait for all messages to be processed
+    val signals = on[Master]:
+      signalBuilder: e =>
+        Thread.sleep(1000) // Simulate some work before emitting the signal
+        e.emit(42)
+        Thread.sleep(1000) // Simulate some work before emitting the signal
+        e.emit(42)
+        Thread.sleep(1000) // Simulate some work before emitting the signal
+        e.emit(42)
+        Thread.sleep(1000) // Simulate some work before emitting the signal
+        e.emit(42)
+    on[Worker]:
+      val localAddress = peerAddress
+      val signal = asLocal(signals)
+      signal.subscribe(value => println(s"Worker [$localAddress] received value: $value"))
+      // if localAddress == "worker1" then signal.subscribe(value => println(s"MUUU"))
+    Thread.sleep(5000) // Wait for a bit to ensure the signal is received before the program exits
+    ()
 
   private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](program: (Network, PlacementType, Multitier) ?=> V): V =
     given Network = net

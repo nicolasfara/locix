@@ -7,11 +7,12 @@ import io.github.nicolasfara.locix.network.Identifier
 import io.github.nicolasfara.locix.network.Network
 import scala.caps.ExclusiveCapability
 import scala.annotation.targetName
+import scala.reflect.ClassTag
 
 type Placement = PlacementType^
 
 trait PlacementType extends Mutable:
-  update def on[P <: Peer: PeerTag, V](using Network)(body: PeerScope[P] ?=> V): V on P
+  update def on[P <: Peer: PeerTag, V: ClassTag](using Network)(body: PeerScope[P] ?=> V): V on P
 
   protected[locix] update def freshKey[P <: Peer](namespace: Option[String] = None, metadata: Map[String, String] = Map.empty): Identifier
 
@@ -27,5 +28,5 @@ object PlacementType:
     case Local(value: V, override val key: Identifier) extends PlacementValue[V, P](key)
     case Remote(override val key: Identifier) extends PlacementValue[V, P](key)
 
-  def on[P <: Peer: PeerTag](using pt: PlacementType^, n: Network)[V](body: PeerScope[P] ?=> V): V on P =
+  def on[P <: Peer: PeerTag](using pt: PlacementType^, n: Network)[V: ClassTag](body: PeerScope[P] ?=> V): V on P =
     pt.on(body)

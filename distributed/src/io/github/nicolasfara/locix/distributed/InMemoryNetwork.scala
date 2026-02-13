@@ -18,6 +18,12 @@ import java.util.concurrent.CountDownLatch
 import scala.concurrent.Promise
 import scala.concurrent.Await
 import java.util.concurrent.TimeoutException
+import io.github.nicolasfara.locix.signal.Signal
+import io.github.nicolasfara.locix.signal.Emitter
+import io.github.nicolasfara.locix.signal.Subscription
+import io.github.nicolasfara.locix.signal.Signal.SignallingImpl
+import scala.concurrent.ExecutionContext
+import io.github.nicolasfara.locix.network.NetworkEvent
 
 /**
  * In-memory network implementation simulating distributed peers communication.
@@ -30,14 +36,13 @@ private final class InMemoryNetworkImpl[LocalPeer <: Peer: PeerTag](
     private val address: String,
     private val broker: NetworkBroker,
     private val timeout: FiniteDuration = 5.seconds,
-) extends Network:
+)(using ExecutionContext) extends Network:
+  // private val localSignalCallbacks: TrieMap[Identifier, Any ->{this} Unit] = TrieMap.empty
+  private val localEmitters: TrieMap[Identifier, (Emitter[Any], Signal[Any])] = TrieMap.empty
+  private val remoteSignalSubscriptions: TrieMap[Identifier, mutable.Set[PeerAddress]] = TrieMap.empty
 
   type PeerAddress = String
   type KeyId = String
-
-  // Signal subscriptions: signalId -> list of callbacks (local only)
-  // Using Any to avoid capture checking issues with function types
-  private val signalSubscriptions = TrieMap[Identifier, mutable.ListBuffer[Any]]()
 
   override def reachablePeers: Set[PeerAddress] = broker.getAllPeers.filterNot(_ == address)
 
@@ -59,27 +64,38 @@ private final class InMemoryNetworkImpl[LocalPeer <: Peer: PeerTag](
       from: PeerAddress,
       key: Identifier,
   ): V =
-    ensure(broker.hasPeer(from)) { NetworkError.UnreachablePeer(s"Cannot reach peer $from") }
-    // Request-response pattern: send a request to the remote peer and wait for the response
-    val promiseResult = Promise[Any]()
-    broker.putPendingRequest(from, key, promiseResult)
-    val future = promiseResult.future
-    Raise.catchNonFatal[NetworkError, V] {
-      Await.result(future, timeout).asInstanceOf[V]
-    }(err => NetworkError.NetworkFailure(s"Failed to pull value from $from for key $key: ${err.getMessage}"))
+    val scope = key.namespace
+    if Some("signal") == scope then
+      broker.subscribe(to = from, origin = address, key)
+      retrieveSignal(key).asInstanceOf[V]
+    else
+      ensure(broker.hasPeer(from)) { NetworkError.UnreachablePeer(s"Cannot reach peer $from") }
+      // Request-response pattern: send a request to the remote peer and wait for the response
+      val promiseResult = Promise[Any]()
+      broker.putPendingRequest(from, key, promiseResult)
+      val future = promiseResult.future
+      Raise.catchNonFatal[NetworkError, V] {
+        Await.result(future, timeout).asInstanceOf[V]
+      }(err => NetworkError.NetworkFailure(s"Failed to pull value from $from for key $key: ${err.getMessage}"))
 
   override def pullFromAll[From <: TiedWith[To], To <: Peer, V](using Raise[NetworkError])(from: Set[String], key: Identifier): Map[String, V] =
-    ensure(from.nonEmpty) { NetworkError.UnreachablePeer("No peer addresses provided for pullFromAll") }
-    from.map { peerAddress =>
-      ensure(broker.hasPeer(peerAddress)) { NetworkError.UnreachablePeer(s"Cannot reach peer $peerAddress") }
-      val promiseResult = Promise[Any]()
-      broker.putPendingRequest(peerAddress, key, promiseResult)
-      val future = promiseResult.future
-      val value = Raise.catchNonFatal[NetworkError, V] {
-        Await.result(future, timeout).asInstanceOf[V]
-      }(err => NetworkError.NetworkFailure(s"Failed to pull value from $peerAddress for key $key: ${err.getMessage}"))
-      peerAddress -> value
-    }.toMap    
+    val scope = key.namespace
+    if Some("signal") == scope then
+      // println(s"Peer $address retrieving signal for key $key")
+      // retrieveSignal(key).asInstanceOf[V]
+      ???
+    else
+      ensure(from.nonEmpty) { NetworkError.UnreachablePeer("No peer addresses provided for pullFromAll") }
+      from.map { peerAddress =>
+        ensure(broker.hasPeer(peerAddress)) { NetworkError.UnreachablePeer(s"Cannot reach peer $peerAddress") }
+        val promiseResult = Promise[Any]()
+        broker.putPendingRequest(peerAddress, key, promiseResult)
+        val future = promiseResult.future
+        val value = Raise.catchNonFatal[NetworkError, V] {
+          Await.result(future, timeout).asInstanceOf[V]
+        }(err => NetworkError.NetworkFailure(s"Failed to pull value from $peerAddress for key $key: ${err.getMessage}"))
+        peerAddress -> value
+      }.toMap    
 
   override def broadcast[S <: Peer, V](using Raise[NetworkError])(key: Identifier, value: V): Unit =
     broker.getAllPeers.foreach(broker.putValue(_, key, value))
@@ -101,84 +117,46 @@ private final class InMemoryNetworkImpl[LocalPeer <: Peer: PeerTag](
 
   // ---- Reactive primitives ----
 
-  override def emit[V](key: Identifier, value: V): Unit = ???
-    // // Emit to local subscribers
-    // signalSubscriptions.get(key).foreach { callbacks =>
-    //   callbacks.foreach { cb =>
-    //     Try(cb.asInstanceOf[V => Unit](value))
-    //   }
-    // }
-    // // Put the emission into the broker's signal mailboxes for remote subscribers
-    // broker.emitSignal(address, key, value)
+  override def registerSignal[V](key: Identifier, signal: Signal[V]): Unit = signal.subscribe(value => {
+    remoteSignalSubscriptions.get(key).foreach { subscribers =>
+      subscribers.foreach { subscriber =>
+        // println(s"Peer $address emitting signal value for key $key to subscriber $subscriber")
+        emitLocalSignal(subscriber, key, value)
+      }
+    }
+  })
 
-  override def close(key: Identifier): Unit = ???
-    // signalSubscriptions.remove(key)
-    // broker.closeSignal(key)
+  override def retrieveSignal[V](key: Identifier): Signal[V] =
+    localEmitters.getOrElseUpdate(key, {
+      val signal = new SignallingImpl[V]
+      (signal.asInstanceOf[Emitter[Any]], signal.asInstanceOf[Signal[Any]])
+    })._2.asInstanceOf[Signal[V]]
 
-  override def subscribe[V](to: PeerAddress, signalId: Identifier, callback: V => Unit): Unit = ???
-    // val callbacks = signalSubscriptions.getOrElseUpdate(
-    //   signalId,
-    //   mutable.ListBuffer[Any](),
-    // )
-    // callbacks.addOne(callback.asInstanceOf[Any])
-    // if to != address then broker.registerSubscription(to, signalId, address)
+  override def emitLocalSignal[V](to: PeerAddress, key: Identifier, value: V): Unit =
+    broker.propagateSignalTo(peerAddress, to, key, value)
 
-  override def unsubscribe(to: PeerAddress, signalId: Identifier): Unit = ???
-    // signalSubscriptions.remove(signalId)
-    // if to != address then broker.unregisterSubscription(to, signalId, address)
+  override def receiveRemoteSignalValue[V](key: Identifier, value: V): Unit =
+    localEmitters.get(key) match
+      case Some((emitter, _)) => emitter.emit(value)
+      case None => // No local emitter, ignore the value
 
-  // ---- Request-response processing ----
+  override def subscribe(peerAddress: String, key: Identifier): Unit =
+    val subscribers = remoteSignalSubscriptions.getOrElseUpdate(key, mutable.Set.empty)
+    subscribers += peerAddress
 
-  // // Background thread flag
-  // private val running = AtomicBoolean(true)
+  override def unsubscribe(peerAddress: String, key: Identifier): Unit =
+    val subscribers = remoteSignalSubscriptions.getOrElseUpdate(key, mutable.Set.empty)
+    subscribers -= peerAddress
 
-  // /**
-  //  * Process incoming pull requests: look up values in the local store via the broker and post responses back to the requesting peer.
-  //  */
-  // private[distributed] def processIncomingRequests(): Unit =
-  //   val requests = broker.drainRequests(address)
-  //   requests.foreach { case (requester, key, correlationId) =>
-  //     broker.getValue(address, key) match
-  //       case Some(value) =>
-  //         broker.postResponse(requester, correlationId, value)
-  //       case None =>
-  //         // Value not yet available — re-enqueue the request so it can be retried
-  //         broker.postRequest(address, requester, key, correlationId)
-  //   }
+  @tailrec private def eventLoopProcessor(): Unit =
+    broker.getEvents(peerAddress).foreach:
+      case NetworkEvent.Subscribed(key, from) => subscribe(from, key)
+      case NetworkEvent.Unsubscribed(key, from) => unsubscribe(from, key)
+      case NetworkEvent.ValueEmitted(key, value, from, to) => receiveRemoteSignalValue(key, value)
+    Thread.sleep(10)
+    eventLoopProcessor()
 
-  // // Start a background daemon thread that continuously processes incoming requests and signal emissions
-  // private val requestProcessorThread: Thread =
-  //   val t = Thread(() =>
-  //     while running.get() do
-  //       try
-  //         processIncomingRequests()
-  //         drainSignals()
-  //         Thread.sleep(10) // Small sleep to avoid busy-waiting
-  //       catch case _: InterruptedException => (),
-  //   )
-  //   t.setDaemon(true)
-  //   t.setName(s"locix-request-processor-$address")
-  //   t.start()
-  //   t
-
-  // /** Stop the background request processing thread. */
-  // def shutdown(): Unit =
-  //   running.set(false)
-  //   requestProcessorThread.interrupt()
-
-  // /**
-  //  * Drain pending signal emissions from the broker and invoke local callbacks. This should be called periodically (or in an event-loop) to process
-  //  * remote signal emissions that were deposited into this peer's mailbox.
-  //  */
-  // def drainSignals(): Unit =
-  //   val pending = broker.drainSignalMailbox(address)
-  //   pending.foreach { case (signalId, value) =>
-  //     signalSubscriptions.get(signalId).foreach { callbacks =>
-  //       callbacks.foreach { cb =>
-  //         Try(cb.asInstanceOf[Any => Unit](value))
-  //       }
-  //     }
-  //   }
+  summon[ExecutionContext].execute(() => { eventLoopProcessor() })
 end InMemoryNetworkImpl
 
 /**
@@ -199,6 +177,8 @@ class NetworkBroker:
   // Peer type metadata: peerAddress -> peerTypeName
   private val peerTypes: TrieMap[String, String] = TrieMap.empty
 
+  // Stores all the signalling events for each peer
+  private val events: TrieMap[PeerAddress, Set[NetworkEvent[PeerAddress]]] = TrieMap.empty
 
   // Pending requests: we use a synchronized wrapper object as both the queue holder and the lock
   private case class PendingRequestQueue(queue: LinkedBlockingQueue[Promise[Any]] = LinkedBlockingQueue())
@@ -208,29 +188,29 @@ class NetworkBroker:
     pendingRequests.getOrElseUpdate((peerAddress, key), PendingRequestQueue())
 
   /** Register a peer address with its type. No network reference is stored. */
-  def registerPeer[P <: Peer: PeerTag](address: String): Unit =
+  def registerPeer[P <: Peer: PeerTag](address: PeerAddress): Unit =
     peerStores.getOrElseUpdate(address, TrieMap.empty)
     peerTypes.put(address, summon[PeerTag[P]].baseTypeRepr)
 
   /** Unregister a peer, removing all its stored data. */
-  def unregisterPeer(address: String): Unit =
+  def unregisterPeer(address: PeerAddress): Unit =
     peerStores.remove(address)
     peerTypes.remove(address)
 
   /** Check whether a peer is registered. */
-  def hasPeer(address: String): Boolean =
+  def hasPeer(address: PeerAddress): Boolean =
     peerStores.contains(address)
 
   /** Get all registered peer addresses. */
-  def getAllPeers: Set[String] =
+  def getAllPeers: Set[PeerAddress] =
     peerStores.keySet.toSet
 
   /** Get all peer addresses registered with the given type name. */
-  def getPeersOfType(peerType: String): Set[String] =
+  def getPeersOfType(peerType: String): Set[PeerAddress] =
     peerTypes.filter(_._2 == peerType).keySet.toSet
 
   /** Store a value in a peer's mailbox, keyed by [[Identifier]]. */
-  def putValue(peerAddress: String, key: Identifier, value: Any): Unit =
+  def putValue(peerAddress: PeerAddress, key: Identifier, value: Any): Unit =
     val requestQueue = getRequestQueue(peerAddress, key)
     requestQueue.synchronized:
       // Store the value first
@@ -241,83 +221,39 @@ class NetworkBroker:
       if promises.nonEmpty then pendingRequests.remove((peerAddress, key))
 
   /** Retrieve a value from a peer's store. Returns [[None]] if not yet available. */
-  def getValue(peerAddress: String, key: Identifier): Option[Any] =
+  def getValue(peerAddress: PeerAddress, key: Identifier): Option[Any] =
     peerStores.get(peerAddress).flatMap(_.get(key))
 
   /** Store a pending request for a value that is not yet available. The promise will be completed when the value is put into the store. */
-  def putPendingRequest(peerAddress: String, key: Identifier, promise: Promise[Any]): Unit =
+  def putPendingRequest(peerAddress: PeerAddress, key: Identifier, promise: Promise[Any]): Unit =
     val requestQueue = getRequestQueue(peerAddress, key)
     requestQueue.synchronized:
       getValue(peerAddress, key) match
         case Some(value) => promise.success(value)
         case None => requestQueue.queue.put(promise)
+
+  // ---- Signal subscription management ----
+  def subscribe(to: PeerAddress, origin: PeerAddress, key: Identifier): Unit =
+    val event = NetworkEvent.Subscribed(key, origin)
+    events.updateWith(to):
+      case Some(evSet) => Some(evSet + event)
+      case None => Some(Set(event))
+
+  def unsubscribe(to: PeerAddress, origin: PeerAddress, key: Identifier): Unit =
+    val event = NetworkEvent.Unsubscribed(key, origin)
+    events.updateWith(to):
+      case Some(evSet) => Some(evSet + event)
+      case None => Some(Set(event))
+
+  def propagateSignalTo[V](from: PeerAddress, to: PeerAddress, key: Identifier, value: V): Unit =
+    val event = NetworkEvent.ValueEmitted(key, value, from, to)
+    events.updateWith(to):
+      case Some(evSet) => Some(evSet + event)
+      case None => Some(Set(event))
+
+  def getEvents(peerAddress: PeerAddress): Set[NetworkEvent[PeerAddress]] =
+    events.remove(peerAddress).getOrElse(Set.empty) // Clear events after retrieval
   
-  // ---- Request-response helpers ----
-
-  // /** Post a pull request into the target peer's request mailbox. */
-  // def postRequest(targetPeer: String, requester: String, key: Identifier, correlationId: String): Unit =
-  //   requestMailboxes
-  //     .getOrElseUpdate(targetPeer, LinkedBlockingQueue())
-  //     .put((requester, key, correlationId))
-
-  // /** Drain all pending pull requests for a peer. Returns a list of (requesterAddress, key, correlationId). */
-  // def drainRequests(peerAddress: String): List[(String, Identifier, String)] =
-  //   requestMailboxes.get(peerAddress) match
-  //     case Some(queue) =>
-  //       val buffer = mutable.ListBuffer[(String, Identifier, String)]()
-  //       var item: (String, Identifier, String) | Null = queue.poll()
-  //       while item != null do
-  //         buffer.addOne(item.nn)
-  //         item = queue.poll()
-  //       buffer.toList
-  //     case None => Nil
-
-  // /** Post a response value for a specific correlationId into the requester's response mailbox. */
-  // def postResponse(requester: String, correlationId: String, value: Any): Unit =
-  //   responseMailboxes
-  //     .getOrElseUpdate(requester, TrieMap.empty)
-  //     .put(correlationId, value)
-
-  // /** Poll for a response matching the given correlationId. Returns [[Some]] if available, consuming the entry. */
-  // def pollResponse(peerAddress: String, correlationId: String): Option[Any] =
-  //   responseMailboxes.get(peerAddress).flatMap(_.remove(correlationId))
-
-  // // ---- Signal helpers ----
-
-  // /** Register that [[subscriber]] wants to receive emissions for [[signalId]] from [[signalSource]]. */
-  // def registerSubscription(signalSource: String, signalId: Identifier, subscriber: String): Unit =
-  //   signalSubscribers.getOrElseUpdate(signalId, mutable.Set.empty).add(subscriber)
-
-  // /** Unregister a signal subscription. */
-  // def unregisterSubscription(signalSource: String, signalId: Identifier, subscriber: String): Unit =
-  //   signalSubscribers.get(signalId).foreach(_.remove(subscriber))
-
-  // /** Deposit a signal emission into all subscribers' mailboxes. */
-  // def emitSignal(from: String, signalId: Identifier, value: Any): Unit =
-  //   signalSubscribers.get(signalId).foreach { subscribers =>
-  //     subscribers.foreach { subscriber =>
-  //       if subscriber != from then
-  //         signalMailboxes
-  //           .getOrElseUpdate(subscriber, LinkedBlockingQueue())
-  //           .put((signalId, value))
-  //     }
-  //   }
-
-  // /** Remove all subscriptions for a signal. */
-  // def closeSignal(signalId: Identifier): Unit =
-  //   signalSubscribers.remove(signalId)
-
-  // /** Drain all pending signal emissions for a peer. */
-  // def drainSignalMailbox(peerAddress: String): List[(Identifier, Any)] =
-  //   signalMailboxes.get(peerAddress) match
-  //     case Some(queue) =>
-  //       val buffer = mutable.ListBuffer[(Identifier, Any)]()
-  //       var item: (Identifier, Any) | Null = queue.poll()
-  //       while item != null do
-  //         buffer.addOne(item.nn)
-  //         item = queue.poll()
-  //       buffer.toList
-  //     case None => Nil
 end NetworkBroker
 
 object InMemoryNetwork:
@@ -331,16 +267,16 @@ object InMemoryNetwork:
    * @return
    *   a network instance for the given peer
    */
-  def apply[P <: Peer: PeerTag](address: String, broker: NetworkBroker): Network =
+  def apply[P <: Peer: PeerTag](address: String, broker: NetworkBroker)(using ExecutionContext): Network =
     broker.registerPeer[P](address)
     InMemoryNetworkImpl[P](address, broker)
 
   /** Create a network broker for coordinating multiple peers. */
   def broker(): NetworkBroker = NetworkBroker()
 
-  /** Convenience method to create a network with a new broker. */
-  def standalone[P <: Peer: PeerTag](address: String): (Network, NetworkBroker) =
-    val b = broker()
-    val net = apply[P](address, b)
-    (net, b)
+  // /** Convenience method to create a network with a new broker. */
+  // def standalone[P <: Peer: PeerTag](address: String): (Network, NetworkBroker) =
+  //   val b = broker()
+  //   val net = apply[P](address, b)
+  //   (net, b)
 end InMemoryNetwork

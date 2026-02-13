@@ -40,11 +40,12 @@ object MasterWorker:
   def taskAllocation(using n: Network, p: Placement, m: Multitier) = Multitier:
     val allocation = on[Master] { allocateTasks }
     val workerResults = on[Worker]:
+      val localAddress = peerAddress
       asLocal(allocation)
-        .filter(_._1 == peerAddress)
+        .filter(_._1 == localAddress)
         .flatMap(_._2)
         .map(task => task.exec())
-        .tapEach(result => println(s"[$peerAddress] computed result: $result"))
+        .tapEach(result => println(s"[$localAddress] computed result: $result"))
     on[Master]:
       val collectedResults = asLocalAll(workerResults).values.flatMap(_.toList).toList
       println(s"Master collected results: $collectedResults")

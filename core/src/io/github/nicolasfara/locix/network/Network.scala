@@ -3,7 +3,23 @@ package io.github.nicolasfara.locix.network
 import io.github.nicolasfara.locix.raise.Raise
 import io.github.nicolasfara.locix.peers.Peers.*
 import scala.caps.SharedCapability
-import io.github.nicolasfara.locix.placement.Signal
+import io.github.nicolasfara.locix.signal.Signal
+import io.github.nicolasfara.locix.{network => PeerAddress}
+
+// enum NetworkMessage[PeerAddress]:
+//   case Push[V](key: Identifier, value: V, peer: PeerAddress)
+//   case RequestValue(key: Identifier, correlationId: String, peer: PeerAddress)
+//   case ResponseValue[V](key: Identifier, value: V, correlationId: String, peer: PeerAddress)
+//   case Broadcast[V](key: Identifier, value: V, peer: PeerAddress)
+//   case Emitted[V](key: Identifier, value: V, peer: PeerAddress)
+//   case CloseSignal(key: Identifier, peer: PeerAddress)
+//   case Subscribe(key: Identifier, peer: PeerAddress)
+//   case Unsubscribe(key: Identifier, peer: PeerAddress)
+
+enum NetworkEvent[PeerAddress](from: PeerAddress):
+  case ValueEmitted[V, PeerAddress](key: Identifier, value: V, from: PeerAddress, to: PeerAddress) extends NetworkEvent(from)
+  case Subscribed(key: Identifier, from: PeerAddress) extends NetworkEvent(from)
+  case Unsubscribed(key: Identifier, from: PeerAddress) extends NetworkEvent(from)
 
 enum NetworkError(val message: String) extends Throwable(message):
   case SinglePeerExpected(peerType: String) extends NetworkError(s"Expected a single peer of type $peerType, but found multiple.")
@@ -15,16 +31,6 @@ enum NetworkError(val message: String) extends Throwable(message):
 trait Network extends SharedCapability:
   type PeerAddress
   type KeyId
-
-  enum NetworkMessage:
-    case Push[V](key: Identifier, value: V, peer: PeerAddress)
-    case RequestValue(key: Identifier, correlationId: String, peer: PeerAddress)
-    case ResponseValue[V](key: Identifier, value: V, correlationId: String, peer: PeerAddress)
-    case Broadcast[V](key: Identifier, value: V, peer: PeerAddress)
-    case Emitted[V](key: Identifier, value: V, peer: PeerAddress)
-    case CloseSignal(key: Identifier, peer: PeerAddress)
-    case Subscribe(key: Identifier, peer: PeerAddress)
-    case Unsubscribe(key: Identifier, peer: PeerAddress)
 
   def reachablePeers: Set[PeerAddress]
   def reachablePeersOf[P <: Peer: PeerTag]: Set[PeerAddress]
@@ -78,28 +84,20 @@ trait Network extends SharedCapability:
 
   // Reactive primitives
 
-  /**
-   * To all the remote peers subscribed to the signal identified by [[key]], emit the provided [[value]].
+  /** Registers into the network a [[signal]] identified by the provided [[key]].
+   * Internally the network listens for emitted values and propagates them to all subscribed peers.
    */
-  def emit[V](key: Identifier, value: V): Unit
+  def registerSignal[V](key: Identifier, signal: Signal[V]): Unit
 
-  /**
-   * Close the signal identified by [[key]], notifying all subscribed peers that the signal is no longer active and that they should clean up any
-   * associated resources.
-   */
-  def close(key: Identifier): Unit
+  def retrieveSignal[V](key: Identifier): Signal[V]
 
-  /**
-   * Subscribe to the signal identified by [[signalId]], providing a [[callback]] function that will be invoked whenever a new value is emitted for
-   * that signal.
-   */
-  def subscribe[V](to: PeerAddress, signalId: Identifier, callback: V => Unit): Unit
+  def emitLocalSignal[V](to: PeerAddress, key: Identifier, value: V): Unit
 
-  /**
-   * Unsubscribe from the signal identified by [[signalId]], removing any previously registered callback and stopping the reception of further updates
-   * for that signal.
-   */
-  def unsubscribe(to: PeerAddress, signalId: Identifier): Unit
+  def receiveRemoteSignalValue[V](key: Identifier, value: V): Unit
+
+  def subscribe(peerAddress: PeerAddress, key: Identifier): Unit
+
+  def unsubscribe(peerAddress: PeerAddress, key: Identifier): Unit
 end Network
 
 object Network:

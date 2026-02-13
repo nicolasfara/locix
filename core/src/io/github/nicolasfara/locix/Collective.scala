@@ -2,7 +2,7 @@ package io.github.nicolasfara.locix
 
 import io.github.nicolasfara.locix.peers.Peers.PeerTag
 import io.github.nicolasfara.locix.peers.Peers.Peer
-import io.github.nicolasfara.locix.placement.Signal
+import io.github.nicolasfara.locix.signal.Signal
 import io.github.nicolasfara.locix.placement.PlacementType.on
 import io.github.nicolasfara.locix.placement.Placement
 import scala.concurrent.duration.FiniteDuration

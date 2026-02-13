@@ -8,7 +8,7 @@ import io.github.nicolasfara.locix.placement.PlacementType
 import io.github.nicolasfara.locix.peers.Peers.TiedManyWith
 import io.github.nicolasfara.locix.peers.Peers.TiedSingleWith
 import io.github.nicolasfara.locix.raise.Raise.ensure
-import io.github.nicolasfara.locix.placement.Signal
+import io.github.nicolasfara.locix.signal.Signal
 import java.util.concurrent.ConcurrentLinkedQueue
 import io.github.nicolasfara.locix.placement.PlacementType.on
 

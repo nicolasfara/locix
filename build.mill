@@ -58,9 +58,9 @@ object core extends CommonScala {
     def testParallelism = true
     def mvnDeps = Seq(
       mvn"org.scalatest::scalatest:3.2.19",
-      mvn"io.circe::circe-core:0.14.15",
-      mvn"io.circe::circe-generic:0.14.15",
-      mvn"io.circe::circe-parser:0.14.15",
+      // mvn"io.circe::circe-core:0.14.15",
+      // mvn"io.circe::circe-generic:0.14.15",
+      // mvn"io.circe::circe-parser:0.14.15",
     )
   }
 }

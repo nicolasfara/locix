@@ -9,24 +9,32 @@ import io.github.nicolasfara.locix.network.Network
 import io.github.nicolasfara.locix.network.NetworkError
 import io.github.nicolasfara.locix.raise.Raise
 import io.github.nicolasfara.locix.utils.Utils.select
-import io.github.nicolasfara.locix.placement.Signal
-import scala.reflect.Typeable
-import scala.collection.IndexedSeqView.Id
+import io.github.nicolasfara.locix.signal.Signal
+import scala.annotation.nowarn
+import scala.reflect.ClassTag
 
 private final class PlacementTypeHandler[L <: Peer: PeerTag] extends PlacementType:
   private var counter = -1
-  update def on[P <: Peer: PeerTag, V](using Network)(body: PeerScope[P] ?=> V): V on P =
+  update def on[P <: Peer: PeerTag, V: ClassTag](using Network)(body: PeerScope[P] ?=> V): V on P =
     val net = summon[Network]
     val local = summon[PeerTag[L]]
     val placedPeer = summon[PeerTag[P]]
-    val key = freshKey[P](None, Map.empty)
+    val tag = summon[ClassTag[V]]
+    val key = if tag.runtimeClass.isAssignableFrom(classOf[Signal[?]]) then
+      freshKey[P](Some("signal"), Map.empty)
+    else
+      freshKey[P](None, Map.empty)
+
     select(local, placedPeer)(
       onLocal = {
         given PeerScope[P] = new PeerScope[P] {
           def id: Identifier = key
         }
         val result = body
-        net.store(key, result)
+        result match
+          case signal: Signal[_] =>
+            net.registerSignal[V](key, signal.asInstanceOf[Signal[V]]) // Cast needed due to type erasure, but we ensure type safety by only allowing Signal[_] to be registered
+          case value => net.store(key, value)
         PlacementValue.Local(result, key)
       },
       onRemote = PlacementValue.Remote(key)
@@ -53,4 +61,3 @@ object PlacementTypeHandler:
     program
 
   def handler[L <: Peer: PeerTag]: PlacementType^ = PlacementTypeHandler[L]()
-	
