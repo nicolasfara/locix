@@ -1,13 +1,14 @@
 package io.github.nicolasfara.locix
 
-import io.github.nicolasfara.locix.peers.Peers.*
-import io.github.nicolasfara.locix.placement.PlacementType.*
-import io.github.nicolasfara.locix.placement.PlacementType
-import scala.compiletime.Erased
-import scala.caps.SharedCapability
 import scala.caps.Control
-import io.github.nicolasfara.locix.network.Network
+import scala.caps.SharedCapability
 import scala.caps.cap
+import scala.compiletime.Erased
+
+import io.github.nicolasfara.locix.network.Network
+import io.github.nicolasfara.locix.peers.Peers.*
+import io.github.nicolasfara.locix.placement.PlacementType
+import io.github.nicolasfara.locix.placement.PlacementType.*
 
 trait Choreography extends Multiparty:
   def comm[S <: TiedSingleWith[R]: PeerTag, R <: TiedSingleWith[S]: PeerTag](using Network)[V](placement: V on S): V on R

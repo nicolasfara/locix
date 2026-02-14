@@ -1,8 +1,8 @@
 package io.github.nicolasfara.locix.peers
 
-import scala.quoted.Type
-import scala.quoted.Quotes
 import scala.quoted.Expr
+import scala.quoted.Quotes
+import scala.quoted.Type
 
 object Peers:
   opaque type PeerTag[-P] = PeerReprImpl

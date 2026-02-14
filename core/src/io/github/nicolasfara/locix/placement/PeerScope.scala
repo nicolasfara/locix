@@ -1,9 +1,9 @@
 package io.github.nicolasfara.locix.placement
 
-import io.github.nicolasfara.locix.peers.Peers.Peer
 import io.github.nicolasfara.locix.network.Identifier
-import io.github.nicolasfara.locix.placement.PlacementType.on
+import io.github.nicolasfara.locix.peers.Peers.Peer
 import io.github.nicolasfara.locix.placement.PlacementType.PlacementValue
+import io.github.nicolasfara.locix.placement.PlacementType.on
 
 trait PeerScope[+P <: Peer]:
   def id: Identifier

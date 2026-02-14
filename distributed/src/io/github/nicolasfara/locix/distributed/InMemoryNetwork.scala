@@ -36,7 +36,8 @@ private final class InMemoryNetworkImpl[LocalPeer <: Peer: PeerTag](
     private val address: String,
     private val broker: NetworkBroker,
     private val timeout: FiniteDuration = 5.seconds,
-)(using ExecutionContext) extends Network:
+)(using ExecutionContext)
+    extends Network:
   private val localEmitters: TrieMap[Identifier, (Emitter[Any], Signal[Any])] = TrieMap.empty
   private val remoteSignalSubscriptions: TrieMap[Identifier, mutable.Set[PeerAddress]] = TrieMap.empty
 
@@ -51,7 +52,9 @@ private final class InMemoryNetworkImpl[LocalPeer <: Peer: PeerTag](
 
   override def peerAddress: PeerAddress = address
 
-  override def push[S <: TiedWith[D], D <: Peer, V](using Raise[NetworkError])(
+  override def push[S <: TiedWith[D], D <: Peer, V](using
+      Raise[NetworkError],
+  )(
       to: PeerAddress,
       key: Identifier,
       value: V,
@@ -59,7 +62,9 @@ private final class InMemoryNetworkImpl[LocalPeer <: Peer: PeerTag](
     ensure(broker.hasPeer(to)) { NetworkError.UnreachablePeer(s"Cannot reach peer $to") }
     broker.putValue(to, key, value)
 
-  override def pull[From <: TiedWith[To], To <: Peer, V](using Raise[NetworkError])(
+  override def pull[From <: TiedWith[To], To <: Peer, V](using
+      Raise[NetworkError],
+  )(
       from: PeerAddress,
       key: Identifier,
   ): V =
@@ -94,7 +99,7 @@ private final class InMemoryNetworkImpl[LocalPeer <: Peer: PeerTag](
           Await.result(future, timeout).asInstanceOf[V]
         }(err => NetworkError.NetworkFailure(s"Failed to pull value from $peerAddress for key $key: ${err.getMessage}"))
         peerAddress -> value
-      }.toMap    
+      }.toMap
 
   override def broadcast[S <: Peer, V](using Raise[NetworkError])(key: Identifier, value: V): Unit =
     broker.getAllPeers.foreach(broker.putValue(_, key, value))
@@ -117,25 +122,30 @@ private final class InMemoryNetworkImpl[LocalPeer <: Peer: PeerTag](
   // ---- Reactive primitives ----
 
   override def registerSignal[V](key: Identifier, signal: Signal[V]): Unit =
-    signal.subscribe(value => {
+    signal.subscribe(value =>
       remoteSignalSubscriptions.get(key).foreach { subscribers =>
         subscribers.foreach { subscriber =>
           // println(s"Peer $address emitting signal value for key $key to subscriber $subscriber")
           emitLocalSignal(subscriber, key, value)
         }
-      }
-    })
-    signal.onClose(() => {
+      },
+    )
+    signal.onClose(() =>
       remoteSignalSubscriptions.get(key).foreach { subscriber =>
         subscriber.foreach(broker.closeSignal(peerAddress, _, key))
-      }
-    })
+      },
+    )
 
   override def retrieveSignal[V](key: Identifier): Signal[V] =
-    localEmitters.getOrElseUpdate(key, {
-      val signal = new SignallingImpl[V]
-      (signal.asInstanceOf[Emitter[Any]], signal.asInstanceOf[Signal[Any]])
-    })._2.asInstanceOf[Signal[V]]
+    localEmitters
+      .getOrElseUpdate(
+        key, {
+          val signal = new SignallingImpl[V]
+          (signal.asInstanceOf[Emitter[Any]], signal.asInstanceOf[Signal[Any]])
+        },
+      )
+      ._2
+      .asInstanceOf[Signal[V]]
 
   override def emitLocalSignal[V](to: PeerAddress, key: Identifier, value: V): Unit =
     broker.propagateSignalTo(peerAddress, to, key, value)
@@ -154,15 +164,17 @@ private final class InMemoryNetworkImpl[LocalPeer <: Peer: PeerTag](
     subscribers -= peerAddress
 
   @tailrec private def eventLoopProcessor(): Unit =
-    broker.getEvents(peerAddress).foreach:
-      case NetworkEvent.Subscribed(key, from) => subscribe(from, key)
-      case NetworkEvent.Unsubscribed(key, from) => unsubscribe(from, key)
-      case NetworkEvent.ValueEmitted(key, value, from, to) => receiveRemoteSignalValue(key, value)
-      case NetworkEvent.Close(key, from) => localEmitters.get(key).foreach(_._1.close())
+    broker
+      .getEvents(peerAddress)
+      .foreach:
+        case NetworkEvent.Subscribed(key, from) => subscribe(from, key)
+        case NetworkEvent.Unsubscribed(key, from) => unsubscribe(from, key)
+        case NetworkEvent.ValueEmitted(key, value, from, to) => receiveRemoteSignalValue(key, value)
+        case NetworkEvent.Close(key, from) => localEmitters.get(key).foreach(_._1.close())
     Thread.sleep(10)
     eventLoopProcessor()
 
-  summon[ExecutionContext].execute(() => { eventLoopProcessor() })
+  summon[ExecutionContext].execute(() => eventLoopProcessor())
 end InMemoryNetworkImpl
 
 /**
@@ -189,7 +201,7 @@ class NetworkBroker:
   // Pending requests: we use a synchronized wrapper object as both the queue holder and the lock
   private case class PendingRequestQueue(queue: LinkedBlockingQueue[Promise[Any]] = LinkedBlockingQueue())
   private val pendingRequests: TrieMap[(PeerAddress, Identifier), PendingRequestQueue] = TrieMap.empty
-  
+
   private def getRequestQueue(peerAddress: PeerAddress, key: Identifier): PendingRequestQueue =
     pendingRequests.getOrElseUpdate((peerAddress, key), PendingRequestQueue())
 
@@ -265,7 +277,7 @@ class NetworkBroker:
 
   def getEvents(peerAddress: PeerAddress): Set[NetworkEvent[PeerAddress]] =
     events.remove(peerAddress).getOrElse(Set.empty) // Clear events after retrieval
-  
+
 end NetworkBroker
 
 object InMemoryNetwork:

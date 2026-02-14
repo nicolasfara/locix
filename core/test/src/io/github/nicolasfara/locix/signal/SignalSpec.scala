@@ -3,15 +3,15 @@ package io.github.nicolasfara.locix.signal
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.concurrent.Eventually
-import org.scalatest.time.{Millis, Seconds, Span}
+import org.scalatest.time.{ Millis, Seconds, Span }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable.ArrayBuffer
-import java.util.concurrent.{CountDownLatch, TimeUnit}
+import java.util.concurrent.{ CountDownLatch, TimeUnit }
 import java.util.concurrent.atomic.AtomicInteger
 
 class SignalSpec extends AnyFlatSpec with Matchers with Eventually:
-  
-  override given patienceConfig: PatienceConfig = 
+
+  override given patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(5, Seconds), interval = Span(50, Millis))
 
   behavior of "Signal"
@@ -24,16 +24,16 @@ class SignalSpec extends AnyFlatSpec with Matchers with Eventually:
   it should "deliver emitted values to subscribers" in:
     val (signal, emitter) = Signal.make[Int]
     val receivedValues = ArrayBuffer.empty[Int]
-    
+
     signal.subscribe { value =>
       receivedValues.synchronized:
         receivedValues += value
     }
-    
+
     emitter.emit(1)
     emitter.emit(2)
     emitter.emit(3)
-    
+
     eventually:
       receivedValues.synchronized:
         receivedValues.sorted should contain theSameElementsAs Seq(1, 2, 3)
@@ -42,20 +42,20 @@ class SignalSpec extends AnyFlatSpec with Matchers with Eventually:
     val (signal, emitter) = Signal.make[String]
     val received1 = ArrayBuffer.empty[String]
     val received2 = ArrayBuffer.empty[String]
-    
+
     signal.subscribe { value =>
       received1.synchronized:
         received1 += value
     }
-    
+
     signal.subscribe { value =>
       received2.synchronized:
         received2 += value
     }
-    
+
     emitter.emit("hello")
     emitter.emit("world")
-    
+
     eventually:
       received1.synchronized:
         received1.sorted should contain theSameElementsAs Seq("hello", "world")
@@ -65,47 +65,47 @@ class SignalSpec extends AnyFlatSpec with Matchers with Eventually:
   it should "allow subscribers to unsubscribe" in:
     val (signal, emitter) = Signal.make[Int]
     val receivedValues = ArrayBuffer.empty[Int]
-    
+
     val subscription = signal.subscribe { value =>
       receivedValues.synchronized:
         receivedValues += value
     }
-    
+
     emitter.emit(1)
-    
+
     eventually:
       receivedValues.synchronized:
         receivedValues should contain(1)
-    
+
     subscription.cancel()
-    
+
     emitter.emit(2)
-    
+
     Thread.sleep(200)
-    
+
     receivedValues.synchronized:
       receivedValues should not contain 2
 
   it should "not deliver values after signal is closed" in:
     val (signal, emitter) = Signal.make[Int]
     val receivedValues = ArrayBuffer.empty[Int]
-    
+
     signal.subscribe { value =>
       receivedValues.synchronized:
         receivedValues += value
     }
-    
+
     emitter.emit(1)
-    
+
     eventually:
       receivedValues.synchronized:
         receivedValues should contain(1)
-    
+
     emitter.close()
     emitter.emit(2)
-    
+
     Thread.sleep(200)
-    
+
     receivedValues.synchronized:
       receivedValues should not contain 2
 
@@ -113,27 +113,27 @@ class SignalSpec extends AnyFlatSpec with Matchers with Eventually:
     val (signal, emitter) = Signal.make[Int]
     val latch = new CountDownLatch(1)
     var called = false
-    
+
     signal.onClose { () =>
       called = true
       latch.countDown()
     }
-    
+
     emitter.close()
-    
+
     latch.await(1, TimeUnit.SECONDS) shouldBe true
     called shouldBe true
 
   it should "call onClose immediately if already closed" in:
     val (signal, emitter) = Signal.make[Int]
     var called = false
-    
+
     emitter.close()
-    
+
     signal.onClose { () =>
       called = true
     }
-    
+
     eventually:
       called shouldBe true
 
@@ -141,41 +141,41 @@ class SignalSpec extends AnyFlatSpec with Matchers with Eventually:
     val (signal, emitter) = Signal.make[Int]
     val latch = new CountDownLatch(3)
     val counter = new AtomicInteger(0)
-    
+
     signal.onClose { () =>
       counter.incrementAndGet()
       latch.countDown()
     }
-    
+
     signal.onClose { () =>
       counter.incrementAndGet()
       latch.countDown()
     }
-    
+
     signal.onClose { () =>
       counter.incrementAndGet()
       latch.countDown()
     }
-    
+
     emitter.close()
-    
+
     latch.await(1, TimeUnit.SECONDS) shouldBe true
     counter.get() shouldBe 3
 
   it should "clear subscribers when closed" in:
     val (signal, emitter) = Signal.make[Int]
     val receivedValues = ArrayBuffer.empty[Int]
-    
+
     signal.subscribe { value =>
       receivedValues.synchronized:
         receivedValues += value
     }
-    
+
     emitter.close()
     emitter.emit(1)
-    
+
     Thread.sleep(200)
-    
+
     receivedValues.synchronized:
       receivedValues shouldBe empty
 
@@ -183,16 +183,16 @@ class SignalSpec extends AnyFlatSpec with Matchers with Eventually:
     val (signal, emitter) = Signal.make[Int]
     val mappedSignal = signal.map(x => x * 2)
     val receivedValues = ArrayBuffer.empty[Int]
-    
+
     mappedSignal.subscribe { value =>
       receivedValues.synchronized:
         receivedValues += value
     }
-    
+
     emitter.emit(1)
     emitter.emit(2)
     emitter.emit(3)
-    
+
     eventually:
       receivedValues.synchronized:
         receivedValues.sorted should contain theSameElementsAs Seq(2, 4, 6)
@@ -203,17 +203,17 @@ class SignalSpec extends AnyFlatSpec with Matchers with Eventually:
       .map(x => x * 2)
       .map(x => x + 1)
       .map(x => x.toString)
-    
+
     val receivedValues = ArrayBuffer.empty[String]
-    
+
     mappedSignal.subscribe { value =>
       receivedValues.synchronized:
         receivedValues += value
     }
-    
+
     emitter.emit(1)
     emitter.emit(2)
-    
+
     eventually:
       receivedValues.synchronized:
         receivedValues.sorted should contain theSameElementsAs Seq("3", "5")
@@ -221,22 +221,22 @@ class SignalSpec extends AnyFlatSpec with Matchers with Eventually:
   it should "handle exceptions in callbacks gracefully" in:
     val (signal, emitter) = Signal.make[Int]
     val receivedValues = ArrayBuffer.empty[Int]
-    
+
     signal.subscribe { value =>
       if value == 2 then throw new RuntimeException("Test exception")
       receivedValues.synchronized:
         receivedValues += value
     }
-    
+
     signal.subscribe { value =>
       receivedValues.synchronized:
         receivedValues += value * 10
     }
-    
+
     emitter.emit(1)
     emitter.emit(2)
     emitter.emit(3)
-    
+
     eventually:
       receivedValues.synchronized:
         receivedValues should contain allOf (1, 10, 20, 3, 30)
@@ -244,16 +244,16 @@ class SignalSpec extends AnyFlatSpec with Matchers with Eventually:
   it should "not block emit when callbacks are slow" in:
     val (signal, emitter) = Signal.make[Int]
     val latch = new CountDownLatch(1)
-    
+
     signal.subscribe { value =>
       Thread.sleep(500)
       latch.countDown()
     }
-    
+
     val startTime = System.currentTimeMillis()
     emitter.emit(1)
     val endTime = System.currentTimeMillis()
-    
+
     (endTime - startTime) should be < 100L
     latch.await(1, TimeUnit.SECONDS) shouldBe true
 
@@ -261,20 +261,20 @@ class SignalSpec extends AnyFlatSpec with Matchers with Eventually:
     val (signal, emitter) = Signal.make[Int]
     val receivedValues = ArrayBuffer.empty[Int]
     val latch = new CountDownLatch(100)
-    
+
     signal.subscribe { value =>
       receivedValues.synchronized:
         receivedValues += value
       latch.countDown()
     }
-    
+
     val threads = (1 to 100).map { i =>
       new Thread(() => emitter.emit(i))
     }
-    
+
     threads.foreach(_.start())
     threads.foreach(_.join())
-    
+
     latch.await(5, TimeUnit.SECONDS) shouldBe true
     receivedValues.synchronized:
       receivedValues.size shouldBe 100
@@ -284,22 +284,22 @@ class SignalSpec extends AnyFlatSpec with Matchers with Eventually:
     val (signal, emitter) = Signal.make[Int]
     val counter = new AtomicInteger(0)
     val latch = new CountDownLatch(10)
-    
+
     val threads = (1 to 10).map { _ =>
-      new Thread(() => {
+      new Thread(() =>
         signal.subscribe { value =>
           counter.incrementAndGet()
           latch.countDown()
         }
-        ()
-      })
+        (),
+      )
     }
-    
+
     threads.foreach(_.start())
     threads.foreach(_.join())
-    
+
     emitter.emit(42)
-    
+
     latch.await(1, TimeUnit.SECONDS) shouldBe true
     counter.get() shouldBe 10
 
@@ -308,22 +308,22 @@ class SignalSpec extends AnyFlatSpec with Matchers with Eventually:
     val subscriptions = (1 to 100).map { _ =>
       signal.subscribe { _ => () }
     }.toArray
-    
+
     val threads = subscriptions.map { subscription =>
       new Thread(() => subscription.cancel())
     }
-    
+
     threads.foreach(_.start())
     threads.foreach(_.join())
-    
+
     val receivedValues = ArrayBuffer.empty[Int]
     signal.subscribe { value =>
       receivedValues.synchronized:
         receivedValues += value
     }
-    
+
     emitter.emit(1)
-    
+
     eventually:
       receivedValues.synchronized:
         receivedValues should contain(1)
@@ -331,15 +331,15 @@ class SignalSpec extends AnyFlatSpec with Matchers with Eventually:
   it should "not call closed callbacks multiple times" in:
     val (signal, emitter) = Signal.make[Int]
     val counter = new AtomicInteger(0)
-    
+
     signal.onClose { () =>
       counter.incrementAndGet()
     }
-    
+
     emitter.close()
     emitter.close()
     emitter.close()
-    
+
     eventually:
       counter.get() shouldBe 1
 
@@ -347,95 +347,96 @@ class SignalSpec extends AnyFlatSpec with Matchers with Eventually:
     val (signal, emitter) = Signal.make[Int]
     val counter = new AtomicInteger(0)
     val latch = new CountDownLatch(10)
-    
+
     val threads = (1 to 10).map { _ =>
-      new Thread(() => {
+      new Thread(() =>
         signal.onClose { () =>
           counter.incrementAndGet()
           latch.countDown()
         }
-        ()
-      })
+        (),
+      )
     }
-    
+
     threads.foreach(_.start())
-    
+
     Thread.sleep(50)
     emitter.close()
-    
+
     threads.foreach(_.join())
-    
+
     latch.await(1, TimeUnit.SECONDS) shouldBe true
     counter.get() shouldBe 10
 
   it should "handle map on closed signal" in:
     val (signal, emitter) = Signal.make[Int]
-    
+
     emitter.close()
-    
+
     val mappedSignal = signal.map(x => x * 2)
     val receivedValues = ArrayBuffer.empty[Int]
-    
+
     mappedSignal.subscribe { value =>
       receivedValues.synchronized:
         receivedValues += value
     }
-    
+
     Thread.sleep(200)
-    
+
     receivedValues.synchronized:
       receivedValues shouldBe empty
 
   it should "work with different value types" in:
     case class TestData(id: Int, name: String)
-    
+
     val (signal, emitter) = Signal.make[TestData]
     val receivedValues = ArrayBuffer.empty[TestData]
-    
+
     signal.subscribe { value =>
       receivedValues.synchronized:
         receivedValues += value
     }
-    
+
     emitter.emit(TestData(1, "Alice"))
     emitter.emit(TestData(2, "Bob"))
-    
+
     eventually:
       receivedValues.synchronized:
         receivedValues should contain theSameElementsInOrderAs Seq(
           TestData(1, "Alice"),
-          TestData(2, "Bob")
+          TestData(2, "Bob"),
         )
 
   it should "preserve subscription order for events" in:
     val (signal, emitter) = Signal.make[Int]
     val results = ArrayBuffer.empty[String]
     val latch = new CountDownLatch(6)
-    
+
     signal.subscribe { value =>
       results.synchronized:
         results += s"sub1-$value"
       latch.countDown()
     }
-    
+
     signal.subscribe { value =>
       results.synchronized:
         results += s"sub2-$value"
       latch.countDown()
     }
-    
+
     signal.subscribe { value =>
       results.synchronized:
         results += s"sub3-$value"
       latch.countDown()
     }
-    
+
     emitter.emit(1)
     emitter.emit(2)
-    
+
     latch.await(1, TimeUnit.SECONDS) shouldBe true
-    
+
     results.synchronized:
       results.count(_.startsWith("sub1")) shouldBe 2
       results.count(_.startsWith("sub2")) shouldBe 2
       results.count(_.startsWith("sub3")) shouldBe 2
+end SignalSpec

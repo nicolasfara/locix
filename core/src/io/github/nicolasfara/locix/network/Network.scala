@@ -1,10 +1,11 @@
 package io.github.nicolasfara.locix.network
 
-import io.github.nicolasfara.locix.raise.Raise
-import io.github.nicolasfara.locix.peers.Peers.*
 import scala.caps.SharedCapability
+
+import io.github.nicolasfara.locix.network as PeerAddress
+import io.github.nicolasfara.locix.peers.Peers.*
+import io.github.nicolasfara.locix.raise.Raise
 import io.github.nicolasfara.locix.signal.Signal
-import io.github.nicolasfara.locix.{network => PeerAddress}
 
 // enum NetworkMessage[PeerAddress]:
 //   case Push[V](key: Identifier, value: V, peer: PeerAddress)
@@ -53,9 +54,9 @@ trait Network extends SharedCapability:
    */
   def pull[From <: TiedWith[To], To <: Peer, V](using Raise[NetworkError])(from: PeerAddress, key: Identifier): V
 
-  /** Pull the value associated with the provided [[key]] from all specified peer addresses.
-   *  This is typically used in scenarios where multiple peers are expected to provide a value for the same key,
-   *  and the requesting peer wants to gather all those values.
+  /**
+   * Pull the value associated with the provided [[key]] from all specified peer addresses. This is typically used in scenarios where multiple peers
+   * are expected to provide a value for the same key, and the requesting peer wants to gather all those values.
    *
    * The function may fail with a [[NetworkError]].
    */
@@ -85,8 +86,9 @@ trait Network extends SharedCapability:
 
   // Reactive primitives
 
-  /** Registers into the network a [[signal]] identified by the provided [[key]].
-   * Internally the network listens for emitted values and propagates them to all subscribed peers.
+  /**
+   * Registers into the network a [[signal]] identified by the provided [[key]]. Internally the network listens for emitted values and propagates them
+   * to all subscribed peers.
    */
   def registerSignal[V](key: Identifier, signal: Signal[V]): Unit
 
