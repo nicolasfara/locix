@@ -26,7 +26,7 @@ object AsyncMasterWorker:
 
   def asyncMasterWorker(using Network, Placement, Multitier) = Multitier:
     val signals = on[Master]:
-      signalBuilder: e =>
+      signalBuilder[Int]: e =>
         Thread.sleep(1000) // Simulate some work before emitting the signal
         e.emit(42)
         Thread.sleep(1000) // Simulate some work before emitting the signal
@@ -38,10 +38,7 @@ object AsyncMasterWorker:
     on[Worker]:
       val localAddress = peerAddress
       val signal = asLocal(signals)
-      signal.subscribe(value => println(s"Worker [$localAddress] received value: $value"))
-      // if localAddress == "worker1" then signal.subscribe(value => println(s"MUUU"))
-    Thread.sleep(5000) // Wait for a bit to ensure the signal is received before the program exits
-    ()
+      println(s"Peer [$localAddress] - ${signal.fold(0)(_ + _)}")
 
   private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](program: (Network, PlacementType, Multitier) ?=> V): V =
     given Network = net

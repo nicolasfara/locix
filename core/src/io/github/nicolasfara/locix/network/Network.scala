@@ -20,6 +20,7 @@ enum NetworkEvent[PeerAddress](from: PeerAddress):
   case ValueEmitted[V, PeerAddress](key: Identifier, value: V, from: PeerAddress, to: PeerAddress) extends NetworkEvent(from)
   case Subscribed(key: Identifier, from: PeerAddress) extends NetworkEvent(from)
   case Unsubscribed(key: Identifier, from: PeerAddress) extends NetworkEvent(from)
+  case Close(key: Identifier, from: PeerAddress) extends NetworkEvent(from)
 
 enum NetworkError(val message: String) extends Throwable(message):
   case SinglePeerExpected(peerType: String) extends NetworkError(s"Expected a single peer of type $peerType, but found multiple.")

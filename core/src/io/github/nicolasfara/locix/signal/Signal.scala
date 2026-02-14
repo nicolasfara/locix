@@ -11,6 +11,8 @@ import scala.collection.concurrent.TrieMap
 import io.github.nicolasfara.locix.network.Network
 import scala.caps.CapSet
 import scala.caps.unsafe.unsafeAssumePure
+import scala.concurrent.Promise
+import scala.concurrent.duration.Duration
 
 trait Emitter[V]:
   def emit(value: V): Unit
@@ -21,8 +23,9 @@ trait Subscription:
 
 trait Signal[V]:
   def subscribe(callback: V => Unit): Subscription
-  def onClose(callback: () -> Unit): Unit
+  def onClose(callback: () => Unit): Unit
   def map[U](f: V -> U): Signal[U]
+  def fold[U](initial: U)(f: (U, V) -> U): U
 
 object Signal:
   def make[V](using ec: ExecutionContext): (Signal[V], Emitter[V]) =
@@ -31,7 +34,7 @@ object Signal:
 
   def signalBuilder[V](body: Emitter[V] => Unit)(using ec: ExecutionContext): Signal[V] =
     val (signal, emitter) = make[V]
-    ec.execute(() => body(emitter))
+    ec.execute(() => { body(emitter); emitter.close() })
     signal
 
   class SignallingImpl[V](using ec: ExecutionContext) extends Signal[V], Emitter[V]:
@@ -41,11 +44,11 @@ object Signal:
     private val callbackCounter = AtomicLong(0)
     private val closed = AtomicBoolean(false)
 
-    override def onClose(callback: () -> Unit): Unit =
+    override def onClose(callback: () => Unit): Unit =
       if closed.get() then callback()
       else
         val id = callbackCounter.incrementAndGet()
-        onCloseCallbacks += (id -> callback)
+        onCloseCallbacks += (id -> unsafeAssumePure(callback))
         // Double-check in case close() happened between the first check and adding the callback
         if closed.get() then onCloseCallbacks.remove(id).foreach(_.apply)
 
@@ -56,6 +59,13 @@ object Signal:
         mappedSignal.emit(u)
       }
       mappedSignal
+
+    override def fold[U](initial: U)(f: (U, V) -> U): U =
+      val promise = Promise[U]()
+      var accumulator = initial
+      subscribe { v => accumulator = f(accumulator, v) }
+      onClose { () => promise.success(accumulator) }
+      Await.result(promise.future, Duration.Inf)
 
     override def close(): Unit = if closed.compareAndSet(false, true) then
       subscribers.clear()
