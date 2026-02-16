@@ -7,16 +7,6 @@ import io.github.nicolasfara.locix.peers.Peers.*
 import io.github.nicolasfara.locix.raise.Raise
 import io.github.nicolasfara.locix.signal.Signal
 
-// enum NetworkMessage[PeerAddress]:
-//   case Push[V](key: Identifier, value: V, peer: PeerAddress)
-//   case RequestValue(key: Identifier, correlationId: String, peer: PeerAddress)
-//   case ResponseValue[V](key: Identifier, value: V, correlationId: String, peer: PeerAddress)
-//   case Broadcast[V](key: Identifier, value: V, peer: PeerAddress)
-//   case Emitted[V](key: Identifier, value: V, peer: PeerAddress)
-//   case CloseSignal(key: Identifier, peer: PeerAddress)
-//   case Subscribe(key: Identifier, peer: PeerAddress)
-//   case Unsubscribe(key: Identifier, peer: PeerAddress)
-
 enum NetworkEvent[PeerAddress](from: PeerAddress):
   case ValueEmitted[V, PeerAddress](key: Identifier, value: V, from: PeerAddress, to: PeerAddress) extends NetworkEvent(from)
   case Subscribed(key: Identifier, from: PeerAddress) extends NetworkEvent(from)
@@ -77,6 +67,8 @@ trait Network extends SharedCapability:
    * retry mechanism is responsibility of the network implementation and may involve strategies such as exponential backoff or fixed intervals.
    */
   def retrieve[S <: Peer, V](using Raise[NetworkError])(key: Identifier): V
+
+  def retrieveNow[S <: Peer, V](using Raise[NetworkError])(from: PeerAddress, key: Identifier): Option[V]
 
   /**
    * Persist the value associated with the provided [[key]] in the local store. This allows the value to be retrieved later using the same key, either

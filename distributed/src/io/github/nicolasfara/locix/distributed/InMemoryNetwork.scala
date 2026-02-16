@@ -35,7 +35,7 @@ import io.github.nicolasfara.locix.network.NetworkEvent
 private final class InMemoryNetworkImpl[LocalPeer <: Peer: PeerTag](
     private val address: String,
     private val broker: NetworkBroker,
-    private val timeout: FiniteDuration = 5.seconds,
+    private val timeout: FiniteDuration = 2.seconds,
 )(using ExecutionContext)
     extends Network:
   private val localEmitters: TrieMap[Identifier, (Emitter[Any], Signal[Any])] = TrieMap.empty
@@ -116,6 +116,9 @@ private final class InMemoryNetworkImpl[LocalPeer <: Peer: PeerTag](
           Thread.sleep(baseDelay.toMillis * Math.pow(1.5, attempt).toLong)
           tryRetrieve(attempt + 1)
     tryRetrieve(0)
+
+  override def retrieveNow[S <: Peer, V](using Raise[NetworkError])(from: PeerAddress, key: Identifier): Option[V] =
+    broker.getValue(from, key).map(_.asInstanceOf[V])
 
   override def store[V](key: Identifier, value: V): Unit = broker.putValue(address, key, value)
 
