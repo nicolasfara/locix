@@ -7,9 +7,18 @@ import io.github.nicolasfara.locix.VM
 import io.github.nicolasfara.locix.Field
 import io.github.nicolasfara.locix.network.Network
 
-private case class FieldImpl[+V, Id](localId: Id, override val localValue: V, values: Map[Id, V]) extends Field[V]:
+private[locix] case class FieldImpl[+V, DeviceId](localId: DeviceId, override val localValue: V, values: Map[DeviceId, V]) extends Field[V]:
+  type Id = DeviceId
   def map[U](f: V -> U): io.github.nicolasfara.locix.Field[U] = FieldImpl(localId, f(localValue), values.view.mapValues(f).toMap)
-  def withoutSelf: Iterable[V] = values.filterNot(_._1 == localId).values
+
+  def withoutSelf: Map[Id, V] = values.filterNot(_._1 == localId)
+
+  def combine[A, B](that: Field[A])(f: (V, A) -> B): Field[B] =
+    val local = f(this.localValue, that.localValue)
+    val combinedValues = this.values.flatMap: 
+      case (id: that.Id @unchecked, v) => that.withoutSelf.get(id).map(a => id -> f(v, a))
+      case _ => None
+    FieldImpl(localId, local, combinedValues.toMap)
 
 private final class CollectiveHandlerImpl[P <: Peer: PeerTag, Id] extends Collective:
   def rep[V](using vm: VM)(initial: V)(evolution: V -> V): V =

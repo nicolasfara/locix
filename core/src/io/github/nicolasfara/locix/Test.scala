@@ -40,6 +40,8 @@ object Test:
     Multitier:
       // comm[Ponger, Pinger](???)
       on[Ponger] { asLocal(a) }
+    // val b = Multitier { summon[Scope[MultitierScope]] }
+    // b
 
   def baz(using Network, PlacementType^, Choreography, Multitier) =
     // val r = bar

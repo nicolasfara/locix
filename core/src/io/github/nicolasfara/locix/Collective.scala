@@ -70,18 +70,24 @@ sealed trait VM:
     trace.clear()
 
 trait Field[+V] extends SharedCapability:
-  def withoutSelf: Iterable[V]
+  type Id
+
+  def withoutSelf: Map[Id, V]
   def map[U](f: V -> U): Field[U]
   def localValue: V
+  def combine[A, B](that: Field[A])(f: (V, A) -> B): Field[B]
 
 object Field:
-   extension [N: Numeric](field: Field[N])
-    def sum: N = field.withoutSelf.fold(field.localValue)(Numeric[N].plus)
-    def sumWithoutSelf(default: N): N = field.withoutSelf.fold(default)(Numeric[N].plus)
+  extension [N: Numeric](field: Field[N])
+    def sum: N = field.withoutSelf.values.fold(field.localValue)(Numeric[N].plus)
+    def sumWithoutSelf(default: N): N = field.withoutSelf.values.fold(default)(Numeric[N].plus)
     def max: N = field.maxWithoutSelf(field.localValue)
-    def maxWithoutSelf(default: N): N = field.withoutSelf.fold(default)(Numeric[N].max)
+    def maxWithoutSelf(default: N): N = field.withoutSelf.values.fold(default)(Numeric[N].max)
     def min: N = field.minWithoutSelf(field.localValue)
-    def minWithoutSelf(default: N): N = field.withoutSelf.fold(default)(Numeric[N].min)
+    def minWithoutSelf(default: N): N = field.withoutSelf.values.fold(default)(Numeric[N].min)
+    def +[U >: N: Numeric](that: Field[U]): Field[U] = field.combine(that)(Numeric[U].plus)
+    def -[U >: N: Numeric](that: Field[U]): Field[U] = field.combine(that)(Numeric[U].minus)
+    def *[U >: N: Numeric](that: Field[U]): Field[U] = field.combine(that)(Numeric[U].times)
 
 trait Collective extends Multiparty:
   def rep[V](using VM)(initial: V)(evolution: V -> V): V
