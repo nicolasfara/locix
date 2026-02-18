@@ -69,11 +69,6 @@ object distributed extends CommonScala {
   def moduleDeps = Seq(core)
 }
 
-// object examples extends CommonScala {
-//   def moduleDeps = Seq(core)
-//   override def mvnDeps = Seq(
-//       mvn"io.circe::circe-core:0.14.15",
-//       mvn"io.circe::circe-generic:0.14.15",
-//       mvn"io.circe::circe-parser:0.14.15",
-//   )
-// }
+object examples extends CommonScala {
+  def moduleDeps = Seq(core, distributed)
+}
