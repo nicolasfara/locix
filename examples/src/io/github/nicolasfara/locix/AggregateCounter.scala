@@ -1,77 +1,56 @@
 package io.github.nicolasfara.locix
 
-import scala.concurrent.Await
-import scala.concurrent.Future
-import scala.concurrent.duration.Duration
+import io.github.nicolasfara.locix.peers.Peers.Cardinality.*
+import io.github.nicolasfara.locix.network.Network
+import io.github.nicolasfara.locix.placement.Placement
+import io.github.nicolasfara.locix.Collective
 import scala.concurrent.duration.DurationInt
-
-import io.github.nicolasfara.locix.network.InMemoryNetwork
-import io.github.nicolasfara.locix.{ Collective, Locix }
-
-import Collective.*
-import network.Network
-import network.Network.*
-import placement.Peers.Quantifier.*
-import placement.Peers.peer
-import placement.PlacedFlow
-import placement.PlacedFlow.*
-import placement.PlacedValue
-import placement.PlacedValue.*
-import io.github.nicolasfara.locix.FieldOps.sum
+import scala.concurrent.ExecutionContext.Implicits.global
+import io.github.nicolasfara.locix.Collective.*
+import io.github.nicolasfara.locix.placement.PeerScope.take
+import io.github.nicolasfara.locix.placement.PlacementType.on
+import io.github.nicolasfara.locix.peers.Peers.Peer
+import io.github.nicolasfara.locix.peers.Peers.PeerTag
+import io.github.nicolasfara.locix.placement.PlacementType
+import io.github.nicolasfara.locix.raise.Raise
+import io.github.nicolasfara.locix.network.NetworkError
+import io.github.nicolasfara.locix.handlers.PlacementTypeHandler
+import io.github.nicolasfara.locix.handlers.CollectiveHandler
+import scala.concurrent.duration.Duration
+import io.github.nicolasfara.locix.network.Network.peerAddress
+import io.github.nicolasfara.locix.distributed.InMemoryNetwork
 
 object AggregateCounter:
   type Smartphone <: { type Tie <: Multiple[Smartphone] }
 
-  // def foo(using Network, Collective, PlacedFlow) = collective[Smartphone](1.seconds):
-  //   (_: Int) => repeat(0) { i => i + 1 }
+  def counter(using Network, Placement, Collective) =
+    val collectiveCounter = Collective[Smartphone](1.seconds):
+      // rep(0)(_ + 1)
+      val nbrCount = nbr(1)
+      nbrCount.sum
 
-  def neighborCounter(using Network, Collective, PlacedFlow, PlacedValue) =
-    val collectiveCounters = collective[Smartphone](1.seconds):
-      repeat(0): _ =>
-        neighbors(1).sum
+    on[Smartphone]:
+      val signal = take(collectiveCounter)
+      signal.subscribe { value =>
+        println(s"Device ${peerAddress} has count: $value")
+      }
+      Thread.sleep(5000) // Keep the program running for a while to observe the output
 
-    val unitOf = on[Smartphone]:
-      val counter = collectiveCounters.takeFlow
-      counter
-        // .take(10)
-        .runForeach: count =>
-          println(s"[$localAddress] counter: $count")
+  private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](program: (Network, PlacementType, Collective) ?=> V): V =
+    given Network = net
+    given Raise[NetworkError] = Raise.rethrowError
+    given ptHandler: Placement = PlacementTypeHandler.handler[P]
+    given clHandler: Collective = CollectiveHandler.handle[P, net.PeerAddress, V]
+    program
 
   def main(args: Array[String]): Unit =
-    import scala.concurrent.ExecutionContext.Implicits.global
+    val broker = InMemoryNetwork.broker()
+    val smartphone1 = InMemoryNetwork[Smartphone]("smartphone-1", broker)
+    val smartphone2 = InMemoryNetwork[Smartphone]("smartphone-2", broker)
 
-    val smartphone1 = InMemoryNetwork[Smartphone]("smartphone-1", 1)
-    val smartphone2 = InMemoryNetwork[Smartphone]("smartphone-2", 2)
-    val smartphone3 = InMemoryNetwork[Smartphone]("smartphone-3", 3)
-
-    smartphone1.addReachablePeer(smartphone2)
-    smartphone1.addReachablePeer(smartphone3)
-    smartphone2.addReachablePeer(smartphone1)
-    smartphone3.addReachablePeer(smartphone1)
-
-    val smartphone1Future = Future:
-      println("Starting Smartphone 1")
-      given Locix[InMemoryNetwork[Smartphone]] = Locix(smartphone1)
-      PlacedFlow.run[Smartphone]:
-        PlacedValue.run[Smartphone]:
-          Collective.run[Smartphone](neighborCounter)
-
-    val smartphone2Future = Future:
-      println("Starting Smartphone 2")
-      given Locix[InMemoryNetwork[Smartphone]] = Locix(smartphone2)
-      PlacedFlow.run[Smartphone]:
-        PlacedValue.run[Smartphone]:
-          Collective.run[Smartphone](neighborCounter)
-
-    val smartphone3Future = Future:
-      println("Starting Smartphone 3")
-      given Locix[InMemoryNetwork[Smartphone]] = Locix(smartphone3)
-      PlacedFlow.run[Smartphone]:
-        PlacedValue.run[Smartphone]:
-          Collective.run[Smartphone](neighborCounter)
-
-    val complete = Future.sequence(List(smartphone1Future, smartphone2Future, smartphone3Future))
-    Await.result(complete, Duration.Inf)
-    println("AggregateCounter program completed")
-  end main
-end AggregateCounter
+    val futures = Seq(smartphone1, smartphone2).map { net =>
+      scala.concurrent.Future:
+        handleProgramForPeer[Smartphone](net)(counter)
+    }
+    scala.concurrent.Await.result(scala.concurrent.Future.sequence(futures), Duration.Inf)
+    

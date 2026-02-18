@@ -1,152 +1,79 @@
 package io.github.nicolasfara.locix
 
-import scala.concurrent.*
-import scala.concurrent.duration.*
-
-import io.github.nicolasfara.locix.network.InMemoryNetwork
-import io.github.nicolasfara.locix.{ Choreography, Locix }
-
-import Choreography.*
-import network.Network.*
-import placement.Peers.Quantifier.*
-import placement.Peers.peer
-import placement.PlacedValue
-import placement.PlacedValue.*
-import placement.PlacementType.on
+import io.github.nicolasfara.locix.peers.Peers.Cardinality.*
+import io.github.nicolasfara.locix.network.Network
+import io.github.nicolasfara.locix.placement.Placement
+import io.github.nicolasfara.locix.peers.Peers.Peer
+import io.github.nicolasfara.locix.peers.Peers.PeerTag
+import io.github.nicolasfara.locix.placement.PlacementType
+import io.github.nicolasfara.locix.raise.Raise
+import io.github.nicolasfara.locix.network.NetworkError
+import io.github.nicolasfara.locix.handlers.PlacementTypeHandler
+import io.github.nicolasfara.locix.handlers.ChoreographyHandler
+import io.github.nicolasfara.locix.distributed.InMemoryNetwork
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.concurrent.Await
+import io.github.nicolasfara.locix.EmailSystemUtils.createServerDB
+import io.github.nicolasfara.locix.EmailSystemUtils.ClientConfig
+import io.github.nicolasfara.locix.placement.PlacementType.on
+import io.github.nicolasfara.locix.Choreography.*
+import io.github.nicolasfara.locix.EmailSystemUtils.createClientDB
+import io.github.nicolasfara.locix.placement.PeerScope.take
+import io.github.nicolasfara.locix.EmailSystemUtils.Attachment
 
 object EmailSystemChoreo:
   type Client <: { type Tie <: Single[Server] }
   type Server <: { type Tie <: Single[Client] }
 
-  type UserId = String
-
-  trait MainServerDB:
-    def getAttachments(emailId: Long): List[Attachment]
-    def since(id: UserId, ts: Long): List[Email]
-
-  trait MainDB:
-    def updateAttachments(attachments: List[Attachment]): Unit
-    def update(emails: List[Email]): Unit
-    def extractIds(emails: List[Email]): List[Long] =
-      emails.map(_.id)
-    def lastCheckout: Long
-
-  case class Email(id: Long, subject: String, body: String, timestamp: Long, attachments: List[Attachment])
-  case class Attachment(filename: String, data: Array[Byte])
-
-  case class ClientConfig(userId: UserId, isOnFlatRate: Boolean)
-
-  // Mock implementations for demonstration
-  def createServerDB(): MainServerDB = new MainServerDB:
-    private val emails = Map(
-      "user1" -> List(
-        Email(1L, "Welcome", "Welcome to our service", 1000L, List.empty),
-        Email(2L, "Update", "System update available", 2000L, List.empty),
-        Email(3L, "Newsletter", "Monthly newsletter", 3000L, List.empty),
-      ),
-    )
-    private val attachments = Map(
-      1L -> List(Attachment("welcome.pdf", Array[Byte](1, 2, 3))),
-      2L -> List(Attachment("update.zip", Array[Byte](4, 5, 6))),
-      3L -> List(Attachment("newsletter.pdf", Array[Byte](7, 8, 9))),
-    )
-
-    def getAttachments(emailId: Long): List[Attachment] =
-      println(s"[Server] Fetching attachments for email $emailId")
-      attachments.getOrElse(emailId, List.empty)
-
-    def since(id: UserId, ts: Long): List[Email] =
-      println(s"[Server] Fetching emails for user $id since timestamp $ts")
-      emails.getOrElse(id, List.empty).filter(_.timestamp > ts)
-
-  def createClientDB(): MainDB = new MainDB:
-    val lastCheckout: Long = 0L
-
-    def updateAttachments(attachments: List[Attachment]): Unit =
-      println(s"[Client] Updating ${attachments.size} attachments")
-
-    def update(emails: List[Email]): Unit =
-      println(s"[Client] Updating ${emails.size} emails")
-
-  /**
-   * Email synchronization protocol
-   *
-   * This demonstrates a multi-tier choreography where a client synchronizes emails from a server, with context-aware attachment fetching based on
-   * network conditions.
-   */
-  def emailSyncProtocol(config: ClientConfig)(using Network, PlacedValue, Choreography) =
-    // Get emails from server
-    val emailsOnServer: List[Email] on Server = on[Server]:
+  def emailSyncProtocol(config: ClientConfig)(using Network, Placement, Choreography) = Choreography:
+    val emailsOnServer = on[Server]:
       val ts = 0L
-      println(s"[Server] Fetching emails for user ${config.userId}")
+      println(s"[Server] Starting email sync protocol with timestamp $ts")
       createServerDB().since(config.userId, ts)
-
     val emailsOnClient = comm[Server, Client](emailsOnServer)
-
-    // Update emails on client
     on[Client]:
-      val emails = emailsOnClient.take
+      val emails = take(emailsOnClient)
+      println(s"[Client] Received ${emails.size} emails from server")
       val db = createClientDB()
       db.update(emails)
-
-    // Fetch attachments from server if client is on flat rate
-    val attachmentsOnServer: List[Attachment] on Server = on[Server]:
+    val attachmentsOnServer = on[Server]:
       if config.isOnFlatRate then
-        val emails = emailsOnServer.take
+        val emails = take(emailsOnServer)
         val emailIds = emails.map(_.id)
         println(s"[Server] Fetching attachments for ${emailIds.size} emails (client on flat rate)")
         emailIds.flatMap(createServerDB().getAttachments)
       else
         println(s"[Server] Skipping attachments (client not on flat rate)")
         List.empty[Attachment]
-
     val attachmentsOnClient = comm[Server, Client](attachmentsOnServer)
-
-    // Update attachments on client if any were fetched
     on[Client]:
-      val attachments = attachmentsOnClient.take
+      val attachments = take(attachmentsOnClient)
       if attachments.nonEmpty then createClientDB().updateAttachments(attachments)
       println(s"[Client] Email synchronization completed")
       ()
   end emailSyncProtocol
 
-  def main(args: Array[String]): Unit =
-    import scala.concurrent.ExecutionContext.Implicits.global
+  private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](program: (Network, PlacementType, Choreography) ?=> V): V =
+    given Network = net
+    given Raise[NetworkError] = Raise.rethrowError
+    given ptHandler: PlacementType = PlacementTypeHandler.handler[P]
+    given cHandler: Choreography = ChoreographyHandler.handler[P]
+    program
 
-    // Read configuration from arguments or use defaults
+  def main(args: Array[String]): Unit =
+    println("Running Email System choreography...")
     val userId = if args.length > 0 then args(0) else "user1"
     val isOnFlatRate = if args.length > 1 then args(1).toBoolean else true
     val config = ClientConfig(userId, isOnFlatRate)
 
-    println(s"Configuration: userId=$userId, isOnFlatRate=$isOnFlatRate")
-    println()
+    val broker = InMemoryNetwork.broker()
+    val pingerNetwork = InMemoryNetwork[Client]("client", broker)
+    val pongerNetwork = InMemoryNetwork[Server]("server", broker)
 
-    // Create network nodes for each participant
-    val clientNetwork = InMemoryNetwork[Client]("client-address", 1)
-    val serverNetwork = InMemoryNetwork[Server]("server-address", 2)
+    val pingerFuture = Future { handleProgramForPeer[Client](pingerNetwork)(emailSyncProtocol(config)) }
+    val pongerFuture = Future { handleProgramForPeer[Server](pongerNetwork)(emailSyncProtocol(config)) }
 
-    // Set up bidirectional connectivity between Client and Server
-    clientNetwork.addReachablePeer(serverNetwork)
-    serverNetwork.addReachablePeer(clientNetwork)
-
-    println("=== Email System Protocol ===\n")
-
-    // Run each participant concurrently
-    val clientFuture = Future:
-      println("Starting Client")
-      given Locix[InMemoryNetwork[Client]] = Locix(clientNetwork)
-      PlacedValue.run[Client]:
-        Choreography.run[Client](emailSyncProtocol(config))
-
-    val serverFuture = Future:
-      println("Starting Server")
-      given Locix[InMemoryNetwork[Server]] = Locix(serverNetwork)
-      PlacedValue.run[Server]:
-        Choreography.run[Server](emailSyncProtocol(config))
-
-    val complete = Future.sequence(List(clientFuture, serverFuture))
-    Await.result(complete, 10.seconds)
-
-    println("\n=== Email System Protocol Completed ===")
-  end main
-end EmailSystemChoreo
+    // Wait for both peers to finish
+    val combinedFuture = Future.sequence(Seq(pingerFuture, pongerFuture))
+    Await.result(combinedFuture, scala.concurrent.duration.Duration.Inf)

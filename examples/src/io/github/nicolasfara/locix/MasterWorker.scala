@@ -1,103 +1,79 @@
 package io.github.nicolasfara.locix
 
-import scala.concurrent.*
-import scala.concurrent.duration.*
-
-import io.github.nicolasfara.locix.network.InMemoryNetwork
-import io.github.nicolasfara.locix.{ Locix, Multitier }
-import ox.flow.Flow
-
-import Multitier.*
-import network.Network.*
-import placement.Peers.Quantifier.*
-import placement.Peers.peer
-import placement.PlacedFlow
-import placement.PlacedFlow.*
-import placement.PlacedValue
-import placement.PlacedValue.*
+import io.github.nicolasfara.locix.peers.Peers.Cardinality.*
+import io.github.nicolasfara.locix.network.Network
+import io.github.nicolasfara.locix.placement.Placement
+import io.github.nicolasfara.locix.Multitier
+import io.github.nicolasfara.locix.network.Network.reachablePeersOf
+import io.github.nicolasfara.locix.placement.PlacementType.on
+import io.github.nicolasfara.locix.Multitier.*
+import io.github.nicolasfara.locix.placement.PeerScope.take
+import io.github.nicolasfara.locix.network.Network.peerAddress
+import io.github.nicolasfara.locix.peers.Peers.Peer
+import io.github.nicolasfara.locix.peers.Peers.PeerTag
+import io.github.nicolasfara.locix.raise.Raise
+import io.github.nicolasfara.locix.network.NetworkError
+import io.github.nicolasfara.locix.handlers.PlacementTypeHandler
+import io.github.nicolasfara.locix.handlers.MultitierHandler
+import scala.concurrent.Future
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
+import io.github.nicolasfara.locix.placement.PlacementType
+import io.github.nicolasfara.locix.distributed.InMemoryNetwork
 
 object MasterWorker:
-  type Worker <: { type Tie <: Single[Master] }
   type Master <: { type Tie <: Multiple[Worker] }
+  type Worker <: { type Tie <: Single[Master] }
 
-  case class Task(val input: Int):
-    def exec(): Int = input * input
+  class Task(input: Int):
+    def exec(): Int = input * 2
 
-  def selectWorker(using net: Network): net.effect.Address[Worker] =
-    import scala.util.Random
-    val reachablePeers = reachablePeersOf[Worker].toList
-    val candidate = Random.shuffle(reachablePeers).head
-    candidate
+  def allocateTasks(using Network) =
+    val inputs = List(1, 2, 3, 4, 5)
+    val workers = reachablePeersOf[Worker]
+    val allocation = workers
+      .zip(inputs.grouped((inputs.size + workers.size - 1) / workers.size))
+      .toMap
+      .map:
+        case (worker, tasks) => worker -> tasks.map(new Task(_))
+    allocation
 
-  def masterWorker(using Network, Multitier, PlacedFlow, PlacedValue) =
-    val inputsOnMaster = flowOn[Master]:
-      println(s"[$localAddress] generating tasks on Master.")
-      Flow.fromIterable(List(1, 2, 3, 4, 5)).map(selectWorker -> Task(_))
-
-    val resultOnWorker = on[Worker]:
-      println(s"[$localAddress] started processing tasks.")
-      val tasks = collectAsLocal(inputsOnMaster)
-        .filter((addr, _) => addr == localAddress)
-        .tap((idTask => println(s"[$localAddress] received task: ${idTask._2}")))
-        .map((id, task) => task.exec())
-        .runToList()
-      println(s"[$localAddress] completed tasks with results: ${tasks}")
-      tasks
-
+  def taskAllocation(using n: Network, p: Placement, m: Multitier) = Multitier:
+    val allocation = on[Master] { allocateTasks }
+    val workerResults = on[Worker]:
+      val localAddress = peerAddress
+      asLocal(allocation)
+        .filter(_._1 == localAddress)
+        .flatMap(_._2)
+        .map(task => task.exec())
+        .tapEach(result => println(s"[$localAddress] computed result: $result"))
     on[Master]:
-      val workerResults = asLocalAll(resultOnWorker)
-      println(s"[$localAddress] collected results from workers: ${workerResults}")
-      val collectedResults = workerResults.values.flatten
-      println(s"[$localAddress] Final results collected: ${collectedResults.toList.sorted}")
-  end masterWorker
+      val collectedResults = asLocalAll(workerResults).values.flatMap(_.toList).toList
+      println(s"Master collected results: $collectedResults")
+    ()
+
+  private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](program: (Network, PlacementType, Multitier) ?=> V): V =
+    given Network = net
+    given Raise[NetworkError] = Raise.rethrowError
+    given ptHandler: Placement = PlacementTypeHandler.handler[P]
+    given mtHandler: Multitier = MultitierHandler.handler[P]
+    program
 
   def main(args: Array[String]): Unit =
-    import scala.concurrent.ExecutionContext.Implicits.global
+    println("Running Master-Worker task allocation...")
+    val broker = InMemoryNetwork.broker()
+    val masterNetwork = InMemoryNetwork[Master]("master", broker)
+    val workerNetwork1 = InMemoryNetwork[Worker]("worker1", broker)
+    val workerNetwork2 = InMemoryNetwork[Worker]("worker2", broker)
+    val workerNetwork3 = InMemoryNetwork[Worker]("worker3", broker)
 
-    val masterNetwork = InMemoryNetwork[Master]("master-address", 0)
-    val worker1Network = InMemoryNetwork[Worker]("worker-address-1", 1)
-    val worker2Network = InMemoryNetwork[Worker]("worker-address-2", 2)
-    val worker3Network = InMemoryNetwork[Worker]("worker-address-3", 3)
-    masterNetwork.addReachablePeer(worker1Network)
-    masterNetwork.addReachablePeer(worker2Network)
-    masterNetwork.addReachablePeer(worker3Network)
-    worker1Network.addReachablePeer(masterNetwork)
-    worker2Network.addReachablePeer(masterNetwork)
-    worker3Network.addReachablePeer(masterNetwork)
+    // Run the task allocation program on all peers
+    val masterFuture = Future { handleProgramForPeer[Master](masterNetwork)(taskAllocation) }
+    val workerFutures = Seq(workerNetwork1, workerNetwork2, workerNetwork3).map { net =>
+      Future { handleProgramForPeer[Worker](net)(taskAllocation) }
+    }
 
-    val masterFuture = Future:
-      println("Starting Master")
-      given Locix[InMemoryNetwork[Master]] = Locix(masterNetwork)
-      PlacedValue.run[Master]:
-        PlacedFlow.run[Master]:
-          Multitier.run[Master](masterWorker)
-          ()
-
-    val worker1Future = Future:
-      println("Starting Worker 1")
-      given Locix[InMemoryNetwork[Worker]] = Locix(worker1Network)
-      PlacedValue.run[Worker]:
-        PlacedFlow.run[Worker]:
-          Multitier.run[Worker](masterWorker)
-          ()
-
-    val worker2Future = Future:
-      println("Starting Worker 2")
-      given Locix[InMemoryNetwork[Worker]] = Locix(worker2Network)
-      PlacedValue.run[Worker]:
-        PlacedFlow.run[Worker]:
-          Multitier.run[Worker](masterWorker)
-          ()
-
-    val worker3Future = Future:
-      println("Starting Worker 3")
-      given Locix[InMemoryNetwork[Worker]] = Locix(worker3Network)
-      PlacedValue.run[Worker]:
-        PlacedFlow.run[Worker]:
-          Multitier.run[Worker](masterWorker)
-          ()
-
-    val complete = Future.sequence(List(masterFuture, worker1Future, worker2Future, worker3Future))
-    Await.result(complete, Duration.Inf)
-  end main
+    // Wait for all peers to finish
+    val combinedFuture = Future.sequence(masterFuture +: workerFutures)
+    Await.result(combinedFuture, scala.concurrent.duration.Duration.Inf)
 end MasterWorker

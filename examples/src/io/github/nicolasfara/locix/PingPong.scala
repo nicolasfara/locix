@@ -1,60 +1,60 @@
 package io.github.nicolasfara.locix
 
-import scala.concurrent.Await
+import io.github.nicolasfara.locix.peers.Peers.Cardinality.*
+import io.github.nicolasfara.locix.network.Network
+import io.github.nicolasfara.locix.placement.PlacementType
+import io.github.nicolasfara.locix.placement.PlacementType.*
+import io.github.nicolasfara.locix.Choreography
+import io.github.nicolasfara.locix.Choreography.*
+import io.github.nicolasfara.locix.placement.PeerScope.take
+import io.github.nicolasfara.locix.raise.Raise
+import io.github.nicolasfara.locix.network.NetworkError
+import io.github.nicolasfara.locix.handlers.PlacementTypeHandler
+import io.github.nicolasfara.locix.peers.Peers.Peer
+import io.github.nicolasfara.locix.peers.Peers.PeerTag
+import io.github.nicolasfara.locix.handlers.ChoreographyHandler
 import scala.concurrent.Future
-
-import io.github.nicolasfara.locix.network.InMemoryNetwork
-import io.github.nicolasfara.locix.{ Choreography, Locix }
-import io.github.nicolasfara.locix.placement.PlacementType.on
-
-import Choreography.*
-import network.Network
-import network.Network.*
-import placement.Peers.Peer
-import placement.Peers.Quantifier.Single
-import placement.Peers.given
-import placement.PlacedValue
-import placement.PlacedValue.*
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Await
+import io.github.nicolasfara.locix.placement.Placement
+import io.github.nicolasfara.locix.distributed.InMemoryNetwork
 
 object PingPong:
   type Pinger <: { type Tie <: Single[Ponger] }
   type Ponger <: { type Tie <: Single[Pinger] }
 
-  def pingPongProgram(using Network, Choreography, PlacedValue) =
-    val ping = on[Pinger] { "ping" }
-    val pingReceived = comm[Pinger, Ponger](ping)
-    val pong = on[Ponger]:
-      val receivedPing = pingReceived.take
-      "pong"
-    val pongReceived = comm[Ponger, Pinger](pong)
-    val finalPing = on[Pinger]:
-      val receivedPong = pongReceived.take
-      println(s"[$localAddress] received: $receivedPong")
-    ()
+  def pingPong(using Network, Placement, Choreography) = Choreography:
+    var c = 0
+    while c < 5 do
+      println(s"--- [${summon[Network].peerAddress}] PingPong iteration $c ---")
+      val onPinger = on[Pinger]:
+        val message = s"Ping $c"
+        println(s"Pinger sending message: $message")
+        message
+      val messageOnPonger = comm[Pinger, Ponger](onPinger)
+      on[Ponger]:
+        val msg = take(messageOnPonger)
+        println(s"Pong received message: $msg")
+      c += 1
+      Thread.sleep(500) // Simulate some delay
+
+  private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](program: (Network, PlacementType, Choreography) ?=> V): V =
+    given Network = net
+    given Raise[NetworkError] = Raise.rethrowError
+    given ptHandler: PlacementType = PlacementTypeHandler.handler[P]
+    given cHandler: Choreography = ChoreographyHandler.handler[P]
+    program
 
   def main(args: Array[String]): Unit =
-    import scala.concurrent.ExecutionContext.Implicits.global
+    println("Running PingPong choreography...")
+    val broker = InMemoryNetwork.broker()
+    val pingerNetwork = InMemoryNetwork[Pinger]("pinger", broker)
+    val pongerNetwork = InMemoryNetwork[Ponger]("ponger", broker)
 
-    val pingerNetwork = InMemoryNetwork[Pinger]("pinger-address", 1)
-    val pongerNetwork = InMemoryNetwork[Ponger]("ponger-address", 2)
-    pingerNetwork.addReachablePeer(pongerNetwork)
-    pongerNetwork.addReachablePeer(pingerNetwork)
+    val pingerFuture = Future { handleProgramForPeer[Pinger](pingerNetwork)(pingPong) }
+    val pongerFuture = Future { handleProgramForPeer[Ponger](pongerNetwork)(pingPong) }
 
-    val pingerFuture = Future:
-      println("Starting Pinger")
-      given Locix[InMemoryNetwork[Pinger]] = Locix(pingerNetwork)
-      PlacedValue.run[Pinger]:
-        Choreography.run[Pinger](pingPongProgram)
-
-    val pongerFuture = Future:
-      println("Starting Ponger")
-      given Locix[InMemoryNetwork[Ponger]] = Locix(pongerNetwork)
-      PlacedValue.run[Ponger]:
-        Choreography.run[Ponger](pingPongProgram)
-
-    val complete = Future.sequence(List(pingerFuture, pongerFuture))
-    Await.result(complete, scala.concurrent.duration.Duration.Inf)
-
-    println("Main program completed")
-  end main
+    // Wait for both peers to finish
+    val combinedFuture = Future.sequence(Seq(pingerFuture, pongerFuture))
+    Await.result(combinedFuture, scala.concurrent.duration.Duration.Inf)
 end PingPong
