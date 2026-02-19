@@ -102,3 +102,4 @@ class FieldSpec extends AnyFlatSpec with Matchers:
     val result = field1 + field2
     result.localValue shouldBe 15
     result.withoutSelf.isEmpty shouldBe true
+end FieldSpec

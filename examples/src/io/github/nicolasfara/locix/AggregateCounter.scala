@@ -1,24 +1,25 @@
 package io.github.nicolasfara.locix
 
-import io.github.nicolasfara.locix.peers.Peers.Cardinality.*
-import io.github.nicolasfara.locix.network.Network
-import io.github.nicolasfara.locix.placement.Placement
-import io.github.nicolasfara.locix.Collective
-import scala.concurrent.duration.DurationInt
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
+import scala.concurrent.duration.DurationInt
+
+import io.github.nicolasfara.locix.Collective
 import io.github.nicolasfara.locix.Collective.*
-import io.github.nicolasfara.locix.placement.PeerScope.take
-import io.github.nicolasfara.locix.placement.PlacementType.on
+import io.github.nicolasfara.locix.distributed.InMemoryNetwork
+import io.github.nicolasfara.locix.handlers.CollectiveHandler
+import io.github.nicolasfara.locix.handlers.PlacementTypeHandler
+import io.github.nicolasfara.locix.network.Network
+import io.github.nicolasfara.locix.network.Network.peerAddress
+import io.github.nicolasfara.locix.network.NetworkError
+import io.github.nicolasfara.locix.peers.Peers.Cardinality.*
 import io.github.nicolasfara.locix.peers.Peers.Peer
 import io.github.nicolasfara.locix.peers.Peers.PeerTag
+import io.github.nicolasfara.locix.placement.PeerScope.take
+import io.github.nicolasfara.locix.placement.Placement
 import io.github.nicolasfara.locix.placement.PlacementType
+import io.github.nicolasfara.locix.placement.PlacementType.on
 import io.github.nicolasfara.locix.raise.Raise
-import io.github.nicolasfara.locix.network.NetworkError
-import io.github.nicolasfara.locix.handlers.PlacementTypeHandler
-import io.github.nicolasfara.locix.handlers.CollectiveHandler
-import scala.concurrent.duration.Duration
-import io.github.nicolasfara.locix.network.Network.peerAddress
-import io.github.nicolasfara.locix.distributed.InMemoryNetwork
 
 object AggregateCounter:
   type Smartphone <: { type Tie <: Multiple[Smartphone] }
@@ -53,4 +54,4 @@ object AggregateCounter:
         handleProgramForPeer[Smartphone](net)(counter)
     }
     scala.concurrent.Await.result(scala.concurrent.Future.sequence(futures), Duration.Inf)
-    
+end AggregateCounter

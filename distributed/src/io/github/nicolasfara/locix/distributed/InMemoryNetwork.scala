@@ -1,29 +1,31 @@
 package io.github.nicolasfara.locix.distributed
 
+import java.util.UUID
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeoutException
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.{ LinkedBlockingQueue, TimeUnit }
+
+import scala.annotation.tailrec
+import scala.caps.SharedCapability
+import scala.collection.concurrent.TrieMap
+import scala.collection.mutable
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Promise
+import scala.concurrent.duration.*
+import scala.util.Try
+
+import io.github.nicolasfara.locix.network.NetworkEvent
 import io.github.nicolasfara.locix.network.{ Identifier, Network, NetworkError }
 import io.github.nicolasfara.locix.peers.Peers.{ Peer, PeerTag, TiedWith }
 import io.github.nicolasfara.locix.raise.Raise
-import scala.collection.concurrent.TrieMap
-import scala.collection.mutable
-import scala.concurrent.duration.*
-import scala.util.Try
-import scala.caps.SharedCapability
-import java.util.UUID
-import java.util.concurrent.{ LinkedBlockingQueue, TimeUnit }
-import java.util.concurrent.atomic.AtomicBoolean
-import io.github.nicolasfara.locix.raise.Raise.raise
 import io.github.nicolasfara.locix.raise.Raise.ensure
-import scala.annotation.tailrec
-import java.util.concurrent.CountDownLatch
-import scala.concurrent.Promise
-import scala.concurrent.Await
-import java.util.concurrent.TimeoutException
-import io.github.nicolasfara.locix.signal.Signal
+import io.github.nicolasfara.locix.raise.Raise.raise
 import io.github.nicolasfara.locix.signal.Emitter
-import io.github.nicolasfara.locix.signal.Subscription
+import io.github.nicolasfara.locix.signal.Signal
 import io.github.nicolasfara.locix.signal.Signal.SignallingImpl
-import scala.concurrent.ExecutionContext
-import io.github.nicolasfara.locix.network.NetworkEvent
+import io.github.nicolasfara.locix.signal.Subscription
 
 /**
  * In-memory network implementation simulating distributed peers communication.

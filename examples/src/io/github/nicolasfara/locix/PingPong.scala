@@ -1,23 +1,24 @@
 package io.github.nicolasfara.locix
 
-import io.github.nicolasfara.locix.peers.Peers.Cardinality.*
-import io.github.nicolasfara.locix.network.Network
-import io.github.nicolasfara.locix.placement.PlacementType
-import io.github.nicolasfara.locix.placement.PlacementType.*
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+
 import io.github.nicolasfara.locix.Choreography
 import io.github.nicolasfara.locix.Choreography.*
-import io.github.nicolasfara.locix.placement.PeerScope.take
-import io.github.nicolasfara.locix.raise.Raise
-import io.github.nicolasfara.locix.network.NetworkError
+import io.github.nicolasfara.locix.distributed.InMemoryNetwork
+import io.github.nicolasfara.locix.handlers.ChoreographyHandler
 import io.github.nicolasfara.locix.handlers.PlacementTypeHandler
+import io.github.nicolasfara.locix.network.Network
+import io.github.nicolasfara.locix.network.NetworkError
+import io.github.nicolasfara.locix.peers.Peers.Cardinality.*
 import io.github.nicolasfara.locix.peers.Peers.Peer
 import io.github.nicolasfara.locix.peers.Peers.PeerTag
-import io.github.nicolasfara.locix.handlers.ChoreographyHandler
-import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Await
+import io.github.nicolasfara.locix.placement.PeerScope.take
 import io.github.nicolasfara.locix.placement.Placement
-import io.github.nicolasfara.locix.distributed.InMemoryNetwork
+import io.github.nicolasfara.locix.placement.PlacementType
+import io.github.nicolasfara.locix.placement.PlacementType.*
+import io.github.nicolasfara.locix.raise.Raise
 
 object PingPong:
   type Pinger <: { type Tie <: Single[Ponger] }

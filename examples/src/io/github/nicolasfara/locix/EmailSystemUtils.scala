@@ -50,3 +50,4 @@ object EmailSystemUtils:
 
     def update(emails: List[Email]): Unit =
       println(s"[Client] Updating ${emails.size} emails")
+end EmailSystemUtils

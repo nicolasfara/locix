@@ -1,27 +1,28 @@
 package io.github.nicolasfara.locix
 
-import io.github.nicolasfara.locix.peers.Peers.Cardinality.*
-import io.github.nicolasfara.locix.network.Network
-import io.github.nicolasfara.locix.placement.Placement
-import io.github.nicolasfara.locix.peers.Peers.Peer
-import io.github.nicolasfara.locix.peers.Peers.PeerTag
-import io.github.nicolasfara.locix.placement.PlacementType
-import io.github.nicolasfara.locix.raise.Raise
-import io.github.nicolasfara.locix.network.NetworkError
-import io.github.nicolasfara.locix.handlers.PlacementTypeHandler
-import io.github.nicolasfara.locix.handlers.ChoreographyHandler
-import io.github.nicolasfara.locix.distributed.InMemoryNetwork
+import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.concurrent.Await
-import io.github.nicolasfara.locix.EmailSystemUtils.createServerDB
-import io.github.nicolasfara.locix.EmailSystemUtils.ClientConfig
-import io.github.nicolasfara.locix.placement.PlacementType.on
-import io.github.nicolasfara.locix.Multitier.*
-import io.github.nicolasfara.locix.EmailSystemUtils.createClientDB
-import io.github.nicolasfara.locix.placement.PeerScope.take
+
 import io.github.nicolasfara.locix.EmailSystemUtils.Attachment
+import io.github.nicolasfara.locix.EmailSystemUtils.ClientConfig
+import io.github.nicolasfara.locix.EmailSystemUtils.createClientDB
+import io.github.nicolasfara.locix.EmailSystemUtils.createServerDB
+import io.github.nicolasfara.locix.Multitier.*
+import io.github.nicolasfara.locix.distributed.InMemoryNetwork
+import io.github.nicolasfara.locix.handlers.ChoreographyHandler
 import io.github.nicolasfara.locix.handlers.MultitierHandler
+import io.github.nicolasfara.locix.handlers.PlacementTypeHandler
+import io.github.nicolasfara.locix.network.Network
+import io.github.nicolasfara.locix.network.NetworkError
+import io.github.nicolasfara.locix.peers.Peers.Cardinality.*
+import io.github.nicolasfara.locix.peers.Peers.Peer
+import io.github.nicolasfara.locix.peers.Peers.PeerTag
+import io.github.nicolasfara.locix.placement.PeerScope.take
+import io.github.nicolasfara.locix.placement.Placement
+import io.github.nicolasfara.locix.placement.PlacementType
+import io.github.nicolasfara.locix.placement.PlacementType.on
+import io.github.nicolasfara.locix.raise.Raise
 
 object EmailSystemMultitier:
   type Client <: { type Tie <: Single[Server] }
@@ -39,18 +40,16 @@ object EmailSystemMultitier:
       db.update(emails)
     val attachmentsOnServer = on[Server]:
       if config.isOnFlatRate then
-        val emails = take(emailsOnServer)
-        val emailIds = emails.map(_.id)
+        val emailIds = take(emailsOnServer).map(_.id)
         println(s"[Server] Fetching attachments for ${emailIds.size} emails (client on flat rate)")
         emailIds.flatMap(createServerDB().getAttachments)
       else
-        println(s"[Server] Skipping attachments (client not on flat rate)")
+        println("[Server] Skipping attachments (client not on flat rate)")
         List.empty[Attachment]
     on[Client]:
       val attachments = asLocal(attachmentsOnServer)
       if attachments.nonEmpty then createClientDB().updateAttachments(attachments)
-      println(s"[Client] Email synchronization completed")
-      ()
+      println("[Client] Email synchronization completed")
   end emailSyncProtocol
 
   private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](program: (Network, PlacementType, Multitier) ?=> V): V =
@@ -76,3 +75,4 @@ object EmailSystemMultitier:
     // Wait for both peers to finish
     val combinedFuture = Future.sequence(Seq(pingerFuture, pongerFuture))
     Await.result(combinedFuture, scala.concurrent.duration.Duration.Inf)
+end EmailSystemMultitier
