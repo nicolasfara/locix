@@ -64,15 +64,11 @@ object KeyValueStore:
     comm[Primary, Client](response)    
 
   def kvs(using Network, Placement, Choreography) = Choreography:
-    var c = 0
-    while c < 5 do
-      val request = on[Client]: 
-        if c % 2 == 0 then Request.Put(s"$c", "bar")
-        else Request.Get(s"${c-1}")
+    val operations = List(Request.Put("foo", "bar"), Request.Get("foo"), Request.Put("hello", "world"), Request.Get("hello"), Request.Get("nonexistent"))
+    operations.foreach: op =>
+      val request = on[Client](op)
       val response = kvStoreProtocol(request)
-      on[Client]:
-        println(s"[Client ${peerAddress}] Received response: ${take(response)} for request: ${take(request)}")
-      c += 1
+      on[Client]{ println(s"[Client ${peerAddress}] Received response: ${take(response)} for request: ${take(request)}") }
 
   private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](program: (Network, PlacementType, Choreography) ?=> V): V =
     given Network = net
