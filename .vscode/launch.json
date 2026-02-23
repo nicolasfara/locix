@@ -80,6 +80,16 @@
       "args": [],
       "jvmOptions": [],
       "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "EmailApplication",
+      "mainClass": "io.github.nicolasfara.locix.EmailApplication",
+      "buildTarget": "file:///home/nicolas/Documents/repos/locicope/examples",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
     }
   ]
 }
