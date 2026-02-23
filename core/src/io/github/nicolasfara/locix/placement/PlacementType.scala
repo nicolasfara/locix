@@ -30,3 +30,8 @@ object PlacementType:
 
   def on[P <: Peer: PeerTag](using pt: PlacementType^, n: Network)[V: ClassTag](body: PeerScope[P] ?=> V): V on P =
     pt.on(body)
+
+  def place[P <: Peer, V](value: V): V on P =
+    val key = Identifier(s"locix::placement::value::${java.util.UUID.randomUUID()}")
+    PlacementValue.Local(value, key)
+
