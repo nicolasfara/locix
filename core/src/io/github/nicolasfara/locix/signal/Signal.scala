@@ -26,6 +26,7 @@ trait Signal[V]:
   def onClose(callback: () => Unit): Unit
   def map[U](f: V -> U): Signal[U]
   def fold[U](initial: U)(f: (U, V) -> U): U
+  def filter(p: V => Boolean): Signal[V]
 
 object Signal:
   def make[V](using ec: ExecutionContext): (Signal[V], Emitter[V]) =
@@ -38,6 +39,7 @@ object Signal:
     signal
 
   class SignallingImpl[V](using ec: ExecutionContext) extends Signal[V], Emitter[V]:
+
     private val subscribers = TrieMap[Long, V -> Unit]()
     private val onCloseCallbacks = TrieMap.empty[Long, () -> Unit]
     private val counter = AtomicLong(0)
@@ -59,6 +61,13 @@ object Signal:
         mappedSignal.emit(u)
       }
       mappedSignal
+
+    override def filter(p: V => Boolean): Signal[V] =
+      val filteredSignal = new SignallingImpl[V]
+      subscribe { v =>
+        if p(v) then filteredSignal.emit(v)
+      }
+      filteredSignal
 
     override def fold[U](initial: U)(f: (U, V) -> U): U =
       val promise = Promise[U]()

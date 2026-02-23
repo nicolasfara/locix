@@ -12,8 +12,7 @@ import io.github.nicolasfara.locix.raise.Raise
 import io.github.nicolasfara.locix.handlers.*
 import io.github.nicolasfara.locix.distributed.InMemoryNetwork
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
-import scala.concurrent.Await
+import scala.concurrent.*
 
 object ChatApplication:
   type Server <: { type Tie <: Multiple[Client] }
@@ -22,8 +21,8 @@ object ChatApplication:
   def chat(using Network, Placement, Multitier) = Multitier:
     val message = on[Client] { scala.util.Random.alphanumeric.take(10).mkString }
     on[Server]:
-        val messages = asLocalAll(message)
-        messages.values.foreach { msg => println(s"[Server] Received message: $msg") }
+      val messages = asLocalAll(message)
+      messages.values.foreach { msg => println(s"[Server] Received message: $msg") }
 
   private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](program: (Network, PlacementType, Multitier) ?=> V): V =
     given Network = net
