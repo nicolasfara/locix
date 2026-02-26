@@ -13,6 +13,7 @@ import io.github.nicolasfara.locix.placement.PlacementType.*
 trait Choreography extends Multiparty:
   def comm[S <: TiedSingleWith[R]: PeerTag, R <: TiedSingleWith[S]: PeerTag](using Network)[V](placement: V on S): V on R
   def multicast[S <: TiedManyWith[R]: PeerTag, R <: TiedSingleWith[S]: PeerTag](using Network)[V](placement: V on S): V on R
+  def gather[S <: TiedSingleWith[R]: PeerTag, R <: TiedManyWith[S]: PeerTag](using n: Network)[V](placement: V on S): Map[n.PeerAddress, V] on R
   def broadcast[S <: Peer: PeerTag, V](using Network)(placement: V on S): V
 
 object Choreography:
@@ -29,6 +30,12 @@ object Choreography:
       n: Network,
       p: PlacementType,
   )[V, SC](placement: V on S)(using Scope[SC], SC =:= ChoreographyScope): V on R = c.multicast[S, R](placement)
+
+  def gather[S <: TiedSingleWith[R]: PeerTag, R <: TiedManyWith[S]: PeerTag](using
+      c: Choreography,
+      n: Network,
+      p: PlacementType,
+  )[V, SC](placement: V on S)(using Scope[SC], SC =:= ChoreographyScope): Map[n.PeerAddress, V] on R = c.gather[S, R](placement)
 
   def broadcast[S <: Peer: PeerTag, V](using
       c: Choreography,

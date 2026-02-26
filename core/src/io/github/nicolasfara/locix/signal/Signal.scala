@@ -38,6 +38,17 @@ object Signal:
     ec.execute(() => { body(emitter); emitter.close() })
     signal
 
+  def merge[V](signals: Seq[Signal[V]])(using ec: ExecutionContext): Signal[V] =
+    val mergedSignal = new SignallingImpl[V]
+    val subscriptions = signals.map(_.subscribe(mergedSignal.emit))
+    mergedSignal.onClose { () => subscriptions.foreach(_.cancel()) }
+    mergedSignal
+
+  def empty[V](using ec: ExecutionContext): Signal[V] =
+    val signal = new SignallingImpl[V]
+    signal.close()
+    signal
+
   class SignallingImpl[V](using ec: ExecutionContext) extends Signal[V], Emitter[V]:
 
     private val subscribers = TrieMap[Long, V -> Unit]()

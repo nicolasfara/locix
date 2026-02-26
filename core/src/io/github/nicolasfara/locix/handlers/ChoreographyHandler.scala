@@ -71,6 +71,23 @@ private final class ChoreographyEffectImpl[P <: Peer: PeerTag](using r: Raise[Ne
       default = PlacementValue.Remote(key)
     )
     
+  def gather[S <: TiedSingleWith[R]: PeerTag, R <: TiedManyWith[S]: PeerTag](using n: Network)[V](placement: V on S): Map[n.PeerAddress, V] on R =
+    val sender = summon[PeerTag[S]]
+    val receiver = summon[PeerTag[R]]
+    val key = placement.key
+    selectWithDefault(local, sender, receiver)(
+      onLocal = PlacementValue.Remote(key),
+      onRemote = {
+        val reachablePeers = n.reachablePeersOf[S]
+        ensure(reachablePeers.nonEmpty) {
+          NetworkError.SinglePeerExpected(s"Expected at least one reachable peer of type ${sender}, but found none")
+        }
+        val values = n.pullFromAll[S, R, V](reachablePeers, key)
+        PlacementValue.Local(values, key)
+      },
+      default = PlacementValue.Remote(key)
+    )
+
   def broadcast[S <: Peer: PeerTag, V](using n: Network)(placement: V on S): V =
     val sender = summon[PeerTag[S]]
     val key = placement.key
