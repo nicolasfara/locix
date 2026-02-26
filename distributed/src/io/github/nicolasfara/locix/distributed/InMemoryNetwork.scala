@@ -41,6 +41,7 @@ private final class InMemoryNetworkImpl[LocalPeer <: Peer: PeerTag](
 )(using ExecutionContext)
     extends Network:
   private val localEmitters: TrieMap[Identifier, (Emitter[Any], Signal[Any])] = TrieMap.empty
+  private val localEmittersPerSource: TrieMap[(PeerAddress, Identifier), (Emitter[Any], Signal[Any])] = TrieMap.empty
   private val remoteSignalSubscriptions: TrieMap[Identifier, mutable.Set[PeerAddress]] = TrieMap.empty
 
   type PeerAddress = String
@@ -87,9 +88,18 @@ private final class InMemoryNetworkImpl[LocalPeer <: Peer: PeerTag](
   override def pullFromAll[From <: TiedWith[To], To <: Peer, V](using Raise[NetworkError])(from: Set[String], key: Identifier): Map[String, V] =
     val scope = key.namespace
     if Some("signal") == scope then
-      // println(s"Peer $address retrieving signal for key $key")
-      // retrieveSignal(key).asInstanceOf[V]
-      ???
+      from.map { peer =>
+        broker.subscribe(to = peer, origin = address, key)
+        val signal = localEmittersPerSource
+          .getOrElseUpdate(
+            (peer, key), {
+              val sig = new SignallingImpl[Any]
+              (sig, sig)
+            },
+          )
+          ._2
+        peer -> signal.asInstanceOf[V]
+      }.toMap
     else
       ensure(from.nonEmpty) { NetworkError.UnreachablePeer("No peer addresses provided for pullFromAll") }
       from.map { peerAddress =>
@@ -174,8 +184,14 @@ private final class InMemoryNetworkImpl[LocalPeer <: Peer: PeerTag](
       .foreach:
         case NetworkEvent.Subscribed(key, from) => subscribe(from, key)
         case NetworkEvent.Unsubscribed(key, from) => unsubscribe(from, key)
-        case NetworkEvent.ValueEmitted(key, value, from, to) => receiveRemoteSignalValue(key, value)
-        case NetworkEvent.Close(key, from) => localEmitters.get(key).foreach(_._1.close())
+        case NetworkEvent.ValueEmitted(key, value, from, to) =>
+          localEmittersPerSource.get((from, key)) match
+            case Some((emitter, _)) => emitter.emit(value)
+            case None => receiveRemoteSignalValue(key, value)
+        case NetworkEvent.Close(key, from) =>
+          localEmittersPerSource.get((from, key)) match
+            case Some((emitter, _)) => emitter.close()
+            case None => localEmitters.get(key).foreach(_._1.close())
     Thread.sleep(10)
     eventLoopProcessor()
 
