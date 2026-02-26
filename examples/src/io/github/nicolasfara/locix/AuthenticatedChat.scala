@@ -48,8 +48,7 @@ object AuthenticatedChat:
           case a if a.contains("carol") => Credentials("carol", "p4ssw0rd")
           case _                        => Credentials("unknown", "wrong") // Invalid credentials for testing
 
-      val allCreds = Choreography:
-        gather[Participant, AuthServer](credentials)
+      val allCreds = gather[Participant, AuthServer](credentials)
 
       val serverDecision = on[AuthServer]:
         val creds = take(allCreds)

@@ -70,7 +70,7 @@ private final class ChoreographyEffectImpl[P <: Peer: PeerTag](using r: Raise[Ne
       },
       default = PlacementValue.Remote(key)
     )
-    
+
   def gather[S <: TiedSingleWith[R]: PeerTag, R <: TiedManyWith[S]: PeerTag](using n: Network)[V](placement: V on S): Map[n.PeerAddress, V] on R =
     val sender = summon[PeerTag[S]]
     val receiver = summon[PeerTag[R]]
