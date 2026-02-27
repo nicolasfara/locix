@@ -120,6 +120,16 @@
       "args": [],
       "jvmOptions": [],
       "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "Channel",
+      "mainClass": "io.github.nicolasfara.locix.Channel",
+      "buildTarget": "file:///home/nicolas/Documents/repos/locicope/examples",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
     }
   ]
 }

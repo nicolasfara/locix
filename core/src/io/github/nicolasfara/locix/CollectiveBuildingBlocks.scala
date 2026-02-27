@@ -5,9 +5,9 @@ import Collective.*
 
 object CollectiveBuildingBlocks:
   trait DistanceSensor:
-    def nbrRange(using vm: VM): Field[Double]
+    def nbrRange(using c: Collective, vm: VM): Field[Double]
 
-  def G[V](source: Boolean, initial: V, acc: V -> V, metric: () -> Field[Double])(using VM, Collective) =
+  def G[V](using vm: VM, c: Collective)(source: Boolean, initial: V, acc: V ->{c} V, metric: () -> Field[Double]) =
     rep((Double.MaxValue, initial)): dv =>
       mux(source) {
         (0.0, initial)
