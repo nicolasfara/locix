@@ -90,15 +90,15 @@ object Field:
     def *[U >: N: Numeric](that: Field[U]): Field[U] = field.combine(that)(Numeric[U].times)
 
 trait Collective extends Multiparty:
-  def rep[V](using VM)(initial: V)(evolution: V -> V): V
+  def rep[V](using VM)(initial: V)(evolution: V ->{this} V): V
   def nbr[V](using VM)(value: V): Field[V]
-  def branch[V](using VM)(condition: Boolean)(trueBranch: -> V)(falseBranch: -> V): V
+  def branch[V](using VM)(condition: Boolean)(trueBranch: ->{this} V)(falseBranch: ->{this} V): V
   def mux[V](using VM)(condition: Boolean)(trueValue: V)(falseValue: V): V
 
 object Collective:
-  def rep[V](using c: Collective, vm: VM)(initial: V)(evolution: V -> V): V = c.rep(initial)(evolution)
+  def rep[V](using c: Collective, vm: VM)(initial: V)(evolution: V ->{c} V): V = c.rep(initial)(evolution)
   def nbr[V](using c: Collective, vm: VM)(value: V): Field[V] = c.nbr(value)
-  def branch[V](using c: Collective, vm: VM)(condition: Boolean)(trueBranch: -> V)(falseBranch: -> V): V = c.branch(condition)(trueBranch)(falseBranch)
+  def branch[V](using c: Collective, vm: VM)(condition: Boolean)(trueBranch: ->{c} V)(falseBranch: ->{c} V): V = c.branch(condition)(trueBranch)(falseBranch)
   def mux[V](using c: Collective, vm: VM)(condition: Boolean)(trueValue: V)(falseValue: V): V = c.mux(condition)(trueValue)(falseValue)
 
   def apply[P <: TiedManyWith[P]: PeerTag](using

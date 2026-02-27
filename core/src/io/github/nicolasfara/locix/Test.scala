@@ -10,6 +10,7 @@ import io.github.nicolasfara.locix.Multitier.*
 import io.github.nicolasfara.locix.network.Network
 import io.github.nicolasfara.locix.signal.Signal
 import scala.concurrent.ExecutionContext.Implicits.global
+import io.github.nicolasfara.locix.signal.Signal.signalBuilder
 
 object Test:
   type Pinger <: { type Tie <: Single[Ponger] }
@@ -24,13 +25,12 @@ object Test:
   def foo(using n: Network, p: PlacementType^, c: Choreography, m:Multitier)(value: Int on Ponger) =
     val a = Choreography:
       val onPinger = on[Pinger]:
-        // signalling: it =>
-        //   it.emit(42)
-        //   it.emit(43)
-        ()
+        signalBuilder: em =>
+          Thread.sleep(1000)
+          em.emit("Hello from the pinger!")
       val messageOnPonger = comm[Pinger, Ponger](onPinger)
       on[Ponger]:
-        10
+        take(messageOnPonger).subscribe(println)
         // comm[Ponger, Pinger](messageOnPonger)
         // val sig = take(messageOnPonger)
         // sig.subscribe(println)
