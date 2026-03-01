@@ -76,6 +76,10 @@ trait Network extends SharedCapability:
    */
   def store[V](key: Identifier, value: V): Unit
 
+  // Collective
+  def storeValueTree[P <: Peer, V](forPeer: PeerAddress, key: Identifier, valueTree: V): Unit
+  def retrieveValueTree[P <: Peer, V](peer: PeerAddress, key: Identifier): Option[V]
+
   // Reactive primitives
 
   /**

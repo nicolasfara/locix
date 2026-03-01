@@ -24,7 +24,7 @@ import io.github.nicolasfara.locix.raise.Raise
 object AggregateCounter:
   type Smartphone <: { type Tie <: Multiple[Smartphone] }
 
-  def counter(using Network, Placement, Collective) =
+  private def counter(using Network, Placement, Collective) =
     val collectiveCounter = Collective[Smartphone](1.seconds):
       // rep(0)(_ + 1)
       val nbrCount = nbr(1)

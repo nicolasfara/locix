@@ -9,7 +9,7 @@ import io.github.nicolasfara.locix.network.Network
 
 private[locix] case class FieldImpl[+V, DeviceId](localId: DeviceId, override val localValue: V, values: Map[DeviceId, V]) extends Field[V]:
   type Id = DeviceId
-  def map[U](f: V -> U): io.github.nicolasfara.locix.Field[U] = FieldImpl(localId, f(localValue), values.view.mapValues(f).toMap)
+  def map[U](f: V -> U): Field[U] = FieldImpl(localId, f(localValue), values.view.mapValues(f).toMap)
 
   def withoutSelf: Map[Id, V] = values.filterNot(_._1 == localId)
 

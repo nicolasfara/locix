@@ -20,7 +20,7 @@ object CollectiveBuildingBlocks:
     ._2
 
   def distanceTo(source: Boolean)(using vm: VM, c: Collective, sensor: DistanceSensor) =
-    G(source, 0.0, _ + sensor.nbrRange.minWithoutSelf(Double.PositiveInfinity), unsafeAssumePure(() => unsafeAssumePure(sensor.nbrRange)))
+    G(source, 0.0, _ + sensor.nbrRange.minWithoutSelf(Double.MaxValue), unsafeAssumePure(() => unsafeAssumePure(sensor.nbrRange)))
 
   def broadcast[V](source: Boolean, value: V)(using vm: VM, c: Collective, sensor: DistanceSensor) =
     G(source, value, identity, unsafeAssumePure((() => unsafeAssumePure(sensor.nbrRange))))

@@ -134,6 +134,13 @@ private final class InMemoryNetworkImpl[LocalPeer <: Peer: PeerTag](
 
   override def store[V](key: Identifier, value: V): Unit = broker.putValue(address, key, value)
 
+  // ---- Collective Ops ----
+  override def retrieveValueTree[P <: Peer, V](from: String, key: Identifier): Option[V] =
+    broker.getCollectiveValueTree(from, peerAddress, key).map(_.asInstanceOf[V])
+
+  override def storeValueTree[P <: Peer, V](forPeer: String, key: Identifier, valueTree: V): Unit =
+    broker.putCollectiveValueTree(peerAddress, forPeer, key, valueTree)
+
   // ---- Reactive primitives ----
 
   override def registerSignal[V](key: Identifier, signal: Signal[V]): Unit =
@@ -213,6 +220,8 @@ class NetworkBroker:
   // Per-peer value stores: peerAddress -> (key -> value)
   private val peerStores: TrieMap[String, TrieMap[Identifier, Any]] = TrieMap.empty
 
+  private val collectiveValueTrees: TrieMap[PeerAddress, TrieMap[PeerAddress, Any]] = TrieMap.empty
+
   // Peer type metadata: peerAddress -> peerTypeName
   private val peerTypes: TrieMap[String, String] = TrieMap.empty
 
@@ -260,7 +269,7 @@ class NetworkBroker:
       if promises.nonEmpty then pendingRequests.remove((peerAddress, key))
 
   /** Retrieve a value from a peer's store. Returns [[None]] if not yet available. */
-  def getValue(peerAddress: PeerAddress, key: Identifier): Option[Any] =
+  def getValue(peerAddress: PeerAddress, key: Identifier): Option[Any] = synchronized:
     peerStores.get(peerAddress).flatMap(_.get(key))
 
   /** Store a pending request for a value that is not yet available. The promise will be completed when the value is put into the store. */
@@ -270,6 +279,14 @@ class NetworkBroker:
       getValue(peerAddress, key) match
         case Some(value) => promise.success(value)
         case None => requestQueue.queue.put(promise)
+
+  // ---- Collective value tree management -----
+  def putCollectiveValueTree(from: PeerAddress, to: PeerAddress, key: Identifier, valueTree: Any): Unit =
+    val peerTrees = collectiveValueTrees.getOrElseUpdate(to, TrieMap.empty)
+    peerTrees.put(from, valueTree)
+
+  def getCollectiveValueTree(from: PeerAddress, local: PeerAddress, key: Identifier): Option[Any] =
+    collectiveValueTrees.get(local).flatMap(_.get(from)) 
 
   // ---- Signal subscription management ----
   def subscribe(to: PeerAddress, origin: PeerAddress, key: Identifier): Unit =

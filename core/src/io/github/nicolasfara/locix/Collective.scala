@@ -116,13 +116,13 @@ object Collective:
     signalBuilder: signal =>
       while true do
         val neighbors = n.reachablePeersOf[P]
-        val neighborValues= neighbors
-          .map(neighbor => neighbor -> n.retrieveNow[P, vm.ValueTree](neighbor, key))
+        val neighborValues = neighbors
+          .map(neighbor => neighbor -> n.retrieveValueTree[P, vm.ValueTree](neighbor, key))
           .collect { case (neighbor, Some(valueTree)) => neighbor -> valueTree }
           .toMap
         vm.prepareInbound(neighborValues, vm.getState)
         val result = program(using vm)
         val outboundValueTree = vm.outbound
-        neighbors.foreach(neighbor => n.push[P, P, vm.ValueTree](neighbor, key, outboundValueTree))
+        neighbors.foreach(neighbor => n.storeValueTree[P, vm.ValueTree](neighbor, key, outboundValueTree))
         signal.emit(result)
         Thread.sleep(round.toMillis)

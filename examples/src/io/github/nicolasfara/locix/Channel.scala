@@ -2,7 +2,7 @@ package io.github.nicolasfara.locix
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.DurationDouble
 
 import io.github.nicolasfara.locix.Collective
 import io.github.nicolasfara.locix.Collective.*
@@ -22,24 +22,30 @@ import io.github.nicolasfara.locix.placement.PlacementType.on
 import io.github.nicolasfara.locix.raise.Raise
 import io.github.nicolasfara.locix.CollectiveBuildingBlocks.*
 import io.github.nicolasfara.locix.CollectiveBuildingBlocks.DistanceSensor
+import scala.collection.concurrent.TrieMap
 
 object Channel:
   type Node <: { type Tie <: Multiple[Node] }
 
-  private val devicePositions = Map(
+  /* 
+    node-1 (0,0) ------- node-2 (1.5, 0)
+      |          \       /
+    node-3 (0,1) - node-4 (1,1)
+   */
+  private val devicePositions = TrieMap(
       "node-1" -> (0.0, 0.0),
       "node-2" -> (1.5, 0.0),
       "node-3" -> (0.0, 1.0),
       "node-4" -> (1.0, 1.0),
   )
 
-  def channel(source: Boolean, target: Boolean, width: Int)(using Network, Collective, Placement, DistanceSensor) = Collective[Node](1.second):
+  def channel(source: Boolean, target: Boolean, width: Int)(using Network, Collective, Placement, DistanceSensor) = Collective[Node](0.5.second):
     distanceTo(source) + distanceTo(target) <= distanceBetween(source, target)
 
-  def channelApp(using n: Network, p: Placement, c: Collective) =
-    val localPeer = peerAddress.asInstanceOf[String]
+  def channelApp(using Network, Placement, Collective) =
     given DistanceSensor = new DistanceSensor:
-      def nbrRange(using c: Collective, vm: VM): Field[Double] =
+      val localPeer = peerAddress.asInstanceOf[String]
+      def nbrRange(using Collective, VM): Field[Double] =
         val localPos = devicePositions(localPeer)
         nbr(localPos).map { position =>
           math.sqrt(
