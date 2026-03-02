@@ -130,6 +130,16 @@
       "args": [],
       "jvmOptions": [],
       "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "Broadcasting",
+      "mainClass": "io.github.nicolasfara.locix.Broadcasting",
+      "buildTarget": "file:///home/nicolas/Documents/repos/locicope/examples",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
     }
   ]
 }

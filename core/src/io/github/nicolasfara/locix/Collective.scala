@@ -69,7 +69,7 @@ sealed trait VM:
     stack.clear()
     trace.clear()
 
-trait Field[+V] extends SharedCapability:
+trait Field[+V]:
   type Id
 
   def withoutSelf: Map[Id, V]
