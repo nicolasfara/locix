@@ -21,7 +21,7 @@ import io.github.nicolasfara.locix.placement.PlacementType
 import io.github.nicolasfara.locix.placement.PlacementType.on
 import io.github.nicolasfara.locix.raise.Raise
 
-object AggregateCounter:
+object DistanceToSource:
   type Smartphone <: { type Tie <: Multiple[Smartphone] }
 
   private def counter(using Network, Placement, Collective) =
@@ -54,4 +54,4 @@ object AggregateCounter:
         handleProgramForPeer[Smartphone](net)(counter)
     }
     scala.concurrent.Await.result(scala.concurrent.Future.sequence(futures), Duration.Inf)
-end AggregateCounter
+end DistanceToSource

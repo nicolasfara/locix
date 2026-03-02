@@ -140,6 +140,26 @@
       "args": [],
       "jvmOptions": [],
       "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "NeighborCounterObstacle",
+      "mainClass": "io.github.nicolasfara.locix.NeighborCounterObstacle",
+      "buildTarget": "file:///home/nicolas/Documents/repos/locicope/examples",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "DistanceToSourceObstacle",
+      "mainClass": "io.github.nicolasfara.locix.DistanceToSourceObstacle",
+      "buildTarget": "file:///home/nicolas/Documents/repos/locicope/examples",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
     }
   ]
 }

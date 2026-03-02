@@ -1,42 +1,46 @@
 package io.github.nicolasfara.locix
 
 import io.github.nicolasfara.locix.peers.Peers.Cardinality.*
+import io.github.nicolasfara.locix.peers.Peers.*
 import io.github.nicolasfara.locix.network.Network
-import io.github.nicolasfara.locix.placement.Placement
-import scala.concurrent.duration.DurationInt
-import scala.concurrent.ExecutionContext.Implicits.global
-import io.github.nicolasfara.locix.peers.Peers.Peer
-import io.github.nicolasfara.locix.peers.Peers.PeerTag
-import io.github.nicolasfara.locix.placement.PlacementType
+import io.github.nicolasfara.locix.placement.*
 import io.github.nicolasfara.locix.raise.Raise
 import io.github.nicolasfara.locix.network.NetworkError
 import io.github.nicolasfara.locix.handlers.*
 import io.github.nicolasfara.locix.distributed.InMemoryNetwork
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
+import scala.concurrent.duration.DurationInt
+import io.github.nicolasfara.locix.CollectiveBuildingBlocks.DistanceSensor
 import io.github.nicolasfara.locix.network.Network.peerAddress
-import io.github.nicolasfara.locix.placement.PlacementType.*
-import io.github.nicolasfara.locix.placement.PeerScope.*
-import io.github.nicolasfara.locix.CollectiveBuildingBlocks.*
-import io.github.nicolasfara.locix.Collective.nbr
-import io.github.nicolasfara.locix.CollectiveBuildingBlocks.DistanceSensor.nbrRange
+import io.github.nicolasfara.locix.placement.PlacementType.on
+import io.github.nicolasfara.locix.placement.PeerScope.take
+import io.github.nicolasfara.locix.Collective.*
+import io.github.nicolasfara.locix.CollectiveBuildingBlocks.distanceTo
 import scala.concurrent.*
 
-object Broadcasting:
+object DistanceToSourceObstacle:
   type Node <: { type Tie <: Multiple[Node] }
 
   private val devicePositions = Map(
-      "node-1" -> (0.0, 0.0),
-      "node-2" -> (1.5, 0.0),
-      "node-3" -> (0.0, 1.0),
-      "node-4" -> (1.0, 1.0),
+    "node-1" -> (0.0, 0.0),
+    "node-2" -> (1.5, 0.0),
+    "node-3" -> (0.0, 1.0),
+    "node-4" -> (1.0, 1.0),
   )
 
-  def broadcasting(source: Boolean)(using Network, Collective, Placement, DistanceSensor) =
-    val id = peerAddress
-    Collective[Node](1.second):
-      G(source, id, identity, () => nbrRange)
+  def neighborDistanceObstacle(isObstacle: Boolean, isSource: Boolean)(using Network, Placement, Collective, DistanceSensor) =
+    val neighborCounter = Collective[Node](1.seconds):
+      branch(isObstacle) { Double.PositiveInfinity } { distanceTo(isSource) }
 
-  def broadcastingApp(using Network, Placement, Collective) =
+    on[Node]:
+      val signal = take(neighborCounter)
+      signal.subscribe { value =>
+        println(s"Device ${peerAddress} has count: $value")
+      }
+      Thread.sleep(5000) // Keep the program running for a while to observe the output
+
+  def neighborDistanceObstacleApp(using Network, Placement, Collective) =
     given DistanceSensor = new DistanceSensor:
       val localPeer = peerAddress.asInstanceOf[String]
       def nbrRange(using Collective, VM): Field[Double] =
@@ -47,12 +51,8 @@ object Broadcasting:
             math.pow(localPos._2 - position._2, 2)
           )
         }
-    val broadcastSignal = broadcasting(peerAddress == "node-1")
-    val unitOf = on[Node]:
-      take(broadcastSignal).subscribe{ source =>
-        println(s"[$peerAddress] Received broadcast from source: $source")
-      }
-    Thread.sleep(5000) // Keep the application running for a while to observe the output
+
+    neighborDistanceObstacle(peerAddress == "node-2" || peerAddress == "node-3", peerAddress == "node-1")
 
   private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](program: (Network, PlacementType, Collective) ?=> V): V =
     given Network = net
@@ -71,6 +71,6 @@ object Broadcasting:
 
     val futures = Seq(node1, node2, node3, node4).map { net =>
       Future:
-        handleProgramForPeer[Node](net)(broadcastingApp)
+        handleProgramForPeer[Node](net)(neighborDistanceObstacleApp)
     }
     Await.result(Future.sequence(futures), Duration.Inf)
