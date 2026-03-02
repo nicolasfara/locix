@@ -39,7 +39,7 @@ object Channel:
       "node-4" -> (1.0, 1.0),
   )
 
-  def channel(source: Boolean, target: Boolean, width: Int)(using Network, Collective, Placement, DistanceSensor) = Collective[Node](0.5.second):
+  def channel(source: Boolean, target: Boolean, width: Int)(using Network, Collective, PlacementType^, DistanceSensor) = Collective[Node](0.5.second):
     distanceTo(source) + distanceTo(target) <= distanceBetween(source, target)
 
   def channelApp(using Network, Placement, Collective) =

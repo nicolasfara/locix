@@ -24,7 +24,7 @@ import io.github.nicolasfara.locix.raise.Raise
 object DistanceToSource:
   type Smartphone <: { type Tie <: Multiple[Smartphone] }
 
-  private def counter(using Network, Placement, Collective) =
+  private def counter(using Network, PlacementType^, Collective) =
     val collectiveCounter = Collective[Smartphone](1.seconds):
       // rep(0)(_ + 1)
       val nbrCount = nbr(1)

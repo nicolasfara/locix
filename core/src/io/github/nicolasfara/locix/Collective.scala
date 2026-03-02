@@ -17,6 +17,7 @@ import scala.collection.mutable
 import scala.caps.Mutable
 import io.github.nicolasfara.locix.signal.Signal.signalBuilder
 import scala.caps.SharedCapability
+import io.github.nicolasfara.locix.placement.PlacementType
 
 sealed trait VM:
   opaque type ValueTree = Map[String, Any]
@@ -103,7 +104,7 @@ object Collective:
 
   def apply[P <: TiedManyWith[P]: PeerTag](using
     n: Network,
-    p: Placement,
+    p: PlacementType^,
     c: Collective,
     ec: ExecutionContext
   )[V](round: FiniteDuration)(program: VM^ ?->{c} V): Signal[V] on P = on[P]:
