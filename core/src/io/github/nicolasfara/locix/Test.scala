@@ -11,39 +11,26 @@ import io.github.nicolasfara.locix.network.Network
 import io.github.nicolasfara.locix.signal.Signal
 import scala.concurrent.ExecutionContext.Implicits.global
 import io.github.nicolasfara.locix.signal.Signal.signalBuilder
+import io.github.nicolasfara.locix.placement.Placement
 
 object Test:
   type Pinger <: { type Tie <: Single[Ponger] }
   type Ponger <: { type Tie <: Single[Pinger] }
 
-  def bar(using Network, PlacementType^, Multitier) = Multitier:
-    val p = on[Pinger] { "Hello from the pinger!" }
-    on[Ponger] { asLocal(p).length }
+  def b(using Network, Placement) = on[Pinger] { "Hello from the pinger!" }
 
-  def b(using Network, PlacementType^, Choreography) = on[Pinger] { "Hello from the pinger!" }
-
-  def foo(using n: Network, p: PlacementType^, c: Choreography, m:Multitier)(value: Int on Ponger) =
-    val a = Choreography:
-      val onPinger = on[Pinger]:
-        signalBuilder: em =>
-          Thread.sleep(1000)
-          em.emit("Hello from the pinger!")
-      val messageOnPonger = comm[Pinger, Ponger](onPinger)
-      on[Ponger]:
-        take(messageOnPonger).subscribe(println)
-        // comm[Ponger, Pinger](messageOnPonger)
-        // val sig = take(messageOnPonger)
-        // sig.subscribe(println)
-        // on[Pinger] { "ds" }
-        // b
-      on[Pinger] { "ds" }
-    Multitier:
-      // comm[Ponger, Pinger](???)
-      on[Ponger] { asLocal(a) }
-    // val b = Multitier { summon[Scope[MultitierScope]] }
+  def nesting(using Network, Placement) = on[Pinger]:
+    // on[Ponger] { "Hello from the ponger!" }
     // b
+    42
 
-  def baz(using Network, PlacementType^, Choreography, Multitier) =
-    // val r = bar
-    // foo(r)
-    ???
+  // def mixParadigms(using Network, PlacementType^, Choreography, Multitier) =
+  //   val a = Choreography:
+  //     val onPinger = on[Pinger] { "Hello from the pinger!" }
+  //     val messageOnPonger = comm[Pinger, Ponger](onPinger)
+  //     val onPonger = on[Ponger] { take(messageOnPonger) }
+  //     val res: String on Pinger = on[Pinger] { asLocal(onPonger) }
+
+  // def higherOrderCapability(using Network, Placement, Multitier) = Multitier:
+  //   val onPonger = on[Ponger] { "hello" }
+  //   val res = on[Pinger] { (i: Int) => asLocal(onPonger) }
