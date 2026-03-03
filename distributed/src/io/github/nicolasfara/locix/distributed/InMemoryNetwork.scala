@@ -4,7 +4,7 @@ import java.util.UUID
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.{ LinkedBlockingQueue, TimeUnit }
+import java.util.concurrent.{ ConcurrentLinkedQueue, LinkedBlockingQueue, TimeUnit }
 
 import scala.annotation.tailrec
 import scala.caps.SharedCapability
@@ -225,8 +225,8 @@ class NetworkBroker:
   // Peer type metadata: peerAddress -> peerTypeName
   private val peerTypes: TrieMap[String, String] = TrieMap.empty
 
-  // Stores all the signalling events for each peer
-  private val events: TrieMap[PeerAddress, Set[NetworkEvent[PeerAddress]]] = TrieMap.empty
+  // Stores all the signalling events for each peer (queue preserves insertion order)
+  private val events: TrieMap[PeerAddress, ConcurrentLinkedQueue[NetworkEvent[PeerAddress]]] = TrieMap.empty
 
   // Pending requests: we use a synchronized wrapper object as both the queue holder and the lock
   private case class PendingRequestQueue(queue: LinkedBlockingQueue[Promise[Any]] = LinkedBlockingQueue())
@@ -291,30 +291,30 @@ class NetworkBroker:
   // ---- Signal subscription management ----
   def subscribe(to: PeerAddress, origin: PeerAddress, key: Identifier): Unit =
     val event = NetworkEvent.Subscribed(key, origin)
-    events.updateWith(to):
-      case Some(evSet) => Some(evSet + event)
-      case None => Some(Set(event))
+    events.getOrElseUpdate(to, ConcurrentLinkedQueue()).add(event)
 
   def unsubscribe(to: PeerAddress, origin: PeerAddress, key: Identifier): Unit =
     val event = NetworkEvent.Unsubscribed(key, origin)
-    events.updateWith(to):
-      case Some(evSet) => Some(evSet + event)
-      case None => Some(Set(event))
+    events.getOrElseUpdate(to, ConcurrentLinkedQueue()).add(event)
 
   def propagateSignalTo[V](from: PeerAddress, to: PeerAddress, key: Identifier, value: V): Unit =
     val event = NetworkEvent.ValueEmitted(key, value, from, to)
-    events.updateWith(to):
-      case Some(evSet) => Some(evSet + event)
-      case None => Some(Set(event))
+    events.getOrElseUpdate(to, ConcurrentLinkedQueue()).add(event)
 
   def closeSignal(from: PeerAddress, to: PeerAddress, key: Identifier): Unit =
     val closingEvent = NetworkEvent.Close(key, from)
-    events.updateWith(to):
-      case Some(evSet) => Some(evSet + closingEvent)
-      case None => Some(Set(closingEvent))
+    events.getOrElseUpdate(to, ConcurrentLinkedQueue()).add(closingEvent)
 
-  def getEvents(peerAddress: PeerAddress): Set[NetworkEvent[PeerAddress]] =
-    events.remove(peerAddress).getOrElse(Set.empty) // Clear events after retrieval
+  def getEvents(peerAddress: PeerAddress): Seq[NetworkEvent[PeerAddress]] =
+    events.get(peerAddress) match
+      case Some(queue) =>
+        val batch = mutable.ArrayBuffer.empty[NetworkEvent[PeerAddress]]
+        var event = queue.poll()
+        while event != null do
+          batch += event
+          event = queue.poll()
+        batch.toSeq
+      case None => Seq.empty
 
 end NetworkBroker
 
