@@ -18,6 +18,7 @@ trait Multitier extends Multiparty:
     def mapValues[U](f: V -> U): Id |~> U
     def fold[U](initial: U)(f: (U, Id, V) -> U): U
     def values: Iterable[V]
+    def toMap: Map[Id, V]
 
   def asLocal[L <: TiedSingleWith[R]: PeerTag, R <: Peer: PeerTag, V](using Network)(placement: V on R): V
 

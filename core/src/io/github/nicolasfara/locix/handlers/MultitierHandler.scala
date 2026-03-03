@@ -24,6 +24,7 @@ private final class MultitierEffectImpl[P <: Peer: PeerTag](using r: Raise[Netwo
   extension [Id, V](perPeer: Id |~> V) def fold[U](initial: U)(f: (U, Id, V) -> U): U =
     perPeer.foldLeft(initial) { case (acc, (id, value)) => f(acc, id, value) }
   extension [Id, V](perPeer: Id |~> V) def values: Iterable[V] = perPeer.values
+  extension [Id, V](perPeer: Id |~> V) def toMap: Map[Id, V] = perPeer
 
   def asLocal[L <: TiedSingleWith[R]: PeerTag, R <: Peer: PeerTag, V](using n: Network)(placement: V on R): V =
     val key = placement.key

@@ -3,7 +3,6 @@ package io.github.nicolasfara.locix.signal
 import io.github.nicolasfara.locix.network.Identifier
 import scala.concurrent.ExecutionContext
 import scala.collection.mutable
-import scala.concurrent.Future
 import java.util.concurrent.CountDownLatch
 import scala.concurrent.Await
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
@@ -27,6 +26,7 @@ trait Signal[V]:
   def map[U](f: V -> U): Signal[U]
   def fold[U](initial: U)(f: (U, V) -> U): U
   def filter(p: V => Boolean): Signal[V]
+  def first: V
 
 object Signal:
   def make[V](using ec: ExecutionContext): (Signal[V], Emitter[V]) =
@@ -56,6 +56,16 @@ object Signal:
     private val counter = AtomicLong(0)
     private val callbackCounter = AtomicLong(0)
     private val closed = AtomicBoolean(false)
+    // Buffer for values emitted when no subscribers are registered
+    private val bufferLock = new AnyRef
+    private val pendingValues = mutable.ArrayBuffer[V]()
+
+    override def first: V =
+      val promise = Promise[V]()
+      subscribe(promise.success(_))
+      val result = Await.result(promise.future, Duration.Inf)
+      close()
+      result
 
     override def onClose(callback: () => Unit): Unit =
       if closed.get() then callback()
@@ -88,22 +98,37 @@ object Signal:
       Await.result(promise.future, Duration.Inf)
 
     override def close(): Unit = if closed.compareAndSet(false, true) then
+      bufferLock.synchronized { pendingValues.clear() }
       subscribers.clear()
       val callbacks = onCloseCallbacks.values.toList
       onCloseCallbacks.clear()
       callbacks.foreach(_.apply)
 
     def emit(value: V): Unit = if !closed.get() then
-      val candidates = subscribers.values.toList
+      val candidates = bufferLock.synchronized:
+        val subs = subscribers.values.toList
+        if subs.isEmpty then
+          pendingValues += value
+          Nil
+        else
+          subs
       candidates.foreach { cb =>
-        Future:
-          try cb(value)
-          catch case _: Throwable => ()
+        try cb(value)
+        catch case _: Throwable => ()
       }
 
     def subscribe(callback: V => Unit): Subscription =
       val id = counter.incrementAndGet()
-      subscribers += (id -> unsafeAssumePure(callback))
+      val buffered = bufferLock.synchronized:
+        subscribers += (id -> unsafeAssumePure(callback))
+        val buf = pendingValues.toList
+        pendingValues.clear()
+        buf
+      // Replay buffered values to the new subscriber
+      buffered.foreach { v =>
+        try callback(v)
+        catch case _: Throwable => ()
+      }
       new Subscription:
         def cancel(): Unit =
           subscribers -= id
