@@ -1,0 +1,29 @@
+examples:
+  - source: ???
+    target: examples/src/io/github/nicolasfara/locix/BookSeller.scala
+  - source: ???
+    target: examples/src/io/github/nicolasfara/locix/CardGame.scala
+  - source: ???
+    target: examples/src/io/github/nicolasfara/locix/ChatApplication.scala
+  - source: ???
+    target: examples/src/io/github/nicolasfara/locix/EmailApplication.scala
+  - source: ???
+    target: examples/src/io/github/nicolasfara/locix/FanIn.scala
+  - source: ???
+    target: examples/src/io/github/nicolasfara/locix/FanOut.scala
+  - source: ???
+    target: examples/src/io/github/nicolasfara/locix/GMW.scala
+  - source: ???
+    target: examples/src/io/github/nicolasfara/locix/KeyValueStore.scala
+  - source: ???
+    target: examples/src/io/github/nicolasfara/locix/Lottery.scala
+  - source: ???
+    target: examples/src/io/github/nicolasfara/locix/MasterWorker.scala
+  - source: ???
+    target: examples/src/io/github/nicolasfara/locix/MergeSort.scala
+  - source: ???
+    target: examples/src/io/github/nicolasfara/locix/Multicast.scala
+  - source: ???
+    target: examples/src/io/github/nicolasfara/locix/TicTacToe.scala
+  - source: ???
+    target: examples/src/io/github/nicolasfara/locix/TweetProcessing.scala
