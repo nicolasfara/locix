@@ -1,29 +1,29 @@
 examples:
-  - source: ???
+  - source: examples/res/MultiChor/BookSeller1Simple.hs
     target: examples/src/io/github/nicolasfara/locix/BookSeller.scala
-  - source: ???
+  - source: examples/res/MultiChor/CardGame.hs
     target: examples/src/io/github/nicolasfara/locix/CardGame.scala
-  - source: ???
+  - source: examples/res/ScalaLoci/Chat.scala
     target: examples/src/io/github/nicolasfara/locix/ChatApplication.scala
   - source: ???
     target: examples/src/io/github/nicolasfara/locix/EmailApplication.scala
-  - source: ???
+  - source: examples/res/ChoRus/fanin.rs
     target: examples/src/io/github/nicolasfara/locix/FanIn.scala
-  - source: ???
+  - source: examples/res/ChoRus/fanout.rs
     target: examples/src/io/github/nicolasfara/locix/FanOut.scala
   - source: ???
     target: examples/src/io/github/nicolasfara/locix/GMW.scala
   - source: ???
     target: examples/src/io/github/nicolasfara/locix/KeyValueStore.scala
-  - source: ???
+  - source: examples/res/MultiChor/Lottery.hs
     target: examples/src/io/github/nicolasfara/locix/Lottery.scala
-  - source: ???
+  - source: examples/res/ScalaLoci/MasterWorker.scala
     target: examples/src/io/github/nicolasfara/locix/MasterWorker.scala
-  - source: ???
+  - source: examples/res/ChoreoTS/mergesort/mergesort.ts
     target: examples/src/io/github/nicolasfara/locix/MergeSort.scala
-  - source: ???
+  - source: examples/res/ChoRus/multicast.rs
     target: examples/src/io/github/nicolasfara/locix/Multicast.scala
-  - source: ???
+  - source: examples/ChoRus/tic-tac-toe.rs
     target: examples/src/io/github/nicolasfara/locix/TicTacToe.scala
-  - source: ???
+  - source: examples/res/ScalaLoci/Processing.scala
     target: examples/src/io/github/nicolasfara/locix/TweetProcessing.scala
