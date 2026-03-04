@@ -27,3 +27,13 @@ examples:
     target: examples/src/io/github/nicolasfara/locix/TicTacToe.scala
   - source: examples/res/ScalaLoci/Processing.scala
     target: examples/src/io/github/nicolasfara/locix/TweetProcessing.scala
+  - source: ???
+    target: examples/src/io/github/nicolasfara/locix/TicketTrader.scala
+  - source: examples/res/s-mt-frp/BasicChat.scala
+    target: examples/src/io/github/nicolasfara/locix/BasicChat.scala
+  - source: examples/res/s-mt-frp/Chirper.scala
+    target: examples/src/io/github/nicolasfara/locix/Chirper.scala
+  - source: examples/res/s-mt-frp/ChirperInc.scala
+    target: examples/src/io/github/nicolasfara/locix/ChirperInc.scala
+  - source: examples/res/s-mt-frp/Examples.scala
+    target: examples/src/io/github/nicolasfara/locix/Examples.scala

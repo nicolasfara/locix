@@ -72,7 +72,7 @@ object CityEvt:
         take(requests).map:
           case (peerId, token) => peerId -> take(registeredUsers).exists(_._2 == token)
       comm[Cloud, Edge](authGranted)
-    val recomendations = on[Edge]:
+    val recommendations = on[Edge]:
       val authPeers = take(grantedResults).filter(_._2).keySet
       signalBuilder[(String, Recommendation)]: em =>
         while true do
@@ -81,7 +81,7 @@ object CityEvt:
             em.emit(peerId -> Recommendation(s"Hello $peerId, here is your recommendation!"))
           }
     on[Smartphone]:
-      asLocal[Smartphone, Edge](recomendations).filter(_._1 == peerAddress.asInstanceOf[String]).map(_._2).subscribe { recommendation =>
+      asLocal[Smartphone, Edge](recommendations).filter(_._1 == peerAddress.asInstanceOf[String]).map(_._2).subscribe { recommendation =>
         println(s"User ${peerAddress} received recommendation: ${recommendation.content}")
       }
 

@@ -190,6 +190,66 @@
       "args": [],
       "jvmOptions": [],
       "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "TicketTrader",
+      "mainClass": "io.github.nicolasfara.locix.TicketTrader",
+      "buildTarget": "file:///home/nicolas/Documents/repos/locix/examples",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "HasteChatbox",
+      "mainClass": "io.github.nicolasfara.locix.HasteChatbox",
+      "buildTarget": "file:///home/nicolas/Documents/repos/locix/examples",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "GuessANumber",
+      "mainClass": "io.github.nicolasfara.locix.GuessANumber",
+      "buildTarget": "file:///home/nicolas/Documents/repos/locix/examples",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "BasicChat",
+      "mainClass": "io.github.nicolasfara.locix.BasicChat",
+      "buildTarget": "file:///home/nicolas/Documents/repos/locix/examples",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "Examples",
+      "mainClass": "io.github.nicolasfara.locix.Examples",
+      "buildTarget": "file:///home/nicolas/Documents/repos/locix/examples",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "Chirper",
+      "mainClass": "io.github.nicolasfara.locix.Chirper",
+      "buildTarget": "file:///home/nicolas/Documents/repos/locix/examples",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
     }
   ]
 }
