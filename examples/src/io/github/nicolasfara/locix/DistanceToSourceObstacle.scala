@@ -48,7 +48,7 @@ object DistanceToSourceObstacle:
         nbr(localPos).map { position =>
           math.sqrt(
             math.pow(localPos._1 - position._1, 2) +
-            math.pow(localPos._2 - position._2, 2)
+              math.pow(localPos._2 - position._2, 2),
           )
         }
 
@@ -74,3 +74,4 @@ object DistanceToSourceObstacle:
         handleProgramForPeer[Node](net)(neighborDistanceObstacleApp)
     }
     Await.result(Future.sequence(futures), Duration.Inf)
+end DistanceToSourceObstacle

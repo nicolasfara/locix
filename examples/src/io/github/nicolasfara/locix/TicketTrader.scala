@@ -146,3 +146,4 @@ object TicketTrader:
     val combinedFuture = Future.sequence(Seq(buyerFuture, vendor1Future, vendor2Future))
     Await.result(combinedFuture, scala.concurrent.duration.Duration.Inf)
     println("TicketTrader done.")
+end TicketTrader

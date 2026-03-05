@@ -28,8 +28,8 @@ import io.github.nicolasfara.locix.raise.Raise
  * Protocol:
  *   1. Dealer deals one card to each player (face up — visible to everyone via broadcast).
  *   2. Each player privately decides whether to request a second card.
- *   3. For each player who asked, dealer sends them a second card (private comm).
- *      The deck is consumed sequentially, so the index depends on prior choices.
+ *   3. For each player who asked, dealer sends them a second card (private comm). The deck is consumed sequentially, so the index depends on prior
+ *      choices.
  *   4. Dealer reveals a common table card (broadcast to all).
  *   5. Each player individually wins if the sum of their cards (mod 21) > 19.
  */
@@ -66,9 +66,15 @@ object CardGame:
     val cycled = LazyList.continually(deck).flatten.map(Card(_))
     val h11 = cycled(0); val h21 = cycled(1); val h31 = cycled(2)
     var idx = 3
-    val h12 = if c1 then { val c = cycled(idx); idx += 1; List(h11, c) } else List(h11)
-    val h22 = if c2 then { val c = cycled(idx); idx += 1; List(h21, c) } else List(h21)
-    val h32 = if c3 then { val c = cycled(idx); idx += 1; List(h31, c) } else List(h31)
+    val h12 = if c1 then
+      val c = cycled(idx); idx += 1; List(h11, c)
+    else List(h11)
+    val h22 = if c2 then
+      val c = cycled(idx); idx += 1; List(h21, c)
+    else List(h21)
+    val h32 = if c3 then
+      val c = cycled(idx); idx += 1; List(h31, c)
+    else List(h31)
     val common = cycled(idx)
     def wins(hand: List[Card]): Boolean = (common :: hand).reduce(_ + _) > Card(19)
     (wins(h12), wins(h22), wins(h32))
@@ -171,7 +177,7 @@ object CardGame:
     on[Player1]:
       val hand = take(secondP1) match
         case Some(c2) => List(h1p1, c2)
-        case None     => List(h1p1)
+        case None => List(h1p1)
       val total = (tableCard :: hand).reduce(_ + _)
       val win = total > Card(19)
       println(s"[Player1] Hand: $hand, table: $tableCard, total: $total, win: $win")
@@ -179,7 +185,7 @@ object CardGame:
     on[Player2]:
       val hand = take(secondP2) match
         case Some(c2) => List(h1p2, c2)
-        case None     => List(h1p2)
+        case None => List(h1p2)
       val total = (tableCard :: hand).reduce(_ + _)
       val win = total > Card(19)
       println(s"[Player2] Hand: $hand, table: $tableCard, total: $total, win: $win")
@@ -187,7 +193,7 @@ object CardGame:
     on[Player3]:
       val hand = take(secondP3) match
         case Some(c2) => List(h1p3, c2)
-        case None     => List(h1p3)
+        case None => List(h1p3)
       val total = (tableCard :: hand).reduce(_ + _)
       val win = total > Card(19)
       println(s"[Player3] Hand: $hand, table: $tableCard, total: $total, win: $win")
@@ -197,7 +203,7 @@ object CardGame:
   // ──────────────────────────────────────────────────────────────────────────
 
   private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](
-      program: (Network, PlacementType, Choreography) ?=> V
+      program: (Network, PlacementType, Choreography) ?=> V,
   ): V =
     given Network = net
     given Raise[NetworkError] = Raise.rethrowError
@@ -216,8 +222,8 @@ object CardGame:
     val (r1, r2, r3) = reference(deck, choices)
     println(s"Reference results: Player1=$r1, Player2=$r2, Player3=$r3")
 
-    val broker     = InMemoryNetwork.broker()
-    val dealerNet  = InMemoryNetwork[Dealer]("dealer", broker)
+    val broker = InMemoryNetwork.broker()
+    val dealerNet = InMemoryNetwork[Dealer]("dealer", broker)
     val player1Net = InMemoryNetwork[Player1]("player1", broker)
     val player2Net = InMemoryNetwork[Player2]("player2", broker)
     val player3Net = InMemoryNetwork[Player3]("player3", broker)
@@ -232,4 +238,5 @@ object CardGame:
       scala.concurrent.duration.Duration.Inf,
     )
     println("CardGame done.")
+  end main
 end CardGame

@@ -24,8 +24,7 @@ import io.github.nicolasfara.locix.raise.Raise
  *
  * Ported from the ChoRus (Rust) multicast example.
  *
- * Alice creates a single message and sends it to both Bob and Carol.
- * Each recipient prints the message they received.
+ * Alice creates a single message and sends it to both Bob and Carol. Each recipient prints the message they received.
  */
 object Multicast:
 
@@ -34,7 +33,7 @@ object Multicast:
   // ──────────────────────────────────────────────────────────────────────────
 
   type Alice <: { type Tie <: Single[Bob] & Single[Carol] }
-  type Bob   <: { type Tie <: Single[Alice] }
+  type Bob <: { type Tie <: Single[Alice] }
   type Carol <: { type Tie <: Single[Alice] }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -49,7 +48,7 @@ object Multicast:
       "Hello from Alice!"
 
     // Alice sends the same message to Bob and Carol
-    val msgAtBob   = comm[Alice, Bob](msgAtAlice)
+    val msgAtBob = comm[Alice, Bob](msgAtAlice)
     val msgAtCarol = comm[Alice, Carol](msgAtAlice)
 
     // Bob prints the received message
@@ -67,19 +66,19 @@ object Multicast:
   // ──────────────────────────────────────────────────────────────────────────
 
   private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](
-      program: (Network, PlacementType, Choreography) ?=> V
+      program: (Network, PlacementType, Choreography) ?=> V,
   ): V =
     given Network = net
     given Raise[NetworkError] = Raise.rethrowError
     given ptHandler: PlacementType = PlacementTypeHandler.handler[P]
-    given cHandler: Choreography   = ChoreographyHandler.handler[P]
+    given cHandler: Choreography = ChoreographyHandler.handler[P]
     program
 
   def main(args: Array[String]): Unit =
     println("Running Multicast choreography...")
-    val broker   = InMemoryNetwork.broker()
+    val broker = InMemoryNetwork.broker()
     val aliceNet = InMemoryNetwork[Alice]("alice", broker)
-    val bobNet   = InMemoryNetwork[Bob]("bob", broker)
+    val bobNet = InMemoryNetwork[Bob]("bob", broker)
     val carolNet = InMemoryNetwork[Carol]("carol", broker)
 
     val f1 = Future { handleProgramForPeer[Alice](aliceNet)(multicastProtocol) }

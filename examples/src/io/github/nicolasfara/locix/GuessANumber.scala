@@ -41,8 +41,7 @@ object GuessANumber:
 
   private def evaluateGuess(guess: Int, state: ServerState): (ServerState, GuessResult) =
     if state.finished then (state, GuessResult(guess, "Game already finished", state.triesLeft, terminal = true))
-    else if guess < minGuess || guess > maxGuess then
-      (state, GuessResult(guess, s"Out of range: $guess", state.triesLeft, terminal = false))
+    else if guess < minGuess || guess > maxGuess then (state, GuessResult(guess, s"Out of range: $guess", state.triesLeft, terminal = false))
     else if state.triesLeft > 0 && guess == state.secret then
       val next = state.copy(triesLeft = 0, finished = true)
       (next, GuessResult(guess, "You win!", next.triesLeft, terminal = true))

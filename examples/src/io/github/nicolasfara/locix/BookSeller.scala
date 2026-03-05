@@ -34,7 +34,7 @@ object BookSeller:
       "Structure and Interpretation of Computer Programs" -> 55.00,
       "The Art of Computer Programming" -> 199.99,
       "Introduction to Algorithms" -> 79.99,
-    )
+    ),
   )
 
   def bookStoreProtocol(using Network, Choreography, Placement) = Choreography:
@@ -76,10 +76,10 @@ object BookSeller:
     val clientNetwork = InMemoryNetwork[Buyer]("buyer", broker)
     val primaryNetwork = InMemoryNetwork[Seller]("seller", broker)
 
-
     val clientFuture = Future { handleProgramForPeer[Buyer](clientNetwork)(bookStoreProtocol) }
     val primaryFuture = Future { handleProgramForPeer[Seller](primaryNetwork)(bookStoreProtocol) }
 
     // Wait for both peers to finish
     val combinedFuture = Future.sequence(Seq(clientFuture, primaryFuture))
     Await.result(combinedFuture, scala.concurrent.duration.Duration.Inf)
+end BookSeller

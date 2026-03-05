@@ -71,3 +71,4 @@ object TweetProcessing:
     // Wait for all peers to finish
     val combinedFuture = Future.sequence(Seq(brokerFuture, filterFuture, mapperFuture, aggregatorFuture))
     Await.result(combinedFuture, scala.concurrent.duration.Duration.Inf)
+end TweetProcessing

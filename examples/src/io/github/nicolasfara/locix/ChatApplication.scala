@@ -45,3 +45,4 @@ object ChatApplication:
     // Wait for both peers to finish
     val combinedFuture = Future.sequence(Seq(clientFuture, primaryFuture, secondaryFuture))
     Await.result(combinedFuture, scala.concurrent.duration.Duration.Inf)
+end ChatApplication

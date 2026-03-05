@@ -34,3 +34,4 @@ object Test:
   // def higherOrderCapability(using Network, Placement, Multitier) = Multitier:
   //   val onPonger = on[Ponger] { "hello" }
   //   val res = on[Pinger] { (i: Int) => asLocal(onPonger) }
+end Test

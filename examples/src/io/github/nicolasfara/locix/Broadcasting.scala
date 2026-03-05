@@ -25,10 +25,10 @@ object Broadcasting:
   type Node <: { type Tie <: Multiple[Node] }
 
   private val devicePositions = Map(
-      "node-1" -> (0.0, 0.0),
-      "node-2" -> (1.5, 0.0),
-      "node-3" -> (0.0, 1.0),
-      "node-4" -> (1.0, 1.0),
+    "node-1" -> (0.0, 0.0),
+    "node-2" -> (1.5, 0.0),
+    "node-3" -> (0.0, 1.0),
+    "node-4" -> (1.0, 1.0),
   )
 
   def broadcasting(source: Boolean)(using Network, Collective, Placement, DistanceSensor) =
@@ -44,12 +44,12 @@ object Broadcasting:
         nbr(localPos).map { position =>
           math.sqrt(
             math.pow(localPos._1 - position._1, 2) +
-            math.pow(localPos._2 - position._2, 2)
+              math.pow(localPos._2 - position._2, 2),
           )
         }
     val broadcastSignal = broadcasting(peerAddress == "node-1")
     val unitOf = on[Node]:
-      take(broadcastSignal).subscribe{ source =>
+      take(broadcastSignal).subscribe { source =>
         println(s"[$peerAddress] Received broadcast from source: $source")
       }
     Thread.sleep(5000) // Keep the application running for a while to observe the output
@@ -74,3 +74,4 @@ object Broadcasting:
         handleProgramForPeer[Node](net)(broadcastingApp)
     }
     Await.result(Future.sequence(futures), Duration.Inf)
+end Broadcasting

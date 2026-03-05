@@ -43,7 +43,7 @@ object CityEvt:
 
   private var registeredUsers: Map[String, Token] on Cloud = place(Map.empty)
   private var userToken: Option[Token] on Smartphone = place(None)
-    private val devicePositions = Map(
+  private val devicePositions = Map(
     "smartphone-1" -> (0.0, 0.0),
     "smartphone-2" -> (1.5, 0.0),
   )
@@ -54,7 +54,8 @@ object CityEvt:
         Thread.sleep(1000) // Simulate user filling the registration form
         em.emit(RegistrationForm(take(userData)._1, take(userData)._2))
     val registered = on[Cloud]:
-      Signal.merge(asLocalAll(registration).values.toSeq)
+      Signal
+        .merge(asLocalAll(registration).values.toSeq)
         .map: form =>
           val token = UUID.randomUUID()
           registeredUsers = place(take(registeredUsers) + (form.username -> token))
@@ -65,7 +66,7 @@ object CityEvt:
       res
 
   def recommendation(smartphoneToken: Token on Smartphone)(using Network, Placement, Choreography, Multitier) = Multitier:
-    val authRequests = on[Edge]{ asLocalAll(smartphoneToken).toMap.map { case (k, v) => k.asInstanceOf[String] -> v } }
+    val authRequests = on[Edge] { asLocalAll(smartphoneToken).toMap.map { case (k, v) => k.asInstanceOf[String] -> v } }
     val grantedResults = Choreography:
       val requests = comm[Edge, Cloud](authRequests)
       val authGranted = on[Cloud]:
@@ -93,7 +94,7 @@ object CityEvt:
         nbr(localPos).map { position =>
           math.sqrt(
             math.pow(localPos._1 - position._1, 2) +
-            math.pow(localPos._2 - position._2, 2)
+              math.pow(localPos._2 - position._2, 2),
           )
         }
 
@@ -109,6 +110,7 @@ object CityEvt:
             else println(s"Crowd level is high: $crowd")
           }
         }
+  end crowdMonitoring
 
   def cityEvtApp(using Network, Placement, Multitier, Choreography, Collective) =
     val usrEmail = on[Smartphone]:
@@ -120,7 +122,9 @@ object CityEvt:
     crowdMonitoring
     Thread.sleep(6000) // Keep the program running for a while to observe the output
 
-  private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](program: (Network, PlacementType, Choreography, Collective, Multitier) ?=> V): V =
+  private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](
+      program: (Network, PlacementType, Choreography, Collective, Multitier) ?=> V,
+  ): V =
     given Network = net
     given Raise[NetworkError] = Raise.rethrowError
     given ptHandler: PlacementType = PlacementTypeHandler.handler[P]
@@ -145,3 +149,4 @@ object CityEvt:
     // Wait for both peers to finish
     val combinedFuture = Future.sequence(Seq(clientFuture, primaryFuture, smartphone1Future, smartphone2Future))
     Await.result(combinedFuture, scala.concurrent.duration.Duration.Inf)
+end CityEvt

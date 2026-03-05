@@ -61,14 +61,15 @@ object KeyValueStore:
     val response = on[Primary]:
       println(s"[Primary $peerAddress] Handling request: $req")
       handleRequest(take(requestOnPrimary))
-    comm[Primary, Client](response)    
+    comm[Primary, Client](response)
 
   def kvs(using Network, Placement, Choreography) = Choreography:
-    val operations = List(Request.Put("foo", "bar"), Request.Get("foo"), Request.Put("hello", "world"), Request.Get("hello"), Request.Get("nonexistent"))
+    val operations =
+      List(Request.Put("foo", "bar"), Request.Get("foo"), Request.Put("hello", "world"), Request.Get("hello"), Request.Get("nonexistent"))
     operations.foreach: op =>
       val request = on[Client](op)
       val response = kvStoreProtocol(request)
-      on[Client]{ println(s"[Client ${peerAddress}] Received response: ${take(response)} for request: ${take(request)}") }
+      on[Client] { println(s"[Client ${peerAddress}] Received response: ${take(response)} for request: ${take(request)}") }
 
   private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](program: (Network, PlacementType, Choreography) ?=> V): V =
     given Network = net
@@ -85,7 +86,6 @@ object KeyValueStore:
     val backup1Network = InMemoryNetwork[Backup]("backup1", broker)
     val backup2Network = InMemoryNetwork[Backup]("backup2", broker)
 
-
     val clientFuture = Future { handleProgramForPeer[Client](clientNetwork)(kvs) }
     val primaryFuture = Future { handleProgramForPeer[Primary](primaryNetwork)(kvs) }
     val backup1Future = Future { handleProgramForPeer[Backup](backup1Network)(kvs) }
@@ -94,3 +94,4 @@ object KeyValueStore:
     // Wait for both peers to finish
     val combinedFuture = Future.sequence(Seq(clientFuture, primaryFuture, backup1Future, backup2Future))
     Await.result(combinedFuture, scala.concurrent.duration.Duration.Inf)
+end KeyValueStore

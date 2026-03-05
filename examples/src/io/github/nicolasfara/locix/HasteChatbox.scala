@@ -39,7 +39,7 @@ object HasteChatbox:
 
   private val scripts: Map[String, List[String]] = Map(
     "alice" -> List("Hi, I am Alice.", "Anyone checked section 2.3?"),
-    "bob"   -> List("Bob here.", "I like the typed remote bridge."),
+    "bob" -> List("Bob here.", "I like the typed remote bridge."),
     "carol" -> List("Carol joined.", "Looks good from my side."),
   )
 
@@ -74,11 +74,13 @@ object HasteChatbox:
       val lock = new AnyRef
       val allStreamsClosed = new CountDownLatch(commandStreams.size)
 
-      commandStreams.toSeq.sortBy(_._1.toString).foreach:
-        case (clientId, stream) =>
-          stream.onClose: () =>
-            allStreamsClosed.countDown()
-            println(s"[Server] Stream closed for $clientId (${allStreamsClosed.getCount} remaining).")
+      commandStreams.toSeq
+        .sortBy(_._1.toString)
+        .foreach:
+          case (clientId, stream) =>
+            stream.onClose: () =>
+              allStreamsClosed.countDown()
+              println(s"[Server] Stream closed for $clientId (${allStreamsClosed.getCount} remaining).")
 
       mergedCommands.subscribe:
         case Hello(sessionId) =>
@@ -108,8 +110,7 @@ object HasteChatbox:
       val closed = new AtomicBoolean(false)
 
       incomingDeliveries.subscribe: delivery =>
-        if delivery.to == sessionId then
-          mailbox.put(s"${delivery.from}: ${delivery.text}")
+        if delivery.to == sessionId then mailbox.put(s"${delivery.from}: ${delivery.text}")
 
       incomingDeliveries.onClose: () =>
         closed.set(true)
@@ -117,10 +118,8 @@ object HasteChatbox:
       var keepRunning = true
       while keepRunning do
         val next = mailbox.poll(awaitPollTimeoutMs, TimeUnit.MILLISECONDS)
-        if next != null then
-          println(s"[Client $sessionId] await -> $next")
-        else if closed.get() && mailbox.isEmpty then
-          keepRunning = false
+        if next != null then println(s"[Client $sessionId] await -> $next")
+        else if closed.get() && mailbox.isEmpty then keepRunning = false
 
       println(s"[Client $sessionId] no more messages.")
   end chatboxProtocol

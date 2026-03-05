@@ -22,20 +22,15 @@ import io.github.nicolasfara.locix.raise.Raise
 /**
  * GMW (Goldreich–Micali–Wigderson) Secure Two-Party Computation.
  *
- * Two parties jointly evaluate a boolean circuit without revealing their
- * private inputs.  The protocol relies on:
+ * Two parties jointly evaluate a boolean circuit without revealing their private inputs. The protocol relies on:
  *
- *   - Additive XOR secret-sharing: each value is split so that
- *       s1 XOR s2 = secret.
+ *   - Additive XOR secret-sharing: each value is split so that s1 XOR s2 = secret.
  *   - Local XOR gates: each party independently XORs its shares.
- *   - AND gates via 1-of-2 Oblivious Transfer (OT): the sender places
- *       a two-entry truth-table on the wire; the receiver selects one
- *       entry using its share as the choice bit, without revealing it.
- *   - Reveal: both parties exchange their output shares and reconstruct
- *       the final bit.
+ *   - AND gates via 1-of-2 Oblivious Transfer (OT): the sender places a two-entry truth-table on the wire; the receiver selects one entry using its
+ *     share as the choice bit, without revealing it.
+ *   - Reveal: both parties exchange their output shares and reconstruct the final bit.
  *
- * Inputs are mocked (P1 = true, P2 = false).
- * Example circuit: AND(InputP1, InputP2)  →  true AND false = false.
+ * Inputs are mocked (P1 = true, P2 = false). Example circuit: AND(InputP1, InputP2) → true AND false = false.
  */
 object GMW:
 
@@ -52,20 +47,22 @@ object GMW:
 
   sealed trait Circuit:
     override def toString: String = this match
-      case InputP1        => "InputWire<P1>"
-      case InputP2        => "InputWire<P2>"
-      case LitWire(b)     => s"LitWire($b)"
-      case AndGate(l, r)  => s"($l) AND ($r)"
-      case XorGate(l, r)  => s"($l) XOR ($r)"
+      case InputP1 => "InputWire<P1>"
+      case InputP2 => "InputWire<P2>"
+      case LitWire(b) => s"LitWire($b)"
+      case AndGate(l, r) => s"($l) AND ($r)"
+      case XorGate(l, r) => s"($l) XOR ($r)"
 
   /** Secret input wire belonging to P1. */
-  case object InputP1                               extends Circuit
+  case object InputP1 extends Circuit
+
   /** Secret input wire belonging to P2. */
-  case object InputP2                               extends Circuit
+  case object InputP2 extends Circuit
+
   /** Publicly-known literal. P1 holds `value`; P2 holds `false`. */
-  case class  LitWire(value: Boolean)               extends Circuit
-  case class  AndGate(left: Circuit, right: Circuit) extends Circuit
-  case class  XorGate(left: Circuit, right: Circuit) extends Circuit
+  case class LitWire(value: Boolean) extends Circuit
+  case class AndGate(left: Circuit, right: Circuit) extends Circuit
+  case class XorGate(left: Circuit, right: Circuit) extends Circuit
 
   // ──────────────────────────────────────────────────────────────────────────
   // Shares: one Boolean share at each party
@@ -90,13 +87,13 @@ object GMW:
 
     def secretShareByP1(secret: Boolean on P1): Shares =
       val r: Boolean on P1 = on[P1] { scala.util.Random.nextBoolean() }
-      val p2Share = comm[P1, P2](r)                         // send r to P2
+      val p2Share = comm[P1, P2](r) // send r to P2
       val p1Share: Boolean on P1 = on[P1] { take(secret) ^ take(r) }
       Shares(p1Share, p2Share)
 
     def secretShareByP2(secret: Boolean on P2): Shares =
       val r: Boolean on P2 = on[P2] { scala.util.Random.nextBoolean() }
-      val p1Share = comm[P2, P1](r)                         // send r to P1
+      val p1Share = comm[P2, P1](r) // send r to P1
       val p2Share: Boolean on P2 = on[P2] { take(secret) ^ take(r) }
       Shares(p1Share, p2Share)
 
@@ -134,7 +131,7 @@ object GMW:
 
       // OT: P1 → P2  (yields b1 at P2)
       val p1Table: (Boolean, Boolean) on P1 = on[P1]:
-        (take(u.s1) ^ take(r01), take(r01))               // (m_true, m_false)
+        (take(u.s1) ^ take(r01), take(r01)) // (m_true, m_false)
       val p1TableAtP2 = comm[P1, P2](p1Table)
       val b1: Boolean on P2 = on[P2]:
         val (mTrue, mFalse) = take(p1TableAtP2)
@@ -142,7 +139,7 @@ object GMW:
 
       // OT: P2 → P1  (yields b0 at P1)
       val p2Table: (Boolean, Boolean) on P2 = on[P2]:
-        (take(u.s2) ^ take(r10), take(r10))               // (m_true, m_false)
+        (take(u.s2) ^ take(r10), take(r10)) // (m_true, m_false)
       val p2TableAtP1 = comm[P2, P1](p2Table)
       val b0: Boolean on P1 = on[P1]:
         val (mTrue, mFalse) = take(p2TableAtP1)
@@ -152,15 +149,16 @@ object GMW:
         on[P1] { (take(u.s1) & take(v.s1)) ^ take(b0) ^ take(r01) },
         on[P2] { (take(u.s2) & take(v.s2)) ^ take(b1) ^ take(r10) },
       )
+    end andGate
 
     // ── Circuit evaluation → secret-shared output ───────────────────────────
 
     def gmw(c: Circuit): Shares = c match
       case InputP1 =>
-        val secret: Boolean on P1 = on[P1] { true }        // mocked P1 input
+        val secret: Boolean on P1 = on[P1] { true } // mocked P1 input
         secretShareByP1(secret)
       case InputP2 =>
-        val secret: Boolean on P2 = on[P2] { false }       // mocked P2 input
+        val secret: Boolean on P2 = on[P2] { false } // mocked P2 input
         secretShareByP2(secret)
       case LitWire(b) =>
         Shares(on[P1] { b }, on[P2] { false })
@@ -192,7 +190,7 @@ object GMW:
   // ──────────────────────────────────────────────────────────────────────────
 
   private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](
-      program: (Network, PlacementType, Choreography) ?=> V
+      program: (Network, PlacementType, Choreography) ?=> V,
   ): V =
     given Network = net
     given Raise[NetworkError] = Raise.rethrowError
@@ -210,9 +208,9 @@ object GMW:
     println("  P2 input (mocked) = false")
     println(s"  Expected result   = ${(true & false) ^ true}")
 
-    val broker     = InMemoryNetwork.broker()
-    val p1Network  = InMemoryNetwork[P1]("p1", broker)
-    val p2Network  = InMemoryNetwork[P2]("p2", broker)
+    val broker = InMemoryNetwork.broker()
+    val p1Network = InMemoryNetwork[P1]("p1", broker)
+    val p2Network = InMemoryNetwork[P2]("p2", broker)
 
     val p1Future = Future { handleProgramForPeer[P1](p1Network)(gmwProtocol(circuit)) }
     val p2Future = Future { handleProgramForPeer[P2](p2Network)(gmwProtocol(circuit)) }

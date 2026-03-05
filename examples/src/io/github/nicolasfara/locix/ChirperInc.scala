@@ -89,11 +89,13 @@ object ChirperInc:
       var allChirps = List.empty[Chirp]
       val searchTerms = scala.collection.mutable.Map.from(knownClients.map(_ -> ""))
 
-      commandStreams.toSeq.sortBy(_._1.toString).foreach:
-        case (clientId, stream) =>
-          stream.onClose: () =>
-            allStreamsClosed.countDown()
-            println(s"[Server] Stream closed for $clientId (${allStreamsClosed.getCount} remaining).")
+      commandStreams.toSeq
+        .sortBy(_._1.toString)
+        .foreach:
+          case (clientId, stream) =>
+            stream.onClose: () =>
+              allStreamsClosed.countDown()
+              println(s"[Server] Stream closed for $clientId (${allStreamsClosed.getCount} remaining).")
 
       mergedCommands.subscribe:
         case SearchUpdated(sessionId, keyword) =>

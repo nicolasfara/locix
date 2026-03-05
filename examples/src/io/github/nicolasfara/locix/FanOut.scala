@@ -24,8 +24,7 @@ import io.github.nicolasfara.locix.raise.Raise
  *
  * Ported from the ChoRus (Rust) fanout example.
  *
- * Alice sends a personalized greeting to each of Bob and Carol.
- * Each recipient prints the message they received.
+ * Alice sends a personalized greeting to each of Bob and Carol. Each recipient prints the message they received.
  */
 object FanOut:
 
@@ -34,7 +33,7 @@ object FanOut:
   // ──────────────────────────────────────────────────────────────────────────
 
   type Alice <: { type Tie <: Single[Bob] & Single[Carol] }
-  type Bob   <: { type Tie <: Single[Alice] }
+  type Bob <: { type Tie <: Single[Alice] }
   type Carol <: { type Tie <: Single[Alice] }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -76,19 +75,19 @@ object FanOut:
   // ──────────────────────────────────────────────────────────────────────────
 
   private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](
-      program: (Network, PlacementType, Choreography) ?=> V
+      program: (Network, PlacementType, Choreography) ?=> V,
   ): V =
     given Network = net
     given Raise[NetworkError] = Raise.rethrowError
     given ptHandler: PlacementType = PlacementTypeHandler.handler[P]
-    given cHandler: Choreography   = ChoreographyHandler.handler[P]
+    given cHandler: Choreography = ChoreographyHandler.handler[P]
     program
 
   def main(args: Array[String]): Unit =
     println("Running FanOut choreography...")
-    val broker   = InMemoryNetwork.broker()
+    val broker = InMemoryNetwork.broker()
     val aliceNet = InMemoryNetwork[Alice]("alice", broker)
-    val bobNet   = InMemoryNetwork[Bob]("bob", broker)
+    val bobNet = InMemoryNetwork[Bob]("bob", broker)
     val carolNet = InMemoryNetwork[Carol]("carol", broker)
 
     val f1 = Future { handleProgramForPeer[Alice](aliceNet)(fanOutProtocol) }

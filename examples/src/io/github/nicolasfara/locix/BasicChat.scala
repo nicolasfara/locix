@@ -31,7 +31,7 @@ object BasicChat:
 
   private val scripts: Map[String, List[String]] = Map(
     "alice" -> List("Hello everyone.", "I am exploring Locix."),
-    "bob"   -> List("Bob joined the room.", "Nice to meet you all."),
+    "bob" -> List("Bob joined the room.", "Nice to meet you all."),
     "carol" -> List("Carol says hi.", "Broadcasts look correct."),
   )
 
@@ -57,11 +57,13 @@ object BasicChat:
       val (broadcastSignal, broadcastEmitter) = Signal.make[Entry]
       val allStreamsClosed = CountDownLatch(submissionStreams.size)
 
-      submissionStreams.toSeq.sortBy(_._1.toString).foreach:
-        case (clientId, stream) =>
-          stream.onClose: () =>
-            allStreamsClosed.countDown()
-            println(s"[Server] Stream closed for $clientId (${allStreamsClosed.getCount} remaining).")
+      submissionStreams.toSeq
+        .sortBy(_._1.toString)
+        .foreach:
+          case (clientId, stream) =>
+            stream.onClose: () =>
+              allStreamsClosed.countDown()
+              println(s"[Server] Stream closed for $clientId (${allStreamsClosed.getCount} remaining).")
 
       mergedSubmissions.subscribe: entry =>
         println(s"[Server] broadcasting '${entry.name}: ${entry.msg}'")

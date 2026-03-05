@@ -28,18 +28,15 @@ import io.github.nicolasfara.locix.raise.Raise
  * Protocol (2 clients, 2 servers, 1 analyst):
  *
  *   1. Each client holds a secret value.
- *   2. Each client splits its secret into two additive shares (one per server):
- *        share_s1 = r   (random)
- *        share_s2 = secret - r
- *      and sends share_si to Server_i.
- *   3. Each server collects one share from each client, ending up with a list
- *      [Client1's share, Client2's share].
+ *   2. Each client splits its secret into two additive shares (one per server): share_s1 = r (random) share_s2 = secret - r and sends share_si to
+ *      Server_i.
+ *   3. Each server collects one share from each client, ending up with a list [Client1's share, Client2's share].
  *   4. Commitment-based lottery to select a winning client index ω:
- *        a. Each server generates random ρ and salt ψ, computes α = H(ρ ∥ ψ).
- *        b. Servers publish their commitments α to each other.
- *        c. Servers open by sending (ρ, ψ) to each other.
- *        d. Each server verifies the other's commitment.
- *        e. ω = (ρ₁ + ρ₂).abs % numClients  (same result at both servers)
+ *      a. Each server generates random ρ and salt ψ, computes α = H(ρ ∥ ψ).
+ *      b. Servers publish their commitments α to each other.
+ *      c. Servers open by sending (ρ, ψ) to each other.
+ *      d. Each server verifies the other's commitment.
+ *      e. ω = (ρ₁ + ρ₂).abs % numClients (same result at both servers)
  *   5. Each server forwards shares(ω) — the ω-th client's share — to the Analyst.
  *   6. The Analyst sums the two received shares to reconstruct the winner's secret.
  */
@@ -106,10 +103,10 @@ object Lottery:
     // ── Step 3: Clients send their shares to the respective servers ──────────
     //   Each client → Server1 gets one share, Server2 gets the other.
 
-    val c1s1 = comm[Client1, Server1](c1shareForS1)   // Client1 → Server1
-    val c1s2 = comm[Client1, Server2](c1shareForS2)   // Client1 → Server2
-    val c2s1 = comm[Client2, Server1](c2shareForS1)   // Client2 → Server1
-    val c2s2 = comm[Client2, Server2](c2shareForS2)   // Client2 → Server2
+    val c1s1 = comm[Client1, Server1](c1shareForS1) // Client1 → Server1
+    val c1s2 = comm[Client1, Server2](c1shareForS2) // Client1 → Server2
+    val c2s1 = comm[Client2, Server1](c2shareForS1) // Client2 → Server1
+    val c2s2 = comm[Client2, Server2](c2shareForS2) // Client2 → Server2
 
     // Each server collects its shares as an ordered list [c1_share, c2_share].
     val s1shares: List[Long] on Server1 = on[Server1]:
@@ -162,13 +159,13 @@ object Lottery:
     // ── Step 4d: Each server verifies the other's commitment ─────────────────
 
     on[Server1]:
-      val expected   = take(alpha2AtS1)
+      val expected = take(alpha2AtS1)
       val recomputed = commit(take(rho2AtS1), take(psi2AtS1))
       require(expected == recomputed, "[Server1] Commitment check FAILED for Server2!")
       println(s"[Server1] Commitment check passed for Server2 ✓")
 
     on[Server2]:
-      val expected   = take(alpha1AtS2)
+      val expected = take(alpha1AtS2)
       val recomputed = commit(take(rho1AtS2), take(psi1AtS2))
       require(expected == recomputed, "[Server2] Commitment check FAILED for Server1!")
       println(s"[Server2] Commitment check passed for Server1 ✓")
@@ -212,22 +209,22 @@ object Lottery:
   // ──────────────────────────────────────────────────────────────────────────
 
   private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](
-      program: (Network, PlacementType, Choreography) ?=> V
+      program: (Network, PlacementType, Choreography) ?=> V,
   ): V =
     given Network = net
     given Raise[NetworkError] = Raise.rethrowError
     given ptHandler: PlacementType = PlacementTypeHandler.handler[P]
-    given cHandler: Choreography   = ChoreographyHandler.handler[P]
+    given cHandler: Choreography = ChoreographyHandler.handler[P]
     program
 
   def main(args: Array[String]): Unit =
     println("Running Lottery (DPrio) choreography...")
-    val broker      = InMemoryNetwork.broker()
-    val client1Net  = InMemoryNetwork[Client1]("client1", broker)
-    val client2Net  = InMemoryNetwork[Client2]("client2", broker)
-    val server1Net  = InMemoryNetwork[Server1]("server1", broker)
-    val server2Net  = InMemoryNetwork[Server2]("server2", broker)
-    val analystNet  = InMemoryNetwork[Analyst]("analyst", broker)
+    val broker = InMemoryNetwork.broker()
+    val client1Net = InMemoryNetwork[Client1]("client1", broker)
+    val client2Net = InMemoryNetwork[Client2]("client2", broker)
+    val server1Net = InMemoryNetwork[Server1]("server1", broker)
+    val server2Net = InMemoryNetwork[Server2]("server2", broker)
+    val analystNet = InMemoryNetwork[Analyst]("analyst", broker)
 
     val f1 = Future { handleProgramForPeer[Client1](client1Net)(lotteryProtocol) }
     val f2 = Future { handleProgramForPeer[Client2](client2Net)(lotteryProtocol) }
@@ -240,4 +237,5 @@ object Lottery:
       scala.concurrent.duration.Duration.Inf,
     )
     println("Lottery done.")
+  end main
 end Lottery

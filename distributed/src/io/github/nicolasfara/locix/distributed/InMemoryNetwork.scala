@@ -112,6 +112,8 @@ private final class InMemoryNetworkImpl[LocalPeer <: Peer: PeerTag](
         }(err => NetworkError.NetworkFailure(s"Failed to pull value from $peerAddress for key $key: ${err.getMessage}"))
         peerAddress -> value
       }.toMap
+    end if
+  end pullFromAll
 
   override def broadcast[S <: Peer, V](using Raise[NetworkError])(key: Identifier, value: V): Unit =
     broker.getAllPeers.foreach(broker.putValue(_, key, value))
@@ -286,7 +288,7 @@ class NetworkBroker:
     peerTrees.put(from, valueTree)
 
   def getCollectiveValueTree(from: PeerAddress, local: PeerAddress, key: Identifier): Option[Any] =
-    collectiveValueTrees.get(local).flatMap(_.get(from)) 
+    collectiveValueTrees.get(local).flatMap(_.get(from))
 
   // ---- Signal subscription management ----
   def subscribe(to: PeerAddress, origin: PeerAddress, key: Identifier): Unit =

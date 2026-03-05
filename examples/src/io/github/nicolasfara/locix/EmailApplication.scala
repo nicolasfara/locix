@@ -60,3 +60,4 @@ object EmailApplication:
 
     val results = Future.sequence(Seq(serverFuture, clientFuture))
     Await.result(results, scala.concurrent.duration.Duration.Inf)
+end EmailApplication
