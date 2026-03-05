@@ -1,39 +1,90 @@
 examples:
-  - source: examples/res/MultiChor/BookSeller1Simple.hs
-    target: examples/src/io/github/nicolasfara/locix/BookSeller.scala
-  - source: examples/res/MultiChor/CardGame.hs
-    target: examples/src/io/github/nicolasfara/locix/CardGame.scala
-  - source: examples/res/ScalaLoci/Chat.scala
-    target: examples/src/io/github/nicolasfara/locix/ChatApplication.scala
-  - source: ???
-    target: examples/src/io/github/nicolasfara/locix/EmailApplication.scala
-  - source: examples/res/ChoRus/fanin.rs
-    target: examples/src/io/github/nicolasfara/locix/FanIn.scala
-  - source: examples/res/ChoRus/fanout.rs
-    target: examples/src/io/github/nicolasfara/locix/FanOut.scala
-  - source: ???
-    target: examples/src/io/github/nicolasfara/locix/GMW.scala
-  - source: ???
-    target: examples/src/io/github/nicolasfara/locix/KeyValueStore.scala
-  - source: examples/res/MultiChor/Lottery.hs
-    target: examples/src/io/github/nicolasfara/locix/Lottery.scala
-  - source: examples/res/ScalaLoci/MasterWorker.scala
-    target: examples/src/io/github/nicolasfara/locix/MasterWorker.scala
-  - source: examples/res/ChoreoTS/mergesort/mergesort.ts
-    target: examples/src/io/github/nicolasfara/locix/MergeSort.scala
-  - source: examples/res/ChoRus/multicast.rs
-    target: examples/src/io/github/nicolasfara/locix/Multicast.scala
-  - source: examples/ChoRus/tic-tac-toe.rs
-    target: examples/src/io/github/nicolasfara/locix/TicTacToe.scala
-  - source: examples/res/ScalaLoci/Processing.scala
-    target: examples/src/io/github/nicolasfara/locix/TweetProcessing.scala
-  - source: ???
-    target: examples/src/io/github/nicolasfara/locix/TicketTrader.scala
-  - source: examples/res/s-mt-frp/BasicChat.scala
-    target: examples/src/io/github/nicolasfara/locix/BasicChat.scala
-  - source: examples/res/s-mt-frp/Chirper.scala
-    target: examples/src/io/github/nicolasfara/locix/Chirper.scala
-  - source: examples/res/s-mt-frp/ChirperInc.scala
-    target: examples/src/io/github/nicolasfara/locix/ChirperInc.scala
-  - source: examples/res/s-mt-frp/Examples.scala
-    target: examples/src/io/github/nicolasfara/locix/Examples.scala
+  - case: Email System
+    paradigm: "Choreography & Multitier"
+    citation: DBLP:conf/ecoop/GiallorenzoMPRS21
+    source: ???
+    target: examples/case-studies/email-system/locix
+
+  - case: Key-value Store
+    paradigm: Choreography
+    citation: DBLP:journals/pacmpl/BatesKJSKN25,10.1145/3607849
+    source: examples/case-studies/key-value-store/original
+    target: examples/case-studies/key-value-store/locix
+
+  - case: GMW
+    paradigm: Choreography
+    citation: DBLP:journals/pacmpl/BatesKJSKN25
+    source: examples/case-studies/gmw/original
+    target: examples/case-studies/gmw/locix
+
+  - case: DPrio
+    paradigm: Choreography
+    citation: DBLP:journals/pacmpl/BatesKJSKN25
+    source: examples/case-studies/dprio/original
+    target: examples/case-studies/dprio/locix
+
+  - case: Book Seller
+    paradigm: Choreography
+    citation: 10.1145/3607849
+    source: examples/case-studies/book-seller/original
+    target: examples/case-studies/book-seller/locix
+
+  - case: Chat Application
+    paradigm: Multitier
+    citation: DBLP:journals/pacmpl/WeisenburgerKS18
+    source: examples/case-studies/chat-application/original
+    target: examples/case-studies/chat-application/locix
+
+  - case: Main-Worker
+    paradigm: Multitier
+    citation: DBLP:journals/pacmpl/WeisenburgerKS18
+    source: examples/case-studies/main-worker/original
+    target: examples/case-studies/main-worker/locix
+
+  - case: Tweet Processing
+    paradigm: Multitier
+    citation: DBLP:journals/pacmpl/WeisenburgerKS18
+    source: examples/case-studies/tweet-processing/original
+    target: examples/case-studies/tweet-processing/locix
+
+  - case: Email Application
+    paradigm: Multitier
+    citation: DBLP:journals/pacmpl/WeisenburgerKS18
+    source: ???
+    target: examples/case-studies/email-application/locix
+
+  - case: Token Ring
+    paradigm: Multitier
+    citation: DBLP:journals/pacmpl/WeisenburgerKS18
+    source: examples/case-studies/token-ring/original
+    target: examples/case-studies/token-ring/locix
+
+  - case: Neighbor Counter
+    paradigm: Aggregate
+    citation: ""
+    source: ???
+    target: examples/case-studies/neighbor-counter/locix
+
+  - case: Neighbor Distances
+    paradigm: Aggregate
+    citation: ""
+    source: ???
+    target: examples/case-studies/neighbor-distances/locix
+
+  - case: Neighbor Distances Obstacle
+    paradigm: Aggregate
+    citation: ""
+    source: ???
+    target: examples/case-studies/neighbor-distances-obstacle/locix
+
+  - case: Broadcasting
+    paradigm: Aggregate
+    citation: ""
+    source: ???
+    target: examples/case-studies/broadcasting/locix
+
+  - case: Channel
+    paradigm: Aggregate
+    citation: ""
+    source: ???
+    target: examples/case-studies/channel/locix
