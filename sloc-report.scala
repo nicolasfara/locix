@@ -68,18 +68,40 @@ def clocCount(path: Path): Either[String, Int] = {
     val exit = Process(Seq("cloc", "--csv", "--quiet", path.toString))
       .!(ProcessLogger(line => stdout.append(line).append('\n'), err => stderr.append(err).append('\n')))
 
-    if (exit != 0) {
-      val msg = (stderr.toString + stdout.toString).trim
-      Left(if (msg.nonEmpty) s"cloc error: $msg" else "cloc error")
-    } else {
+    val hasErrorInOutput = (stdout.toString + "\n" + stderr.toString).toLowerCase.contains("error")
+    if (exit != 0 || hasErrorInOutput) countFileLines(path)
+    else {
       val lines = stdout.toString.linesIterator.filterNot(_.trim.isEmpty).toList
       val dataLineOpt = lines.reverse.find(line => !line.startsWith("files"))
-      dataLineOpt match
-        case Some(line) =>
-          val parts = line.split(',').map(_.trim)
-          parts.lastOption.flatMap(_.toIntOption).toRight("unexpected cloc output")
-        case None => Left("unexpected cloc output")
+      dataLineOpt
+        .flatMap(line => line.split(',').map(_.trim).lastOption.flatMap(_.toIntOption))
+        .toRight("unexpected cloc output")
+        .orElse(countFileLines(path))
     }
+  }
+}
+
+def countFileLines(path: Path): Either[String, Int] = {
+  def countLinesInFile(file: Path): Int = {
+    val reader = Files.newBufferedReader(file)
+    try Iterator.continually(reader.readLine()).takeWhile(_ != null).size
+    finally reader.close()
+  }
+
+  try {
+    if (Files.isRegularFile(path)) Right(countLinesInFile(path))
+    else if (Files.isDirectory(path)) {
+      val stream = Files.walk(path)
+      try {
+        val total = stream.iterator().asScala
+          .filter(Files.isRegularFile(_))
+          .map(countLinesInFile)
+          .sum
+        Right(total)
+      } finally stream.close()
+    } else Left("not a regular file or directory")
+  } catch {
+    case e: Throwable => Left(s"line-count error: ${e.getMessage}")
   }
 }
 

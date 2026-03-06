@@ -1,0 +1,23 @@
+enum Choice@Role { THEN, ELSE }
+
+class EmailSystem@(Client, Server) {
+  private MailServerDB@Server serverDB = ...;
+  private MailDB@Client clientDB = ...;
+  private SymChannel@(Client, Server)<Serializable> ch = ...;
+
+  void updateEmails(UserId@Client userId) {
+    UserId@Server id = userId >> ch::com;
+    Timestamp@Server timestamp = clientDB.lastCheckOut() >> ch::com;
+    List@Client<Email> emails = serverDB.since(id, timestamp) >> ch::com;
+    clientDB.update(emails);
+    if (ClientLib@Client.isOnFlatRate()) {
+      Choice@Client.THEN >> ch::select;
+      clientDB.extractIds(emails) >> ch::com
+        >> serverDB::getAttachments >> ch::com
+        >> clientDB::updateAttachments;
+    }
+    else {
+      Choice@Client.ELSE >> ch::select;
+    }
+  }
+}

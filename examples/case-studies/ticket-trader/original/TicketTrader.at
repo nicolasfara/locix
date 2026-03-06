@@ -1,0 +1,50 @@
+def TicketOffer := isolate: {
+  def eventName := nil;
+  def price := 0;
+  def location := nil;
+
+  // Constructor
+  def init(anEventName, aPrice) {
+    eventName := anEventName;
+    price := aPrice;
+  };
+};
+
+def GPS_Location := makeReactive(Coordinate.new());
+GPS.addLocationObserver: { |lat, lng| GPS_Location.update(lat, lng) };
+
+deftype TicketOfferT;
+
+def TicketVendor := object: {
+  def offeredTickets := HashMap.new();
+
+  // Offer a new ticket.
+  def offerTicket(eventName, price) {
+    def ticketOffer := makeReactive(TicketOffer.new(eventName, price));
+    ticketOffer.location := GPS_Location;
+    offeredTickets.put(eventName, ticketOffer);
+    exportBehavior: ticketOffer as: TicketOfferT;
+  };
+
+  // Change the price of a ticket on offer.
+  def setTicketPrice(eventName, newPrice) {
+    (offeredTickets.get(eventName)).price := newPrice;
+  };
+};
+
+def findOffers(event, maximumPrice, maximumDistance) {
+  // Subscribe to TicketOffers
+  def allNearbyOffers := ambientBehavior: TicketOfferT @All;
+
+  // Filter out interesting TicketOffers
+  allNearbyOffers.filter: { |offer|
+    (offer.eventName == event).and: {
+      (offer.price <= maximumPrice).and: {
+        GPS_Location.distanceTo(offer.location) <= maximumDistance
+      }
+    }
+  };
+};
+
+def werchterTicketVendors := findOffers("RockWerchter", 200, 500);
+gui.updateWithOffers(werchterTicketVendors)

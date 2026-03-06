@@ -1,0 +1,53 @@
+public class GuessANumber {
+  final label{* <- *} cl = new label{* -> client};
+  int{* -> *; * <- *} secret;
+  int{* -> client; * <- *} tries;
+  ...
+  private void setupUI{* -> client}() {
+    guessbox = new NumberTextBox[cl, cl]("");
+    message = new Text[cl, cl]("");
+    button = new Button[cl, cl]("Guess");
+    ...
+    rootpanel.addChild(cl, cl, guessbox);
+    rootpanel.addChild(cl, cl, button);
+    rootpanel.addChild(cl, cl, message);
+  }
+  void makeGuess{* -> client}(Integer{* -> client} num)
+      where authority(*), endorse({* <- *})
+      throws NullPointerException
+  {
+    int i = 0;
+    if (num != null) i = num.intValue();
+    endorse (i, {* <- client} to {* <- *})
+    if (i >= 1 && i <= 10) {
+      if (tries > 0 && i == secret) {
+        declassify ({* -> *} to {* -> client}) {
+          tries = 0;
+          finishApp("You win!");
+        }
+      } else {
+        declassify ({* -> *} to {* -> client}) {
+          tries--;
+          if (tries > 0) message.setText("Try again");
+          else finishApp("Game over");
+        }
+      }
+    } else {
+      message.setText("Out of range:" + i);
+    }
+  }
+}
+class GuessListener
+    implements ClickListener[{* -> client}, {* -> client}] {
+  ...
+  public void onClick{* -> client} (
+      Widget[{* -> client}, {* -> client}]{* -> client} w)
+      :{* -> client} {
+    if (guessApp != null) {
+      NumberTextBox[cl, cl]{* -> client} guessbox =
+          guessApp.guessbox;
+      if (guessbox != null)
+        guessApp.makeGuess(guessbox.getNumber());
+    }
+  }
+}
