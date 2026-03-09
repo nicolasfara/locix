@@ -1,4 +1,4 @@
-package io.github.nicolasfara.locix.signal
+package io.github.locix.signal
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

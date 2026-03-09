@@ -3,18 +3,18 @@ package io.github.nicolasfara.locix
 import scala.concurrent.*
 import scala.concurrent.ExecutionContext.Implicits.global
 
-import io.github.nicolasfara.locix.Choreography.*
-import io.github.nicolasfara.locix.EmailSystemUtils.*
-import io.github.nicolasfara.locix.distributed.InMemoryNetwork
-import io.github.nicolasfara.locix.handlers.*
-import io.github.nicolasfara.locix.network.Network
-import io.github.nicolasfara.locix.network.NetworkError
-import io.github.nicolasfara.locix.peers.Peers.*
-import io.github.nicolasfara.locix.peers.Peers.Cardinality.*
-import io.github.nicolasfara.locix.placement.*
-import io.github.nicolasfara.locix.placement.PeerScope.take
-import io.github.nicolasfara.locix.placement.PlacementType.on
-import io.github.nicolasfara.locix.raise.Raise
+import io.github.locix.Choreography.*
+import io.github.locix.EmailSystemUtils.*
+import io.github.locix.distributed.InMemoryNetwork
+import io.github.locix.handlers.*
+import io.github.locix.network.Network
+import io.github.locix.network.NetworkError
+import io.github.locix.peers.Peers.*
+import io.github.locix.peers.Peers.Cardinality.*
+import io.github.locix.placement.*
+import io.github.locix.placement.PeerScope.take
+import io.github.locix.placement.PlacementType.on
+import io.github.locix.raise.Raise
 
 object EmailSystemChoreo:
   type Client <: { type Tie <: Single[Server] }

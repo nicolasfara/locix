@@ -1,9 +1,9 @@
-package io.github.nicolasfara.locix
+package io.github.locix
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scala.caps.SharedCapability
-import io.github.nicolasfara.locix.handlers.FieldImpl
+import io.github.locix.handlers.FieldImpl
 
 class FieldSpec extends AnyFlatSpec with Matchers:
   behavior of "Field extension methods"

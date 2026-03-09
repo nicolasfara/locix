@@ -1,19 +1,19 @@
 package io.github.nicolasfara.locix
 
-import io.github.nicolasfara.locix.peers.Peers.Cardinality.*
+import io.github.locix.peers.Peers.Cardinality.*
 import java.time.LocalDateTime
-import io.github.nicolasfara.locix.network.Network
-import io.github.nicolasfara.locix.network.NetworkError
-import io.github.nicolasfara.locix.network.Network.peerAddress
-import io.github.nicolasfara.locix.placement.PeerScope.take
-import io.github.nicolasfara.locix.placement.Placement
-import io.github.nicolasfara.locix.placement.PlacementType
-import io.github.nicolasfara.locix.placement.PlacementType.*
-import io.github.nicolasfara.locix.Multitier.*
-import io.github.nicolasfara.locix.peers.Peers.*
-import io.github.nicolasfara.locix.raise.Raise
-import io.github.nicolasfara.locix.handlers.*
-import io.github.nicolasfara.locix.distributed.InMemoryNetwork
+import io.github.locix.network.Network
+import io.github.locix.network.NetworkError
+import io.github.locix.network.Network.peerAddress
+import io.github.locix.placement.PeerScope.take
+import io.github.locix.placement.Placement
+import io.github.locix.placement.PlacementType
+import io.github.locix.placement.PlacementType.*
+import io.github.locix.Multitier.*
+import io.github.locix.peers.Peers.*
+import io.github.locix.raise.Raise
+import io.github.locix.handlers.*
+import io.github.locix.distributed.InMemoryNetwork
 import scala.concurrent.*
 
 object EmailApplication:

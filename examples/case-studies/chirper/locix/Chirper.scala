@@ -5,23 +5,23 @@ import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-import io.github.nicolasfara.locix.Multitier
-import io.github.nicolasfara.locix.Multitier.*
-import io.github.nicolasfara.locix.distributed.InMemoryNetwork
-import io.github.nicolasfara.locix.handlers.MultitierHandler
-import io.github.nicolasfara.locix.handlers.PlacementTypeHandler
-import io.github.nicolasfara.locix.network.Network
-import io.github.nicolasfara.locix.network.Network.peerAddress
-import io.github.nicolasfara.locix.network.NetworkError
-import io.github.nicolasfara.locix.peers.Peers.Cardinality.*
-import io.github.nicolasfara.locix.peers.Peers.Peer
-import io.github.nicolasfara.locix.peers.Peers.PeerTag
-import io.github.nicolasfara.locix.placement.Placement
-import io.github.nicolasfara.locix.placement.PlacementType
-import io.github.nicolasfara.locix.placement.PlacementType.on
-import io.github.nicolasfara.locix.raise.Raise
-import io.github.nicolasfara.locix.signal.Signal
-import io.github.nicolasfara.locix.signal.Signal.signalBuilder
+import io.github.locix.Multitier
+import io.github.locix.Multitier.*
+import io.github.locix.distributed.InMemoryNetwork
+import io.github.locix.handlers.MultitierHandler
+import io.github.locix.handlers.PlacementTypeHandler
+import io.github.locix.network.Network
+import io.github.locix.network.Network.peerAddress
+import io.github.locix.network.NetworkError
+import io.github.locix.peers.Peers.Cardinality.*
+import io.github.locix.peers.Peers.Peer
+import io.github.locix.peers.Peers.PeerTag
+import io.github.locix.placement.Placement
+import io.github.locix.placement.PlacementType
+import io.github.locix.placement.PlacementType.on
+import io.github.locix.raise.Raise
+import io.github.locix.signal.Signal
+import io.github.locix.signal.Signal.signalBuilder
 
 object Chirper:
   type Server <: { type Tie <: Multiple[Client] }

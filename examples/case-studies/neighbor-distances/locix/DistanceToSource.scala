@@ -4,22 +4,22 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration.DurationInt
 
-import io.github.nicolasfara.locix.Collective
-import io.github.nicolasfara.locix.Collective.*
-import io.github.nicolasfara.locix.distributed.InMemoryNetwork
-import io.github.nicolasfara.locix.handlers.CollectiveHandler
-import io.github.nicolasfara.locix.handlers.PlacementTypeHandler
-import io.github.nicolasfara.locix.network.Network
-import io.github.nicolasfara.locix.network.Network.peerAddress
-import io.github.nicolasfara.locix.network.NetworkError
-import io.github.nicolasfara.locix.peers.Peers.Cardinality.*
-import io.github.nicolasfara.locix.peers.Peers.Peer
-import io.github.nicolasfara.locix.peers.Peers.PeerTag
-import io.github.nicolasfara.locix.placement.PeerScope.take
-import io.github.nicolasfara.locix.placement.Placement
-import io.github.nicolasfara.locix.placement.PlacementType
-import io.github.nicolasfara.locix.placement.PlacementType.on
-import io.github.nicolasfara.locix.raise.Raise
+import io.github.locix.Collective
+import io.github.locix.Collective.*
+import io.github.locix.distributed.InMemoryNetwork
+import io.github.locix.handlers.CollectiveHandler
+import io.github.locix.handlers.PlacementTypeHandler
+import io.github.locix.network.Network
+import io.github.locix.network.Network.peerAddress
+import io.github.locix.network.NetworkError
+import io.github.locix.peers.Peers.Cardinality.*
+import io.github.locix.peers.Peers.Peer
+import io.github.locix.peers.Peers.PeerTag
+import io.github.locix.placement.PeerScope.take
+import io.github.locix.placement.Placement
+import io.github.locix.placement.PlacementType
+import io.github.locix.placement.PlacementType.on
+import io.github.locix.raise.Raise
 
 object DistanceToSource:
   type Smartphone <: { type Tie <: Multiple[Smartphone] }

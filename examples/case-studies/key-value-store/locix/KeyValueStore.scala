@@ -1,30 +1,30 @@
 package io.github.nicolasfara.locix
 
-import io.github.nicolasfara.locix.peers.Peers.Cardinality.*
-import io.github.nicolasfara.locix.network.Network
-import io.github.nicolasfara.locix.placement.Placement
-import io.github.nicolasfara.locix.placement.PlacementType.*
-import io.github.nicolasfara.locix.signal.Signal.signalBuilder
+import io.github.locix.peers.Peers.Cardinality.*
+import io.github.locix.network.Network
+import io.github.locix.placement.Placement
+import io.github.locix.placement.PlacementType.*
+import io.github.locix.signal.Signal.signalBuilder
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
-import io.github.nicolasfara.locix.placement.PeerScope.take
-import io.github.nicolasfara.locix.network.Network.reachablePeersOf
-import io.github.nicolasfara.locix.Choreography.broadcast
-import io.github.nicolasfara.locix.Choreography.multicast
-import io.github.nicolasfara.locix.Choreography.comm
+import io.github.locix.placement.PeerScope.take
+import io.github.locix.network.Network.reachablePeersOf
+import io.github.locix.Choreography.broadcast
+import io.github.locix.Choreography.multicast
+import io.github.locix.Choreography.comm
 import java.util.UUID
-import io.github.nicolasfara.locix.peers.Peers.Peer
-import io.github.nicolasfara.locix.peers.Peers.PeerTag
-import io.github.nicolasfara.locix.placement.PlacementType
-import io.github.nicolasfara.locix.raise.Raise
-import io.github.nicolasfara.locix.network.NetworkError
-import io.github.nicolasfara.locix.handlers.PlacementTypeHandler
-import io.github.nicolasfara.locix.handlers.ChoreographyHandler
-import io.github.nicolasfara.locix.distributed.InMemoryNetwork
+import io.github.locix.peers.Peers.Peer
+import io.github.locix.peers.Peers.PeerTag
+import io.github.locix.placement.PlacementType
+import io.github.locix.raise.Raise
+import io.github.locix.network.NetworkError
+import io.github.locix.handlers.PlacementTypeHandler
+import io.github.locix.handlers.ChoreographyHandler
+import io.github.locix.distributed.InMemoryNetwork
 import scala.concurrent.Future
 import scala.concurrent.Await
-import io.github.nicolasfara.locix.network.Network.peerAddress
+import io.github.locix.network.Network.peerAddress
 
 object KeyValueStore:
   type Client <: { type Tie <: Single[Primary] }
