@@ -23,7 +23,7 @@ examples:
     paradigm: Choreography
     citation: 10.1145/3607849
 
-  - source: ???
+  - source: examples/case-studies/broadcasting/original
     target: examples/case-studies/broadcasting/locix
     case: Broadcasting
     paradigm: Aggregate
@@ -59,19 +59,13 @@ examples:
     paradigm: Multitier
     citation: ""
 
-  - source: ???
-    target: examples/case-studies/city-evt/locix
-    case: City Evt
-    paradigm: "Choreography & Multitier & Aggregate"
-    citation: ""
-
   - source: examples/case-studies/dprio/original
     target: examples/case-studies/dprio/locix
     case: DPrio
     paradigm: Choreography
     citation: DBLP:journals/pacmpl/BatesKJSKN25
 
-  - source: ???
+  - source: examples/case-studies/email-application/original
     target: examples/case-studies/email-application/locix
     case: Email Application
     paradigm: Multitier
