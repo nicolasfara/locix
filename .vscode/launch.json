@@ -250,6 +250,36 @@
       "args": [],
       "jvmOptions": [],
       "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "VitalsStreaming",
+      "mainClass": "io.github.locix.VitalsStreaming",
+      "buildTarget": "file:///home/nicolas/Documents/repos/locicope/examples",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "RemoteFunction",
+      "mainClass": "io.github.locix.RemoteFunction",
+      "buildTarget": "file:///home/nicolas/Documents/repos/locicope/examples",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "QuickSort",
+      "mainClass": "io.github.locix.QuickSort",
+      "buildTarget": "file:///home/nicolas/Documents/repos/locicope/examples",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
     }
   ]
 }

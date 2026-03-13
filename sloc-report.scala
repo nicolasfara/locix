@@ -5,8 +5,14 @@ import scala.collection.mutable.ListBuffer
 import scala.jdk.CollectionConverters.*
 import scala.sys.process.*
 
-final case class Mapping(source: String, target: String)
+final case class Mapping(
+    source: String,
+    target: String,
+    sourceLines: Option[String] = None,
+    targetLines: Option[String] = None,
+)
 final case class Result(mapping: Mapping, sourceLoc: Either[String, Int], targetLoc: Either[String, Int])
+final case class LineSpan(start: Int, end: Int)
 
 @main def run(outputArg: String*): Unit = {
   val repoRoot = Paths.get("")
@@ -21,7 +27,11 @@ final case class Result(mapping: Mapping, sourceLoc: Either[String, Int], target
   }
 
   val results = mappings.map { m =>
-    Result(m, clocCount(repoRoot.resolve(m.source)), clocCount(repoRoot.resolve(m.target)))
+    Result(
+      m,
+      countWithOptionalLines(repoRoot.resolve(m.source), m.sourceLines),
+      countWithOptionalLines(repoRoot.resolve(m.target), m.targetLines),
+    )
   }
 
   val report = formatTable(results)
@@ -42,23 +52,120 @@ def requireCloc(): Unit = {
 }
 
 def readMappings(path: Path): List[Mapping] = {
-  val srcPattern = """^\s*-\s*source:\s*(.+)\s*$""".r
-  val tgtPattern = """^\s*target:\s*(.+)\s*$""".r
+  val srcItemPattern = """^\s*-\s*source:\s*(.+)\s*$""".r
+  val keyPattern = """^\s*([a-zA-Z_][a-zA-Z0-9_-]*)\s*:\s*(.+)\s*$""".r
 
   val buffer = ListBuffer.empty[Mapping]
-  var pendingSource: Option[String] = None
+  var source: Option[String] = None
+  var target: Option[String] = None
+  var sourceLines: Option[String] = None
+  var targetLines: Option[String] = None
+
+  def flushCurrent(): Unit = {
+    for
+      src <- source
+      tgt <- target
+    do buffer += Mapping(src, tgt, sourceLines, targetLines)
+
+    source = None
+    target = None
+    sourceLines = None
+    targetLines = None
+  }
 
   for (line <- Files.readAllLines(path).asScala) {
     line match
-      case srcPattern(value) => pendingSource = Some(value.trim)
-      case tgtPattern(value) =>
-        pendingSource.foreach(src => buffer += Mapping(src, value.trim))
-        pendingSource = None
+      case srcItemPattern(value) =>
+        flushCurrent()
+        source = cleanMappingValue(value)
+      case keyPattern(key, value) if source.nonEmpty =>
+        key match
+          case "source"       => source = cleanMappingValue(value)
+          case "target"       => target = cleanMappingValue(value)
+          case "source_lines" => sourceLines = cleanMappingValue(value)
+          case "target_lines" => targetLines = cleanMappingValue(value)
+          case _              =>
       case _ =>
   }
 
+  flushCurrent()
   buffer.filterNot(_.source.contains("???")).toList
 }
+
+def cleanMappingValue(value: String): Option[String] = {
+  val trimmed = value.trim
+  if (trimmed.isEmpty) None
+  else {
+    val unquoted =
+      if (trimmed.length >= 2 && ((trimmed.head == '"' && trimmed.last == '"') || (trimmed.head == '\'' && trimmed.last == '\'')))
+        trimmed.substring(1, trimmed.length - 1)
+      else trimmed
+    Some(unquoted.trim).filter(_.nonEmpty)
+  }
+}
+
+def countWithOptionalLines(path: Path, lineSpec: Option[String]): Either[String, Int] =
+  lineSpec match
+    case Some(spec) => clocCountForLineSpec(path, spec)
+    case None       => clocCount(path)
+
+def clocCountForLineSpec(path: Path, lineSpec: String): Either[String, Int] = {
+  if (!Files.exists(path)) Left("missing")
+  else if (!Files.isRegularFile(path)) Left("line range requires regular file")
+  else {
+    parseLineSpec(lineSpec).flatMap { spans =>
+      val lines = Files.readAllLines(path).asScala.toIndexedSeq
+      val maxLine = lines.length
+
+      spans.find(_.end > maxLine) match
+        case Some(_) => Left(s"line range out of bounds (max line $maxLine)")
+        case None =>
+          val selected = spans.flatMap(span => lines.slice(span.start - 1, span.end))
+          val fileName = Option(path.getFileName).map(_.toString).getOrElse("slice.txt")
+          val tempFile = Files.createTempFile("sloc-lines-", s"-$fileName")
+          try {
+            Files.write(tempFile, selected.asJava)
+            clocCount(tempFile)
+          } catch {
+            case e: Throwable => Left(s"line-range count error: ${e.getMessage}")
+          } finally Files.deleteIfExists(tempFile)
+    }
+  }
+}
+
+def parseLineSpec(spec: String): Either[String, List[LineSpan]] = {
+  val tokens = spec.split(',').iterator.map(_.trim).filter(_.nonEmpty).toList
+  if (tokens.isEmpty) Left("invalid line range syntax: empty")
+  else {
+    val parsed = tokens.map(parseLineToken)
+    parsed.collectFirst { case Left(err) => err } match
+      case Some(err) => Left(err)
+      case None      => Right(parsed.collect { case Right(span) => span })
+  }
+}
+
+def parseLineToken(token: String): Either[String, LineSpan] = {
+  val singleLinePattern = raw"(\d+)".r
+  val rangePattern = raw"(\d+)-(\d+)".r
+
+  token match
+    case singleLinePattern(n) =>
+      toPositiveLineNumber(n).map(line => LineSpan(line, line))
+    case rangePattern(start, end) =>
+      for
+        startLine <- toPositiveLineNumber(start)
+        endLine <- toPositiveLineNumber(end)
+        span <-
+          if (startLine <= endLine) Right(LineSpan(startLine, endLine))
+          else Left(s"invalid line range '$token': start > end")
+      yield span
+    case _ => Left(s"invalid line range syntax: '$token'")
+}
+
+def toPositiveLineNumber(value: String): Either[String, Int] =
+  value.toIntOption match
+    case Some(line) if line > 0 => Right(line)
+    case _                      => Left(s"invalid line range syntax: '$value'")
 
 def clocCount(path: Path): Either[String, Int] = {
   if (!Files.exists(path)) Left("missing")
