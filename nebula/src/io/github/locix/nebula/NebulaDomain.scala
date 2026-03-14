@@ -1,4 +1,4 @@
-package io.github.locix
+package io.github.locix.nebula
 
 object NebulaDomain:
   final case class Model(weights: Vector[Double])
@@ -11,7 +11,10 @@ object NebulaDomain:
       nodeId: String,
       closeNeighbors: Int,
       avgDistance: Double,
+      distanceToSeed: Double,
+      stability: Double,
       connected: Boolean,
+      eligible: Boolean,
   )
 
   final case class LocalUpdate(
@@ -54,4 +57,8 @@ object NebulaDomain:
 
   def pretty(model: Model): String =
     model.weights.map(weight => f"$weight%.3f").mkString("[", ", ", "]")
+
+  def prettyDistance(distance: Double): String =
+    if distance >= 5e8 then "inf"
+    else f"$distance%.2f"
 end NebulaDomain

@@ -1,4 +1,4 @@
-package io.github.locix
+package io.github.locix.nebula
 
 import io.github.locix.Choreography
 import io.github.locix.Choreography.*
@@ -6,9 +6,10 @@ import io.github.locix.Collective
 import io.github.locix.Collective.*
 import io.github.locix.CollectiveBuildingBlocks.DistanceSensor
 import io.github.locix.CollectiveBuildingBlocks.DistanceSensor.nbrRange
+import io.github.locix.CollectiveBuildingBlocks.G
 import io.github.locix.Multitier
 import io.github.locix.Multitier.*
-import io.github.locix.NebulaDomain.*
+import io.github.locix.nebula.NebulaDomain.*
 import io.github.locix.distributed.InMemoryNetwork
 import io.github.locix.handlers.ChoreographyHandler
 import io.github.locix.handlers.CollectiveHandler
@@ -26,6 +27,8 @@ import io.github.locix.placement.PlacementType
 import io.github.locix.placement.PlacementType.on
 import io.github.locix.placement.PlacementType.place
 import io.github.locix.raise.Raise
+import io.github.locix.Field
+import io.github.locix.VM
 
 import scala.concurrent.Await
 import scala.concurrent.Future
@@ -38,7 +41,11 @@ object Nebula:
   type Participant <: { type Tie <: Single[Coordinator] & Single[Dashboard] & Multiple[Participant] }
   type Dashboard <: { type Tie <: Single[Coordinator] & Multiple[Participant] }
 
+  private val AggregationSeed = "trainer-a"
+  private val InfinityDistance = 1e9
   private val CloseNeighborThreshold = 1.6
+  private val FederationRadius = 2.0
+  private val StabilityThreshold = 0.35
   private val RoundInterval = 400.millis
   private val TopologyWarmupMillis = 1500L
   private val TotalRounds = 3
@@ -61,7 +68,11 @@ object Nebula:
     f"loss=${metrics.loss}%.3f acc=${metrics.accuracy}%.3f"
 
   private def formatTopology(status: TopologyStatus): String =
-    f"${status.nodeId}: close=${status.closeNeighbors}, avgDist=${status.avgDistance}%.2f, connected=${status.connected}"
+    val avgDistance = f"${status.avgDistance}%.2f"
+    val stability = f"${status.stability}%.2f"
+    s"${status.nodeId}: close=${status.closeNeighbors}, avgDist=$avgDistance, " +
+      s"seedDist=${prettyDistance(status.distanceToSeed)}, stability=$stability, " +
+      s"connected=${status.connected}, eligible=${status.eligible}"
 
   private def formatUpdate(update: LocalUpdate): String =
     s"${update.nodeId}@r${update.round}: samples=${update.samples}, ${formatMetrics(update.metrics)}, model=${pretty(update.model)}"
@@ -70,23 +81,46 @@ object Nebula:
     val localPeer = peerAddress.asInstanceOf[String]
     given DistanceSensor = new DistanceSensor:
       val localPosition = datasets(localPeer).position
-      def nbrRange(using Collective, VM): Field[Double] =
-        nbr(localPosition).map: remotePosition =>
+      def nbrRange(using c: Collective, vm: VM): Field[Double] =
+        io.github.locix.Collective.nbr(using c, vm)(localPosition).map: remotePosition =>
           val dx = localPosition._1 - remotePosition._1
           val dy = localPosition._2 - remotePosition._2
           math.sqrt((dx * dx) + (dy * dy))
 
     val topologySignal = Collective[Participant](RoundInterval):
-      val distances = nbrRange.withoutSelf.values.toList
+      val rawRanges = nbrRange
+      val distances = rawRanges.withoutSelf.values.toList
       val closeNeighbors = distances.count(_ <= CloseNeighborThreshold)
       val avgDistance =
         if distances.isEmpty then 0.0
         else distances.sum / distances.size.toDouble
+      val boundedMetric = rawRanges.map: distance =>
+        if distance <= CloseNeighborThreshold then distance
+        else InfinityDistance
+      val distanceFromSeed = G(
+        localPeer == AggregationSeed,
+        0.0,
+        _ + boundedMetric.minWithoutSelf(InfinityDistance),
+        () => boundedMetric,
+      )
+      val localDensity =
+        if distances.isEmpty then 0.0
+        else closeNeighbors.toDouble / distances.size.toDouble
+      val stability = rep(localDensity): previous =>
+        (previous * 0.65) + (localDensity * 0.35)
+      val connectedToSeed = distanceFromSeed < InfinityDistance
+      val eligible =
+        connectedToSeed &&
+          distanceFromSeed <= FederationRadius &&
+          stability >= StabilityThreshold
       TopologyStatus(
         nodeId = localPeer,
         closeNeighbors = closeNeighbors,
         avgDistance = avgDistance,
-        connected = closeNeighbors > 0,
+        distanceToSeed = distanceFromSeed,
+        stability = stability,
+        connected = connectedToSeed,
+        eligible = eligible,
       )
 
     on[Participant]:
@@ -107,8 +141,8 @@ object Nebula:
 
           val participantUpdate = on[Participant]:
             val nodeId = peerAddress.asInstanceOf[String]
-            val connected = take(state.latestTopology).exists(_.connected)
-            if connected then
+            val eligible = take(state.latestTopology).exists(_.eligible)
+            if eligible then
               val dataset = datasets(nodeId)
               val (trainedModel, metrics) = trainLocally(currentModel, dataset, currentRound)
               val update = LocalUpdate(nodeId, currentRound, dataset.samples, trainedModel, metrics)
@@ -117,7 +151,10 @@ object Nebula:
               Some(update)
             else
               state.lastLocalUpdate = place(None)
-              println(s"[$nodeId] round $currentRound skipped -> isolated participant")
+              val reason = take(state.latestTopology)
+                .map(status => s"outside federation region (${formatTopology(status)})")
+                .getOrElse("missing collective state")
+              println(s"[$nodeId] round $currentRound skipped -> $reason")
               None
 
           val gatheredUpdates = gather[Participant, Coordinator](participantUpdate)
@@ -157,6 +194,7 @@ object Nebula:
       val updates = asLocalAll[Dashboard, Participant](updateAtParticipants).toMap.toList.sortBy(_._1.toString)
 
       println("\n=== Nebula Dashboard ===")
+      println(s"Collective seed: $AggregationSeed, federation radius: $FederationRadius, stability threshold: $StabilityThreshold")
       println(s"Final aggregated model: ${pretty(finalModel)}")
       println("Topology snapshots:")
       topologies.foreach:
