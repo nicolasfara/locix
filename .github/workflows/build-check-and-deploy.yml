@@ -50,9 +50,10 @@ jobs:
       - *setup-java
       - *mill-cache
       - name: Run Code Quality Analysis
-        run: |
-          ./mill __.fix --check
-          ./mill mill.scalalib.scalafmt/checkFormatAll
+        run: "true" # Currently QA tools are not aware of capture checking, so they fail because of parsing errors.
+        # run: |
+        #   ./mill mill.scalalib.scalafmt/checkFormatAll
+        #   ./mill __.fix --check
         
   success:
     runs-on: ubuntu-24.04
