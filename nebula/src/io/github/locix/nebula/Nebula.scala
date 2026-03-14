@@ -81,8 +81,8 @@ object Nebula:
     val localPeer = peerAddress.asInstanceOf[String]
     given DistanceSensor = new DistanceSensor:
       val localPosition = datasets(localPeer).position
-      def nbrRange(using c: Collective, vm: VM): Field[Double] =
-        io.github.locix.Collective.nbr(using c, vm)(localPosition).map: remotePosition =>
+      def nbrRange(using Collective, VM): Field[Double] =
+        io.github.locix.Collective.nbr(localPosition).map: remotePosition =>
           val dx = localPosition._1 - remotePosition._1
           val dy = localPosition._2 - remotePosition._2
           math.sqrt((dx * dx) + (dy * dy))
