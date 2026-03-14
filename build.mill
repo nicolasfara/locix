@@ -72,3 +72,7 @@ object distributed extends CommonScala {
 object examples extends CommonScala {
   def moduleDeps = Seq(core, distributed)
 }
+
+object nebula extends CommonScala {
+  def moduleDeps = Seq(core, distributed)
+}

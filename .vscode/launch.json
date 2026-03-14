@@ -280,6 +280,16 @@
       "args": [],
       "jvmOptions": [],
       "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "Nebula",
+      "mainClass": "io.github.locix.Nebula",
+      "buildTarget": "file:///home/nicolas/Documents/repos/locix/nebula",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
     }
   ]
 }
