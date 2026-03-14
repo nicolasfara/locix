@@ -32,6 +32,9 @@ project/plugins/project/
 hs_err_pid*
 
 .idea/
+.vscode/
+.vscode-test/
+*.code-workspace
 
 .direnv/
 
