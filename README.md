@@ -164,3 +164,9 @@ The build uses Mill and Scala 3.8.1 with experimental capabilities enabled.
 ```
 
 For more runnable programs, inspect [`examples/src/io/github/locix`](./examples/src/io/github/locix).
+
+## License And Conduct
+
+LociX is distributed under the MIT License. Unless stated otherwise, the code in this repository is provided on an "as is" basis, without warranty of any kind. See [`LICENSE`](./LICENSE) for the full license text.
+
+Participation in this project is also governed by the repository [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md).
