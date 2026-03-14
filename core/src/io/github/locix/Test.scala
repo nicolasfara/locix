@@ -1,17 +1,18 @@
 package io.github.locix
 
-import io.github.locix.placement.PlacementType
-import io.github.locix.placement.PeerScope.*
-import io.github.locix.placement.PlacementType.*
-import io.github.locix.peers.Peers.Cardinality.*
+import scala.concurrent.ExecutionContext.Implicits.global
+
 import io.github.locix.Choreography
 import io.github.locix.Choreography.*
 import io.github.locix.Multitier.*
 import io.github.locix.network.Network
-import io.github.locix.signal.Signal
-import scala.concurrent.ExecutionContext.Implicits.global
-import io.github.locix.signal.Signal.signalBuilder
+import io.github.locix.peers.Peers.Cardinality.*
+import io.github.locix.placement.PeerScope.*
 import io.github.locix.placement.Placement
+import io.github.locix.placement.PlacementType
+import io.github.locix.placement.PlacementType.*
+import io.github.locix.signal.Signal
+import io.github.locix.signal.Signal.signalBuilder
 
 object Test:
   type Pinger <: { type Tie <: Single[Ponger] }
