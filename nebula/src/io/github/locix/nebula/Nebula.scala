@@ -1,5 +1,11 @@
 package io.github.locix.nebula
 
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.concurrent.duration.Duration
+import scala.concurrent.duration.DurationInt
+
 import io.github.locix.Choreography
 import io.github.locix.Choreography.*
 import io.github.locix.Collective
@@ -7,14 +13,16 @@ import io.github.locix.Collective.*
 import io.github.locix.CollectiveBuildingBlocks.DistanceSensor
 import io.github.locix.CollectiveBuildingBlocks.DistanceSensor.nbrRange
 import io.github.locix.CollectiveBuildingBlocks.G
+import io.github.locix.Field
 import io.github.locix.Multitier
 import io.github.locix.Multitier.*
-import io.github.locix.nebula.NebulaDomain.*
+import io.github.locix.VM
 import io.github.locix.distributed.InMemoryNetwork
 import io.github.locix.handlers.ChoreographyHandler
 import io.github.locix.handlers.CollectiveHandler
 import io.github.locix.handlers.MultitierHandler
 import io.github.locix.handlers.PlacementTypeHandler
+import io.github.locix.nebula.NebulaDomain.*
 import io.github.locix.network.Network
 import io.github.locix.network.Network.peerAddress
 import io.github.locix.network.NetworkError
@@ -27,14 +35,6 @@ import io.github.locix.placement.PlacementType
 import io.github.locix.placement.PlacementType.on
 import io.github.locix.placement.PlacementType.place
 import io.github.locix.raise.Raise
-import io.github.locix.Field
-import io.github.locix.VM
-
-import scala.concurrent.Await
-import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
-import scala.concurrent.duration.DurationInt
 
 object Nebula:
   type Coordinator <: { type Tie <: Multiple[Participant] & Single[Dashboard] }
@@ -97,12 +97,7 @@ object Nebula:
       val boundedMetric = rawRanges.map: distance =>
         if distance <= CloseNeighborThreshold then distance
         else InfinityDistance
-      val distanceFromSeed = G(
-        localPeer == AggregationSeed,
-        0.0,
-        _ + boundedMetric.minWithoutSelf(InfinityDistance),
-        () => boundedMetric,
-      )
+      val distanceFromSeed = G(localPeer == AggregationSeed, 0.0, _ + boundedMetric.minWithoutSelf(InfinityDistance), () => boundedMetric)
       val localDensity =
         if distances.isEmpty then 0.0
         else closeNeighbors.toDouble / distances.size.toDouble
