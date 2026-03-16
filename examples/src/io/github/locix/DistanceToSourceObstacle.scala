@@ -18,6 +18,7 @@ import io.github.locix.placement.PeerScope.take
 import io.github.locix.Collective.*
 import io.github.locix.CollectiveBuildingBlocks.distanceTo
 import scala.concurrent.*
+import io.github.locix.NbrSensor.sensor
 
 object DistanceToSourceObstacle:
   type Node <: { type Tie <: Multiple[Node] }
@@ -41,17 +42,7 @@ object DistanceToSourceObstacle:
       Thread.sleep(5000) // Keep the program running for a while to observe the output
 
   def neighborDistanceObstacleApp(using Network, Placement, Collective) =
-    given DistanceSensor = new DistanceSensor:
-      val localPeer = peerAddress.asInstanceOf[String]
-      def nbrRange(using Collective, VM): Field[Double] =
-        val localPos = devicePositions(localPeer)
-        nbr(localPos).map { position =>
-          math.sqrt(
-            math.pow(localPos._1 - position._1, 2) +
-              math.pow(localPos._2 - position._2, 2),
-          )
-        }
-
+    given DistanceSensor = sensor(peerAddress.asInstanceOf[String], devicePositions)
     neighborDistanceObstacle(peerAddress == "node-2" || peerAddress == "node-3", peerAddress == "node-1")
 
   private def handleProgramForPeer[P <: Peer: PeerTag](net: Network)[V](program: (Network, PlacementType, Collective) ?=> V): V =

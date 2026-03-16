@@ -18,8 +18,9 @@ import io.github.locix.placement.PlacementType.*
 import io.github.locix.placement.PeerScope.*
 import io.github.locix.CollectiveBuildingBlocks.*
 import io.github.locix.Collective.nbr
-import io.github.locix.CollectiveBuildingBlocks.DistanceSensor.nbrRange
 import scala.concurrent.*
+import NbrSensor.* 
+import io.github.locix.CollectiveBuildingBlocks.DistanceSensor.nbrRange
 
 object Broadcasting:
   type Node <: { type Tie <: Multiple[Node] }
@@ -37,16 +38,7 @@ object Broadcasting:
       G(source, id, identity, () => nbrRange)
 
   def broadcastingApp(using Network, Placement, Collective) =
-    given DistanceSensor = new DistanceSensor:
-      val localPeer = peerAddress.asInstanceOf[String]
-      def nbrRange(using Collective, VM): Field[Double] =
-        val localPos = devicePositions(localPeer)
-        nbr(localPos).map { position =>
-          math.sqrt(
-            math.pow(localPos._1 - position._1, 2) +
-              math.pow(localPos._2 - position._2, 2),
-          )
-        }
+    given DistanceSensor = sensor(peerAddress.asInstanceOf[String], devicePositions)
     val broadcastSignal = broadcasting(peerAddress == "node-1")
     val unitOf = on[Node]:
       take(broadcastSignal).subscribe { source =>

@@ -1,4 +1,4 @@
-package io.github.nicolasfara.locix
+package io.github.locix
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
@@ -23,6 +23,7 @@ import io.github.locix.raise.Raise
 import io.github.locix.CollectiveBuildingBlocks.*
 import io.github.locix.CollectiveBuildingBlocks.DistanceSensor
 import scala.collection.concurrent.TrieMap
+import io.github.locix.NbrSensor.sensor
 
 object Channel:
   type Node <: { type Tie <: Multiple[Node] }
@@ -32,7 +33,7 @@ object Channel:
       |          \       /
     node-3 (0,1) - node-4 (1,1)
    */
-  private val devicePositions = TrieMap(
+  private val devicePositions = Map(
       "node-1" -> (0.0, 0.0),
       "node-2" -> (1.5, 0.0),
       "node-3" -> (0.0, 1.0),
@@ -43,16 +44,7 @@ object Channel:
     distanceTo(source) + distanceTo(target) <= distanceBetween(source, target)
 
   def channelApp(using Network, Placement, Collective) =
-    given DistanceSensor = new DistanceSensor:
-      val localPeer = peerAddress.asInstanceOf[String]
-      def nbrRange(using Collective, VM): Field[Double] =
-        val localPos = devicePositions(localPeer)
-        nbr(localPos).map { position =>
-          math.sqrt(
-            math.pow(localPos._1 - position._1, 2) +
-            math.pow(localPos._2 - position._2, 2)
-          )
-        }
+    given DistanceSensor = sensor(peerAddress.asInstanceOf[String], devicePositions)
     val channelSignal = channel(peerAddress == "node-1", peerAddress == "node-4", 1)
     val unitOf = on[Node]:
       val channels = take(channelSignal)
