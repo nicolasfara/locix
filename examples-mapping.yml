@@ -237,3 +237,9 @@ examples:
     case: Vitals Streaming
     paradigm: Choreography
     citation: ""
+
+  - source: ???
+    target: examples/case-studies/smart-mobility/locix
+    case: Smart Mobility
+    paradigm: "Multitier & Aggregate & Choreography"
+    citation: ""
