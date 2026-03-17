@@ -243,3 +243,33 @@ examples:
     case: Smart Mobility
     paradigm: "Multitier & Aggregate & Choreography"
     citation: ""
+
+  - source: examples/case-studies/collection/original
+    target: examples/case-studies/collection/locix
+    case: Collection
+    paradigm: Aggregate
+    citation: ""
+
+  - source: examples/case-studies/collection-ids/original
+    target: examples/case-studies/collection-ids/locix
+    case: Collection IDs
+    paradigm: Aggregate
+    citation: ""
+
+  - source: examples/case-studies/gradient-explicit-fields/original
+    target: examples/case-studies/gradient-explicit-fields/locix
+    case: Gradient With Explicit Fields
+    paradigm: Aggregate
+    citation: ""
+
+  - source: examples/case-studies/count-neighbours/original
+    target: examples/case-studies/count-neighbours/locix
+    case: Count Neighbours
+    paradigm: Aggregate
+    citation: ""
+
+  - source: examples/case-studies/max-id/original
+    target: examples/case-studies/max-id/locix
+    case: Max ID
+    paradigm: Aggregate
+    citation: ""
