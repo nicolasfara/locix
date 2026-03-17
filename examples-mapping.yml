@@ -17,6 +17,12 @@ examples:
     paradigm: Multitier
     citation: ""
 
+  - source: examples/case-studies/shopping-list/original
+    target: examples/case-studies/shopping-list/locix
+    case: Shopping List
+    paradigm: Multitier
+    citation: ""
+
   - source: examples/case-studies/book-seller/original
     target: examples/case-studies/book-seller/locix
     case: Book Seller
@@ -128,6 +134,18 @@ examples:
     case: Main-Worker
     paradigm: Multitier
     citation: DBLP:journals/pacmpl/WeisenburgerKS18
+
+  - source: examples/case-studies/graffiti-rpc/original
+    target: examples/case-studies/graffiti-rpc/locix
+    case: Graffiti RPC
+    paradigm: Multitier
+    citation: ""
+
+  - source: examples/case-studies/graffiti-websockets/original
+    target: examples/case-studies/graffiti-websockets/locix
+    case: Graffiti WebSockets
+    paradigm: Multitier
+    citation: ""
 
   - source: examples/case-studies/merge-sort/original
     target: examples/case-studies/merge-sort/locix
