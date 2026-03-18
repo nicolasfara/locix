@@ -1,4 +1,4 @@
-package io.github.nicolasfara.locix
+package io.github.locix
 
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global

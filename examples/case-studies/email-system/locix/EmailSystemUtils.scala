@@ -1,4 +1,4 @@
-package io.github.nicolasfara.locix
+package io.github.locix
 
 object EmailSystemUtils:
   type UserId = String

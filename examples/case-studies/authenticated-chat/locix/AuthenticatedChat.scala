@@ -1,4 +1,4 @@
-package io.github.nicolasfara.locix
+package io.github.locix
 
 import java.util.concurrent.CountDownLatch
 import scala.concurrent.*

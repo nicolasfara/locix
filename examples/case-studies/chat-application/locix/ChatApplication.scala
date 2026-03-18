@@ -1,4 +1,4 @@
-package io.github.nicolasfara.locix
+package io.github.locix
 
 import io.github.locix.peers.Peers.Cardinality.*
 import io.github.locix.network.Network

@@ -1,4 +1,4 @@
-package io.github.nicolasfara.locix
+package io.github.locix
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
