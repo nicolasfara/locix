@@ -24,13 +24,13 @@ LociX lets you express where code runs, which peers may communicate, and how val
 ## Choreography Example
 
 ```scala
-import io.github.locix.Choreography
-import io.github.locix.Choreography.*
-import io.github.locix.network.Network
-import io.github.locix.peers.Peers.Cardinality.*
-import io.github.locix.placement.PeerScope.take
-import io.github.locix.placement.Placement
-import io.github.locix.placement.PlacementType.on
+import io.github.party.Choreography
+import io.github.party.Choreography.*
+import io.github.party.network.Network
+import io.github.party.peers.Peers.Cardinality.*
+import io.github.party.placement.PeerScope.take
+import io.github.party.placement.Placement
+import io.github.party.placement.PlacementType.on
 
 object PingPong:
   type Pinger <: { type Tie <: Single[Ponger] }
@@ -56,14 +56,14 @@ This style is useful when the communication pattern is the main concern and you 
 ## Multitier Example
 
 ```scala
-import io.github.locix.Multitier
-import io.github.locix.Multitier.*
-import io.github.locix.network.Network
-import io.github.locix.network.Network.peerAddress
-import io.github.locix.network.Network.reachablePeersOf
-import io.github.locix.peers.Peers.Cardinality.*
-import io.github.locix.placement.Placement
-import io.github.locix.placement.PlacementType.on
+import io.github.party.Multitier
+import io.github.party.Multitier.*
+import io.github.party.network.Network
+import io.github.party.network.Network.peerAddress
+import io.github.party.network.Network.reachablePeersOf
+import io.github.party.peers.Peers.Cardinality.*
+import io.github.party.placement.Placement
+import io.github.party.placement.PlacementType.on
 
 object MasterWorker:
   type Master <: { type Tie <: Multiple[Worker] }
@@ -108,14 +108,14 @@ This is useful when computation is colocated with data or devices, while reads a
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
 
-import io.github.locix.Collective
-import io.github.locix.Collective.*
-import io.github.locix.network.Network
-import io.github.locix.network.Network.peerAddress
-import io.github.locix.peers.Peers.Cardinality.*
-import io.github.locix.placement.PeerScope.take
-import io.github.locix.placement.Placement
-import io.github.locix.placement.PlacementType.on
+import io.github.party.Collective
+import io.github.party.Collective.*
+import io.github.party.network.Network
+import io.github.party.network.Network.peerAddress
+import io.github.party.peers.Peers.Cardinality.*
+import io.github.party.placement.PeerScope.take
+import io.github.party.placement.Placement
+import io.github.party.placement.PlacementType.on
 
 object AggregateCounter:
   type Smartphone <: { type Tie <: Multiple[Smartphone] }
@@ -133,7 +133,7 @@ This layer is aimed at neighborhood-based and aggregate computations where each 
 
 ## Runnable Examples
 
-The [`examples`](./examples/src/io/github/locix) module contains small runnable programs such as:
+The [`examples`](./examples/src/io/github/party) module contains small runnable programs such as:
 
 - `PingPong`
 - `RemoteFunction`
@@ -145,7 +145,7 @@ The [`examples`](./examples/src/io/github/locix) module contains small runnable 
 - `TicTacToe`
 - `MergeSort`
 
-The [`nebula`](./nebula/src/io/github/locix/nebula) module contains a larger hybrid example where:
+The [`nebula`](./nebula/src/io/github/party/nebula) module contains a larger hybrid example where:
 
 - collective programming computes topology awareness and participation eligibility,
 - choreography coordinates training rounds and gathers updates,
@@ -157,13 +157,13 @@ The build uses Mill and Scala 3.8.1 with experimental capabilities enabled.
 
 ```bash
 ./mill core.test
-./mill examples.runMain io.github.locix.PingPong
-./mill examples.runMain io.github.locix.MasterWorker
-./mill examples.runMain io.github.locix.AggregateCounter
-./mill nebula.runMain io.github.locix.nebula.Nebula
+./mill examples.runMain io.github.party.PingPong
+./mill examples.runMain io.github.party.MasterWorker
+./mill examples.runMain io.github.party.AggregateCounter
+./mill nebula.runMain io.github.party.nebula.Nebula
 ```
 
-For more runnable programs, inspect [`examples/src/io/github/locix`](./examples/src/io/github/locix).
+For more runnable programs, inspect [`examples/src/io/github/party`](./examples/src/io/github/party).
 
 ## License And Conduct
 

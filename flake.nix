@@ -1,6 +1,6 @@
 # flake.nix
 {
-  description = "Dev shell for locix";
+  description = "Dev shell for party";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";

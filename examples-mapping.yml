@@ -1,293 +1,293 @@
 examples:
   - source: examples/case-studies/aggregate-counter/original
-    target: examples/case-studies/aggregate-counter/locix
+    target: examples/case-studies/aggregate-counter/party
     case: Aggregate Counter
     paradigm: Aggregate
     citation: ???
 
   - source: ???
-    target: examples/case-studies/authenticated-chat/locix
+    target: examples/case-studies/authenticated-chat/party
     case: Authenticated Chat
     paradigm: "Choreography & Multitier"
     citation: ""
 
   - source: examples/case-studies/basic-chat/original
-    target: examples/case-studies/basic-chat/locix
+    target: examples/case-studies/basic-chat/party
     case: Basic Chat
     paradigm: Multitier
     citation: ""
 
   - source: examples/case-studies/shopping-list/original
-    target: examples/case-studies/shopping-list/locix
+    target: examples/case-studies/shopping-list/party
     case: Shopping List
     paradigm: Multitier
     citation: ""
 
   - source: examples/case-studies/book-seller/original
-    target: examples/case-studies/book-seller/locix
+    target: examples/case-studies/book-seller/party
     case: Book Seller
     paradigm: Choreography
     citation: 10.1145/3607849
 
   - source: examples/case-studies/broadcasting/original
-    target: examples/case-studies/broadcasting/locix
+    target: examples/case-studies/broadcasting/party
     case: Broadcasting
     paradigm: Aggregate
     citation: ""
 
   - source: examples/case-studies/card-game/original
-    target: examples/case-studies/card-game/locix
+    target: examples/case-studies/card-game/party
     case: Card Game
     paradigm: Choreography
     citation: ""
 
   - source: examples/case-studies/channel/original
-    target: examples/case-studies/channel/locix
+    target: examples/case-studies/channel/party
     case: Channel
     paradigm: Aggregate
     citation: ""
 
   - source: examples/case-studies/chat-application/original
-    target: examples/case-studies/chat-application/locix
+    target: examples/case-studies/chat-application/party
     case: Chat Application
     paradigm: Multitier
     citation: DBLP:journals/pacmpl/WeisenburgerKS18
 
   - source: examples/case-studies/chirper/original
-    target: examples/case-studies/chirper/locix
+    target: examples/case-studies/chirper/party
     case: Chirper
     paradigm: Multitier
     citation: ""
 
   - source: examples/case-studies/chirper-inc/original
-    target: examples/case-studies/chirper-inc/locix
+    target: examples/case-studies/chirper-inc/party
     case: Chirper Inc
     paradigm: Multitier
     citation: ""
 
   - source: examples/case-studies/dprio/original
-    target: examples/case-studies/dprio/locix
+    target: examples/case-studies/dprio/party
     case: DPrio
     paradigm: Choreography
     citation: DBLP:journals/pacmpl/BatesKJSKN25
 
   - source: examples/case-studies/email-application/original
-    target: examples/case-studies/email-application/locix/EmailApplication.scala
+    target: examples/case-studies/email-application/party/EmailApplication.scala
     target_lines: 1-43
     case: Email Application
     paradigm: Multitier
     citation: DBLP:journals/pacmpl/WeisenburgerKS18
 
   - source: examples/case-studies/email-system/original
-    target: examples/case-studies/email-system/locix/EmailSystemMultitier.scala
+    target: examples/case-studies/email-system/party/EmailSystemMultitier.scala
     target_lines: 1-53
     case: Email System
     paradigm: "Choreography & Multitier"
     citation: DBLP:conf/ecoop/GiallorenzoMPRS21
 
   - source: examples/case-studies/fan-in/original
-    target: examples/case-studies/fan-in/locix
+    target: examples/case-studies/fan-in/party
     case: Fan-in
     paradigm: Choreography
     citation: ""
 
   - source: examples/case-studies/fan-out/original
-    target: examples/case-studies/fan-out/locix
+    target: examples/case-studies/fan-out/party
     case: Fan-out
     paradigm: Choreography
     citation: ""
 
   - source: examples/case-studies/gmw/original
-    target: examples/case-studies/gmw/locix
+    target: examples/case-studies/gmw/party
     case: GMW
     paradigm: Choreography
     citation: DBLP:journals/pacmpl/BatesKJSKN25
 
   - source: examples/case-studies/guess-a-number/original
-    target: examples/case-studies/guess-a-number/locix/GuessANumber.scala
+    target: examples/case-studies/guess-a-number/party/GuessANumber.scala
     target_lines: 1-103
     case: Guess A Number
     paradigm: Multitier
     citation: ""
 
   - source: examples/case-studies/haste-chatbox/original
-    target: examples/case-studies/haste-chatbox/locix/HasteChatbox.scala
+    target: examples/case-studies/haste-chatbox/party/HasteChatbox.scala
     target_lines: 1-125
     case: Haste Chatbox
     paradigm: Multitier
     citation: ""
 
   - source: examples/case-studies/key-value-store/original
-    target: examples/case-studies/key-value-store/locix
+    target: examples/case-studies/key-value-store/party
     case: Key-value Store
     paradigm: Choreography
     citation: DBLP:journals/pacmpl/BatesKJSKN25,10.1145/3607849
 
   - source: examples/case-studies/lottery/original
-    target: examples/case-studies/lottery/locix
+    target: examples/case-studies/lottery/party
     case: Lottery
     paradigm: Choreography
     citation: ""
 
   - source: examples/case-studies/main-worker/original
-    target: examples/case-studies/main-worker/locix
+    target: examples/case-studies/main-worker/party
     case: Main-Worker
     paradigm: Multitier
     citation: DBLP:journals/pacmpl/WeisenburgerKS18
 
   - source: examples/case-studies/graffiti-rpc/original
-    target: examples/case-studies/graffiti-rpc/locix
+    target: examples/case-studies/graffiti-rpc/party
     case: Graffiti RPC
     paradigm: Multitier
     citation: ""
 
   - source: examples/case-studies/graffiti-websockets/original
-    target: examples/case-studies/graffiti-websockets/locix
+    target: examples/case-studies/graffiti-websockets/party
     case: Graffiti WebSockets
     paradigm: Multitier
     citation: ""
 
   - source: examples/case-studies/merge-sort/original
-    target: examples/case-studies/merge-sort/locix
+    target: examples/case-studies/merge-sort/party
     case: Merge Sort
     paradigm: Choreography
     citation: ""
 
   - source: examples/case-studies/multicast/original
-    target: examples/case-studies/multicast/locix
+    target: examples/case-studies/multicast/party
     case: Multicast
     paradigm: Choreography
     citation: ""
 
   - source: examples/case-studies/neighbor-distances/original
-    target: examples/case-studies/neighbor-distances/locix
+    target: examples/case-studies/neighbor-distances/party
     case: Neighbor Distances
     paradigm: Aggregate
     citation: ""
 
   - source: examples/case-studies/neighbor-distances-obstacle/original
-    target: examples/case-studies/neighbor-distances-obstacle/locix
+    target: examples/case-studies/neighbor-distances-obstacle/party
     case: Neighbor Distances Obstacle
     paradigm: Aggregate
     citation: ""
 
   - source: examples/case-studies/ping-pong/original
-    target: examples/case-studies/ping-pong/locix
+    target: examples/case-studies/ping-pong/party
     case: Ping Pong
     paradigm: Choreography
     citation: ""
 
   - source: examples/case-studies/tic-tac-toe/original
-    target: examples/case-studies/tic-tac-toe/locix
+    target: examples/case-studies/tic-tac-toe/party
     case: Tic Tac Toe
     paradigm: Choreography
     citation: ""
 
   - source: examples/case-studies/ticket-trader/original
-    target: examples/case-studies/ticket-trader/locix/TicketTrader.scala
+    target: examples/case-studies/ticket-trader/party/TicketTrader.scala
     target_lines: 1-127
     case: Ticket Trader
     paradigm: Multitier
     citation: ""
 
   - source: examples/case-studies/token-ring/original
-    target: examples/case-studies/token-ring/locix
+    target: examples/case-studies/token-ring/party
     case: Token Ring
     paradigm: Multitier
     citation: DBLP:journals/pacmpl/WeisenburgerKS18
 
   - source: examples/case-studies/tweet-processing/original
-    target: examples/case-studies/tweet-processing/locix
+    target: examples/case-studies/tweet-processing/party
     case: Tweet Processing
     paradigm: Multitier
     citation: DBLP:journals/pacmpl/WeisenburgerKS18
 
   - source: examples/case-studies/buyer-seller-shipper/original
-    target: examples/case-studies/buyer-seller-shipper/locix
+    target: examples/case-studies/buyer-seller-shipper/party
     case: Buyer Seller Shipper
     paradigm: Choreography
     citation: ""
 
   - source: examples/case-studies/consume-items/original
-    target: examples/case-studies/consume-items/locix
+    target: examples/case-studies/consume-items/party
     case: Consume Items
     paradigm: Choreography
     citation: ""
 
   - source: examples/case-studies/diffie-hellman/original
-    target: examples/case-studies/diffie-hellman/locix
+    target: examples/case-studies/diffie-hellman/party
     case: Diffie-Hellman
     paradigm: Choreography
     citation: ""
 
   - source: examples/case-studies/distributed-authentication/original
-    target: examples/case-studies/distributed-authentication/locix
+    target: examples/case-studies/distributed-authentication/party
     case: Distributed Authentication
     paradigm: Choreography
     citation: ""
 
   - source: examples/case-studies/hello-roles/original
-    target: examples/case-studies/hello-roles/locix
+    target: examples/case-studies/hello-roles/party
     case: Hello Roles
     paradigm: Choreography
     citation: ""
 
   - source: examples/case-studies/karatsuba/original
-    target: examples/case-studies/karatsuba/locix
+    target: examples/case-studies/karatsuba/party
     case: Karatsuba
     paradigm: Choreography
     citation: ""
 
   - source: examples/case-studies/quicksort/original
-    target: examples/case-studies/quicksort/locix
+    target: examples/case-studies/quicksort/party
     case: Quick Sort
     paradigm: Choreography
     citation: ""
 
   - source: examples/case-studies/remote-function/original
-    target: examples/case-studies/remote-function/locix
+    target: examples/case-studies/remote-function/party
     case: Remote Function
     paradigm: Choreography
     citation: ""
 
   - source: examples/case-studies/vitals-streaming/original
-    target: examples/case-studies/vitals-streaming/locix
+    target: examples/case-studies/vitals-streaming/party
     case: Vitals Streaming
     paradigm: Choreography
     citation: ""
 
   - source: ???
-    target: examples/case-studies/smart-mobility/locix
+    target: examples/case-studies/smart-mobility/party
     case: Smart Mobility
     paradigm: "Multitier & Aggregate & Choreography"
     citation: ""
 
   - source: examples/case-studies/collection/original
-    target: examples/case-studies/collection/locix
+    target: examples/case-studies/collection/party
     case: Collection
     paradigm: Aggregate
     citation: ""
 
   - source: examples/case-studies/collection-ids/original
-    target: examples/case-studies/collection-ids/locix
+    target: examples/case-studies/collection-ids/party
     case: Collection IDs
     paradigm: Aggregate
     citation: ""
 
   - source: examples/case-studies/gradient-explicit-fields/original
-    target: examples/case-studies/gradient-explicit-fields/locix
+    target: examples/case-studies/gradient-explicit-fields/party
     case: Gradient With Explicit Fields
     paradigm: Aggregate
     citation: ""
 
   - source: examples/case-studies/count-neighbours/original
-    target: examples/case-studies/count-neighbours/locix
+    target: examples/case-studies/count-neighbours/party
     case: Count Neighbours
     paradigm: Aggregate
     citation: ""
 
   - source: examples/case-studies/max-id/original
-    target: examples/case-studies/max-id/locix
+    target: examples/case-studies/max-id/party
     case: Max ID
     paradigm: Aggregate
     citation: ""
